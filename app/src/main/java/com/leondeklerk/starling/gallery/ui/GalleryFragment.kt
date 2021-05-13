@@ -1,7 +1,9 @@
 package com.leondeklerk.starling.gallery.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -19,7 +21,9 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.leondeklerk.starling.databinding.FragmentGalleryBinding
 import com.leondeklerk.starling.gallery.GalleryAdapter
 
-private const val READ_EXTERNAL_STORAGE_PERMISSION_FLAG = 1;
+private const val READ_EXTERNAL_STORAGE_PERMISSION_FLAG = 1
+private const val READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG =
+    "READ_EXTERNAL_STORAGE_PERMISSION_FLAG"
 
 /**
  * [GalleryFragment] is the main fragment of the application.
@@ -31,6 +35,7 @@ class GalleryFragment : Fragment() {
 
     private lateinit var galleryViewModel: GalleryViewModel
     private var _binding: FragmentGalleryBinding? = null
+    private lateinit var sharedPrefs: SharedPreferences
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -41,7 +46,7 @@ class GalleryFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        // Create the viewmodel
+        // Create the viewModel
         galleryViewModel =
             ViewModelProvider(this).get(GalleryViewModel::class.java)
 
@@ -53,26 +58,9 @@ class GalleryFragment : Fragment() {
         binding.lifecycleOwner = this
         binding.viewModel = galleryViewModel
 
-        // Handle the required storage permission
-        // Without this permission this fragment cannot work.
-        val permission = Manifest.permission.READ_EXTERNAL_STORAGE
+        sharedPrefs = requireActivity().getPreferences(Context.MODE_PRIVATE)
 
-
-        if (hasPermission(permission)) {
-            // We can bind the adapter to the view
-            setAdapter()
-        } else {
-            // We have no permission so we should either show the rationale or immediately request the permission
-            if (shouldShowRequestPermissionRationale(permission)) {
-                // Setup the view and button listener
-                binding.permissionRationaleView.isGone = false
-                binding.permissionRationaleButton.setOnClickListener {
-                    requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
-                }
-            } else {
-                requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
-            }
-        }
+        handleReadStoragePermission()
         return root
     }
 
@@ -88,14 +76,20 @@ class GalleryFragment : Fragment() {
     ) {
         when (requestCode) {
             READ_EXTERNAL_STORAGE_PERMISSION_FLAG -> {
-
+                // If a permission is requested for the first time it should not show the settings rationale immediately.
+                val isFirstRequest =
+                    sharedPrefs.getBoolean(READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG, true)
+                if (isFirstRequest) {
+                    sharedPrefs.edit().putBoolean(READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG, false)
+                        .apply()
+                }
                 // If the permission was granted we can set the adapter
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     setAdapter()
                 } else {
                     // We were not granted the permission so we can do two things:
                     // 1. Show the permission rationale, with on button click showing the permission dialog again.
-                    // 2. We cannot show the dialog again (Either Android 11+ or user clicked don't ask again), so we need to redirect to the settings
+                    // 2. We cannot show the dialog again (Either Android 11+ or user clicked don't ask again), so we need to redirect to the settings (Note: Only if this was not the first request)
                     val permission = Manifest.permission.READ_EXTERNAL_STORAGE
                     binding.permissionRationaleView.isGone = false
 
@@ -105,14 +99,46 @@ class GalleryFragment : Fragment() {
                             requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
                         }
                     } else {
-                        // Case 2: We cannot show the dialog, but we can (willingly) redirect the user to settings
-                        galleryViewModel.updateRationale(true)
-                        binding.permissionRationaleButton.setOnClickListener {
-                            goToSettings()
+                        // If we got a rejection and it was not the first time, we need to show the settings rationale
+                        if (!isFirstRequest) {
+                            // Case 2: We cannot show the dialog, but we can (willingly) redirect the user to settings.
+                            galleryViewModel.updateRationale(true)
+                            binding.permissionRationaleButton.setOnClickListener {
+                                goToSettings()
+                            }
+                        } else {
+                            binding.permissionRationaleButton.setOnClickListener {
+                                requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
+                            }
                         }
                     }
                 }
-                return
+            }
+        }
+    }
+
+    /**
+     * Helper function to check and ask for the [Manifest.permission.MANAGE_EXTERNAL_STORAGE] permission.
+     * This will check if the permission is granted, if so we can call [setAdapter].
+     * If a permission was not granted we need to request it, and potentially show a rationale to inform the user about the reason.
+     */
+    private fun handleReadStoragePermission() {
+        val permission = Manifest.permission.READ_EXTERNAL_STORAGE
+
+        if (hasPermission(permission)) {
+            // We can bind the adapter to the view
+            setAdapter()
+        } else {
+
+            // We have no permission so we should either show the rationale or immediately request the permission
+            if (shouldShowRequestPermissionRationale(permission)) {
+                binding.permissionRationaleView.isGone = false
+                // Setup the view and button listener
+                binding.permissionRationaleButton.setOnClickListener {
+                    requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
+                }
+            } else {
+                requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
             }
         }
     }
