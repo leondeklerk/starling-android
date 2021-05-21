@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.DiffUtil
 data class GalleryItem(
     val id: Long,
     val displayName: String,
-    //val dateAdded: Date,
+    // val dateAdded: Date,
     val contentUri: Uri
 ) {
     companion object {
@@ -24,4 +24,3 @@ data class GalleryItem(
         }
     }
 }
-

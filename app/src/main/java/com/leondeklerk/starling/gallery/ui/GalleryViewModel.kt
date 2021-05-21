@@ -1,8 +1,6 @@
 package com.leondeklerk.starling.gallery.ui
 
 import android.net.Uri
-import androidx.core.content.ContextCompat
-import androidx.core.content.PermissionChecker
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -24,13 +22,16 @@ class GalleryViewModel : ViewModel() {
     val text: LiveData<String> = _text
 
     private val _data = MutableLiveData<List<GalleryItem>>().apply {
-        value = listOf(GalleryItem(1, "name1", Uri.parse("http://test.com")), GalleryItem(2, "name2", Uri.parse("http://test.com")))
+        value = listOf(
+            GalleryItem(1, "name1", Uri.parse("http://test.com")),
+            GalleryItem(2, "name2", Uri.parse("http://test.com"))
+        )
     }
 
     val data: LiveData<List<GalleryItem>> = _data
 
     private val _permissionTextId = MutableLiveData<Int>().apply {
-        value = R.string.permission_rationale;
+        value = R.string.permission_rationale
     }
 
     val permissionTextId: LiveData<Int> = _permissionTextId

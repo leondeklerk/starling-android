@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.leondeklerk.starling.databinding.FragmentLibraryBinding
 
@@ -26,7 +25,7 @@ class LibraryFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        // Instantiate the viewmodel
+        // Instantiate the viewModel
         libraryViewModel =
             ViewModelProvider(this).get(LibraryViewModel::class.java)
 
@@ -36,9 +35,12 @@ class LibraryFragment : Fragment() {
 
         // Update the sample text.
         val textView: TextView = binding.textLibrary
-        libraryViewModel.text.observe(viewLifecycleOwner, Observer {
-            textView.text = it
-        })
+        libraryViewModel.text.observe(
+            viewLifecycleOwner,
+            {
+                textView.text = it
+            }
+        )
         return root
     }
 
