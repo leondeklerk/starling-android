@@ -28,7 +28,8 @@ private const val READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG =
 /**
  * [GalleryFragment] is the main fragment of the application.
  * It contains the main recyclerView that contains all images and videos on the device and synced.
- * Uses a [GalleryAdapter] assisted by [GalleryViewModel] to display [com.leondeklerk.starling.gallery.data.GalleryItem]s.
+ * Uses a [GalleryAdapter] assisted by [GalleryViewModel] to display
+ * [com.leondeklerk.starling.gallery.data.GalleryItem]s.
  * This fragment handles the required permission.
  */
 class GalleryFragment : Fragment() {
@@ -89,7 +90,8 @@ class GalleryFragment : Fragment() {
                 } else {
                     // We were not granted the permission so we can do two things:
                     // 1. Show the permission rationale, with on button click showing the permission dialog again.
-                    // 2. We cannot show the dialog again (Either Android 11+ or user clicked don't ask again), so we need to redirect to the settings (Note: Only if this was not the first request)
+                    // 2. We cannot show the dialog again (Either Android 11+ or user clicked don't ask again),
+                    // so we need to redirect to the settings (Note: Only if this was not the first request)
                     val permission = Manifest.permission.READ_EXTERNAL_STORAGE
                     binding.permissionRationaleView.isGone = false
 
@@ -155,11 +157,14 @@ class GalleryFragment : Fragment() {
         // Create a GalleryAdapter and add the data to it
         val adapter = GalleryAdapter()
 
-        galleryViewModel.data.observe(viewLifecycleOwner, Observer {
-            it?.let {
-                adapter.submitList(it)
+        galleryViewModel.data.observe(
+            viewLifecycleOwner,
+            Observer {
+                it?.let {
+                    adapter.submitList(it)
+                }
             }
-        })
+        )
 
         // Create a grid layout manager
         // TODO: allow for updates of the layout (as well as custom span counts per entry)

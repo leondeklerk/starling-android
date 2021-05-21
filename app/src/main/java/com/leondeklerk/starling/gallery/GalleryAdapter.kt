@@ -1,10 +1,8 @@
+
 package com.leondeklerk.starling.gallery
 
-import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
-import com.leondeklerk.starling.databinding.GalleryItemViewBinding
 import com.leondeklerk.starling.gallery.data.GalleryItem
 import com.leondeklerk.starling.gallery.ui.GalleryItemViewHolder
 
@@ -15,7 +13,7 @@ class GalleryAdapter : ListAdapter<GalleryItem, GalleryItemViewHolder>(GalleryIt
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GalleryItemViewHolder {
-        return GalleryItemViewHolder.from(parent);
+        return GalleryItemViewHolder.from(parent)
     }
 
     override fun getItemViewType(position: Int): Int {

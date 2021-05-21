@@ -10,7 +10,8 @@ import com.leondeklerk.starling.gallery.data.GalleryItem
  * Basic [RecyclerView.ViewHolder] class that binds a [GalleryItem] and inflates the associated layout.
  * TODO: Extend this for the envisioned different GalleryItem data classes
  */
-class GalleryItemViewHolder private constructor(private val binding: GalleryItemViewBinding) : RecyclerView.ViewHolder(binding.root){
+class GalleryItemViewHolder private constructor(private val binding: GalleryItemViewBinding) :
+    RecyclerView.ViewHolder(binding.root) {
 
     /**
      * Bind a [GalleryItem] to the layout using databinding
@@ -29,8 +30,8 @@ class GalleryItemViewHolder private constructor(private val binding: GalleryItem
          */
         fun from(parent: ViewGroup): GalleryItemViewHolder {
             val layoutInflater = LayoutInflater.from(parent.context)
-            val binding = GalleryItemViewBinding.inflate(layoutInflater, parent, false);
-            return GalleryItemViewHolder(binding);
+            val binding = GalleryItemViewBinding.inflate(layoutInflater, parent, false)
+            return GalleryItemViewHolder(binding)
         }
     }
 }
