@@ -2,6 +2,7 @@ package com.leondeklerk.starling.gallery
 
 import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
+import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.gallery.ui.GalleryHeaderViewHolder
 import com.leondeklerk.starling.gallery.ui.GalleryImageViewHolder
@@ -14,6 +15,8 @@ import com.leondeklerk.starling.gallery.ui.GalleryVideoViewHolder
  * Responsible for creating the specific holders and binding the item to the holder.
  */
 class GalleryAdapter : ListAdapter<MediaItem, GalleryItemViewHolder>(MediaItem.DiffCallback) {
+    var onImageClick: ((ImageItem) -> Unit)? = null
+
     override fun onBindViewHolder(holder: GalleryItemViewHolder, position: Int) {
         val item = getItem(position)
         holder.bind(item)
@@ -23,7 +26,7 @@ class GalleryAdapter : ListAdapter<MediaItem, GalleryItemViewHolder>(MediaItem.D
         // Create one of the available viewHolders or throw an exception
         return when (viewType) {
             0 -> GalleryHeaderViewHolder.from(parent)
-            1 -> GalleryImageViewHolder.from(parent)
+            1 -> GalleryImageViewHolder.from(parent, onImageClick)
             2 -> GalleryVideoViewHolder.from(parent)
             else -> throw IllegalArgumentException()
         }
@@ -31,7 +34,7 @@ class GalleryAdapter : ListAdapter<MediaItem, GalleryItemViewHolder>(MediaItem.D
 
     override fun getItemViewType(position: Int): Int {
         val item = getItem(position)
-        // Return the int value of the enum type GalleryItemTypes
+        // Return the int value of the enum type MediaItemTypes
         return item.type.ordinal
     }
 }

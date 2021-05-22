@@ -9,12 +9,27 @@
         android:id="@+id/navigation_gallery"
         android:name="com.leondeklerk.starling.gallery.ui.GalleryFragment"
         android:label="@string/title_gallery"
-        tools:layout="@layout/fragment_gallery" />
+        tools:layout="@layout/fragment_gallery" >
+        <action
+            android:id="@+id/action_navigation_gallery_to_image_fragment"
+            app:destination="@id/image_fragment"
+            app:popUpTo="@id/navigation_gallery"
+            app:popUpToInclusive="false" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_library"
         android:name="com.leondeklerk.starling.library.LibraryFragment"
         android:label="@string/title_library"
         tools:layout="@layout/fragment_library" />
+    <fragment
+        android:id="@+id/image_fragment"
+        android:name="com.leondeklerk.starling.media.ImageFragment"
+        android:label="ImageFragment"
+        tools:layout="@layout/fragment_image">
+        <argument
+            android:name="imageItem"
+            app:argType="com.leondeklerk.starling.data.MediaItem" />
+    </fragment>
 
 </navigation>

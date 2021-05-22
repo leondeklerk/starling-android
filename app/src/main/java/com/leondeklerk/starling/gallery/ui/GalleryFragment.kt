@@ -16,7 +16,9 @@ import androidx.core.content.PermissionChecker
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
+import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.databinding.FragmentGalleryBinding
 import com.leondeklerk.starling.gallery.GalleryAdapter
@@ -25,7 +27,7 @@ import com.leondeklerk.starling.gallery.GalleryAdapter
  * [GalleryFragment] is the main fragment of the application.
  * It contains the main recyclerView that contains all images and videos on the device and synced.
  * Uses a [GalleryAdapter] assisted by [GalleryViewModel] to display
- * [com.leondeklerk.starling.gallery.data.GalleryItem]s.
+ * [com.leondeklerk.starling.data.MediaItem]s.
  * This fragment handles the required permission.
  */
 class GalleryFragment : Fragment() {
@@ -162,6 +164,11 @@ class GalleryFragment : Fragment() {
         // Create a GalleryAdapter and add the data to it
         val adapter = GalleryAdapter()
 
+        adapter.onImageClick = { item ->
+            val directions = GalleryFragmentDirections.actionNavigationGalleryToImageFragment(item)
+            findNavController().navigate(directions)
+        }
+
         galleryViewModel.data.observe(
             viewLifecycleOwner,
             {
@@ -190,6 +197,9 @@ class GalleryFragment : Fragment() {
             it.adapter = adapter
             it.layoutManager = manager
         }
+    }
+
+    private fun onImageClick(image: ImageItem) {
     }
 
     /**

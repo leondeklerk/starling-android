@@ -1,10 +1,13 @@
 package com.leondeklerk.starling.data
 
 import android.net.Uri
+import android.os.Parcelable
 import androidx.recyclerview.widget.DiffUtil
 import java.util.Date
+import kotlinx.parcelize.Parcelize
 
-enum class MediaItemTypes {
+@Parcelize
+enum class MediaItemTypes : Parcelable {
     HEADER, IMAGE, VIDEO
 }
 
@@ -17,7 +20,7 @@ enum class MediaItemTypes {
 sealed class MediaItem(
     open val id: Long,
     open val type: MediaItemTypes
-) {
+) : Parcelable {
 
     companion object {
         // Handles the DiffUtil callback for gallery items.
@@ -42,6 +45,7 @@ sealed class MediaItem(
  * @param date: The date set of media items this header represents
  * @param zoomLevel: The level of zoom that the application is currently in.
  */
+@Parcelize
 data class HeaderItem(
     override val id: Long,
     val date: Date,
@@ -56,6 +60,7 @@ data class HeaderItem(
  * @param width: The pixel width of the image
  * @param height: The pixel height of the image
  */
+@Parcelize
 data class ImageItem(
     override val id: Long,
     val displayName: String,
@@ -72,6 +77,7 @@ data class ImageItem(
  * @param duration: The length of this video in milli.
  * @param contentUri: The uri which points to the video in storage
  */
+@Parcelize
 data class VideoItem(
     override val id: Long,
     val displayName: String,
