@@ -15,15 +15,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
+import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.databinding.FragmentGalleryBinding
 import com.leondeklerk.starling.gallery.GalleryAdapter
-
-private const val READ_EXTERNAL_STORAGE_PERMISSION_FLAG = 1
-private const val READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG =
-    "READ_EXTERNAL_STORAGE_PERMISSION_FLAG"
 
 /**
  * [GalleryFragment] is the main fragment of the application.
@@ -41,6 +37,12 @@ class GalleryFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
+
+    companion object {
+        private const val READ_EXTERNAL_STORAGE_PERMISSION_FLAG = 1
+        private const val READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG =
+            "READ_EXTERNAL_STORAGE_PERMISSION_FLAG"
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -151,6 +153,9 @@ class GalleryFragment : Fragment() {
      * Also instantiates an observer for the viewModel data.
      */
     private fun setAdapter() {
+        // Start loading the media from the device
+        galleryViewModel.loadMedia()
+
         // Handle the permission rationale
         binding.permissionRationaleView.isGone = true
 
@@ -159,7 +164,7 @@ class GalleryFragment : Fragment() {
 
         galleryViewModel.data.observe(
             viewLifecycleOwner,
-            Observer {
+            {
                 it?.let {
                     adapter.submitList(it)
                 }
@@ -167,8 +172,18 @@ class GalleryFragment : Fragment() {
         )
 
         // Create a grid layout manager
-        // TODO: allow for updates of the layout (as well as custom span counts per entry)
-        val manager = GridLayoutManager(activity, 3, GridLayoutManager.VERTICAL, false)
+        // TODO: allow for updates of the layout + allow for more flexibility in size
+        val manager = GridLayoutManager(activity, 5, GridLayoutManager.VERTICAL, false)
+
+        // Give headers a full span
+        manager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                return when (adapter.getItemViewType(position)) {
+                    MediaItemTypes.HEADER.ordinal -> manager.spanCount
+                    else -> 1
+                }
+            }
+        }
 
         // Bind this data to the view to populate the recyclerView
         binding.galleryGrid.let {
@@ -195,10 +210,7 @@ class GalleryFragment : Fragment() {
      * @param flag: An [Int] containing the flag we associate with this request, needed in [onRequestPermissionsResult]
      */
     private fun requestPermission(permission: String, flag: Int) {
-        val permissions = arrayOf(
-            permission
-        )
-        requestPermissions(permissions, flag)
+        requestPermission(permission, flag)
     }
 
     /**
