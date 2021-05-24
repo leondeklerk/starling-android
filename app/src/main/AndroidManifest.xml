@@ -24,5 +24,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".media.ImageActivity"
+            android:theme="@style/Theme.Starling.FullScreen.Transparent"/>
     </application>
+
 </manifest>

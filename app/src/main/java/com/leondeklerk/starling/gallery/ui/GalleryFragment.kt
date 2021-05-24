@@ -18,7 +18,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
-import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.databinding.FragmentGalleryBinding
 import com.leondeklerk.starling.gallery.GalleryAdapter
@@ -164,8 +163,9 @@ class GalleryFragment : Fragment() {
         // Create a GalleryAdapter and add the data to it
         val adapter = GalleryAdapter()
 
+        // Register on item click
         adapter.onImageClick = { item ->
-            val directions = GalleryFragmentDirections.actionNavigationGalleryToImageFragment(item)
+            val directions = GalleryFragmentDirections.actionNavigationGalleryToImageActivity(item)
             findNavController().navigate(directions)
         }
 
@@ -197,9 +197,6 @@ class GalleryFragment : Fragment() {
             it.adapter = adapter
             it.layoutManager = manager
         }
-    }
-
-    private fun onImageClick(image: ImageItem) {
     }
 
     /**
