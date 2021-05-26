@@ -4,6 +4,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
+import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.gallery.ui.GalleryHeaderViewHolder
 import com.leondeklerk.starling.gallery.ui.GalleryImageViewHolder
 import com.leondeklerk.starling.gallery.ui.GalleryItemViewHolder
@@ -15,7 +16,8 @@ import com.leondeklerk.starling.gallery.ui.GalleryVideoViewHolder
  * Responsible for creating the specific holders and binding the item to the holder.
  */
 class GalleryAdapter : ListAdapter<MediaItem, GalleryItemViewHolder>(MediaItem.DiffCallback) {
-    var onImageClick: ((ImageItem) -> Unit)? = null
+    lateinit var onImageClick: ((ImageItem) -> Unit)
+    lateinit var onVideoClick: ((VideoItem) -> Unit)
 
     override fun onBindViewHolder(holder: GalleryItemViewHolder, position: Int) {
         val item = getItem(position)
@@ -27,7 +29,7 @@ class GalleryAdapter : ListAdapter<MediaItem, GalleryItemViewHolder>(MediaItem.D
         return when (viewType) {
             0 -> GalleryHeaderViewHolder.from(parent)
             1 -> GalleryImageViewHolder.from(parent, onImageClick)
-            2 -> GalleryVideoViewHolder.from(parent)
+            2 -> GalleryVideoViewHolder.from(parent, onVideoClick)
             else -> throw IllegalArgumentException()
         }
     }

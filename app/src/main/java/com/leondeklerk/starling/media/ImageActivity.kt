@@ -5,6 +5,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
@@ -12,7 +15,7 @@ import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ActivityImageBinding
 
 /**
- * Activity responsbile for showing a [ImageItem].
+ * Activity responsible for showing a [ImageItem].
  * This gives the user a fullscreen view of the image,
  * in addition to image details and simple edit options.
  */
@@ -26,14 +29,14 @@ class ImageActivity : AppCompatActivity() {
         // Create the viewModel
         viewModel = ViewModelProvider(this).get(ImageViewModel::class.java)
 
-        val imageItem = ImageActivityArgs.fromBundle(intent.extras!!).imageItem as ImageItem
+        val imageItem: ImageItem = ImageActivityArgs.fromBundle(intent.extras!!).imageItem
 
         // Inflate the binding
         binding = ActivityImageBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         // Register the toolbar
-        setSupportActionBar(binding.imageToolbar)
+        setSupportActionBar(binding.toolbar)
 
         // Configure the toolbar
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -46,21 +49,15 @@ class ImageActivity : AppCompatActivity() {
 
         val imageView = binding.imageView
 
-        // Handle system ui changes
-        window.decorView.setOnSystemUiVisibilityChangeListener { visibility ->
-            if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
-                // If the system ui is visible the toolbar should reappear
-                supportActionBar?.show()
-            }
-        }
-
-        // On clicking the iamge the system ui and the toolbar should disappear for a fullscreen experience.
+        // On clicking the image the system ui and the toolbar should disappear for a fullscreen experience.
         imageView.setOnClickListener {
             supportActionBar?.hide()
 
             // Set the system ui visibility.
-            window.decorView.systemUiVisibility =
-                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_FULLSCREEN
+            WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+                controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+                controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+            }
         }
 
         // Load image with Glide into the imageView
@@ -77,17 +74,22 @@ class ImageActivity : AppCompatActivity() {
     }
 
     /**
-     * Handle the insets for the toolbar.
+     * Handle the insets and inset changes for the toolbar.
      * This is required for having a semi transparent toolbar and system ui,
      * without the toolbar sliding under the status bar.
      */
     private fun setupInsets() {
-        binding.imageLayout.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        // Make the views go under the status and navigation bars
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Set the insets to the height of the status bar.
-        ViewCompat.setOnApplyWindowInsetsListener(binding.imageToolbar) { _, insets ->
-            binding.imageToolbar.setMarginTop(insets.systemWindowInsetTop)
+        // Set the insets to the height of the status bar, so the toolbar is below the status bar
+        ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { _, insets ->
+            // If the status bar and navigation bar reappear, so should the toolbar
+            if (insets.isVisible(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())) {
+                supportActionBar?.show()
+            }
+
+            binding.toolbar.setMarginTop(insets.getInsets(WindowInsetsCompat.Type.systemBars()).top)
             insets
         }
     }

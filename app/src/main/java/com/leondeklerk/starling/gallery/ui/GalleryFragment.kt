@@ -169,6 +169,11 @@ class GalleryFragment : Fragment() {
             findNavController().navigate(directions)
         }
 
+        adapter.onVideoClick = { item ->
+            val directions = GalleryFragmentDirections.actionNavigationGalleryToVideoActivity(item)
+            findNavController().navigate(directions)
+        }
+
         galleryViewModel.data.observe(
             viewLifecycleOwner,
             {

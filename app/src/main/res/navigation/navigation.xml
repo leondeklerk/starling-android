@@ -15,17 +15,16 @@
             app:destination="@id/image_activity"
             app:popUpTo="@id/navigation_gallery"
             app:popUpToInclusive="false" />
+        <action
+            android:id="@+id/action_navigation_gallery_to_videoActivity"
+            app:destination="@id/videoActivity" />
     </fragment>
 
     <fragment
         android:id="@+id/navigation_library"
         android:name="com.leondeklerk.starling.library.LibraryFragment"
         android:label="@string/title_library"
-        tools:layout="@layout/fragment_library" >
-        <action
-            android:id="@+id/action_navigation_library_to_fullscreenActivity"
-            app:destination="@id/fullscreenActivity" />
-    </fragment>
+        tools:layout="@layout/fragment_library" />
     <activity
         android:id="@+id/image_activity"
         android:name="com.leondeklerk.starling.media.ImageActivity"
@@ -33,12 +32,16 @@
         tools:layout="@layout/activity_image">
         <argument
             android:name="imageItem"
-            app:argType="com.leondeklerk.starling.data.MediaItem" />
+            app:argType="com.leondeklerk.starling.data.ImageItem" />
     </activity>
     <activity
-        android:id="@+id/fullscreenActivity"
-        android:name="com.leondeklerk.starling.media.FullscreenActivity"
-        android:label="activity_fullscreen"
-        tools:layout="@layout/activity_fullscreen" />
+        android:id="@+id/videoActivity"
+        android:name="com.leondeklerk.starling.media.VideoActivity"
+        android:label="VideoActivity"
+        tools:layout="@layout/activity_video">
+        <argument
+            android:name="videoItem"
+            app:argType="com.leondeklerk.starling.data.VideoItem" />
+    </activity>
 
 </navigation>

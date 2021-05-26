@@ -26,7 +26,11 @@
         </activity>
         <activity
             android:name=".media.ImageActivity"
-            android:theme="@style/Theme.Starling.FullScreen.Transparent"/>
+            android:theme="@style/Theme.Starling.FullScreen.Transparent" />
+
+        <activity
+            android:name=".media.VideoActivity"
+            android:theme="@style/Theme.Starling.FullScreen.Transparent" />
     </application>
 
 </manifest>

@@ -64,8 +64,10 @@ class GalleryHeaderViewHolder private constructor(private val binding: GalleryHe
  * An [GalleryItemViewHolder] implementation that binds a [VideoItem] and inflates the associated layout.
  * This is used to display media items of the type video.
  */
-class GalleryVideoViewHolder private constructor(private val binding: GalleryVideoViewBinding) :
-    GalleryItemViewHolder(binding) {
+class GalleryVideoViewHolder private constructor(
+    private val binding: GalleryVideoViewBinding,
+    private val onClick: ((VideoItem) -> Unit)
+) : GalleryItemViewHolder(binding) {
 
     /**
      * Bind a [VideoItem] to the layout using databinding
@@ -77,6 +79,10 @@ class GalleryVideoViewHolder private constructor(private val binding: GalleryVid
 
         // Bind the variable
         binding.item = item
+
+        imageView.setOnClickListener {
+            onClick.invoke(item)
+        }
 
         // Load the video thumbnail with glide
         // TODO: Look into live preview playback (Exoplayer?)
@@ -95,10 +101,10 @@ class GalleryVideoViewHolder private constructor(private val binding: GalleryVid
          * @param parent: The [ViewGroup] the context can be retrieved from
          * @return A [GalleryVideoViewHolder] instance that can be populated with data.
          */
-        fun from(parent: ViewGroup): GalleryVideoViewHolder {
+        fun from(parent: ViewGroup, onClick: ((VideoItem) -> Unit)): GalleryVideoViewHolder {
             val layoutInflater = LayoutInflater.from(parent.context)
             val binding = GalleryVideoViewBinding.inflate(layoutInflater, parent, false)
-            return GalleryVideoViewHolder(binding)
+            return GalleryVideoViewHolder(binding, onClick)
         }
     }
 }
@@ -109,7 +115,7 @@ class GalleryVideoViewHolder private constructor(private val binding: GalleryVid
  */
 class GalleryImageViewHolder private constructor(
     private val binding: GalleryImageViewBinding,
-    private val onClick: ((ImageItem) -> Unit)?
+    private val onClick: ((ImageItem) -> Unit)
 ) : GalleryItemViewHolder(binding) {
 
     /**
@@ -118,14 +124,12 @@ class GalleryImageViewHolder private constructor(
      */
     override fun bind(item: MediaItem) {
         val imageView = binding.imageView
-
+        item as ImageItem
         // Inject variable
-        binding.item = item as ImageItem
+        binding.item = item
 
         imageView.setOnClickListener {
-            run {
-                onClick?.invoke(item)
-            }
+            onClick.invoke(item)
         }
 
         // Load image with Glide into the imageView
@@ -144,7 +148,7 @@ class GalleryImageViewHolder private constructor(
          * @param parent: The [ViewGroup] the context can be retrieved from
          * @return A [GalleryImageViewHolder] instance that can be populated with data.
          */
-        fun from(parent: ViewGroup, onClick: ((ImageItem) -> Unit)?): GalleryImageViewHolder {
+        fun from(parent: ViewGroup, onClick: ((ImageItem) -> Unit)): GalleryImageViewHolder {
             val layoutInflater = LayoutInflater.from(parent.context)
             val binding = GalleryImageViewBinding.inflate(layoutInflater, parent, false)
             return GalleryImageViewHolder(binding, onClick)
