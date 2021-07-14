@@ -14,8 +14,15 @@
         <!-- Customize your theme here. -->
     </style>
 
+    <style name="Starling.Widget.AppBar" parent="ThemeOverlay.MaterialComponents.Dark">
+        <item name="colorControlNormal">@android:color/white</item>
+    </style>
+
     <style name="Theme.Starling.FullScreen.Transparent" parent="Theme.Starling">
-        <item name="android:statusBarColor">@color/light_translucent_status</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>

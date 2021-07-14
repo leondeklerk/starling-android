@@ -14,4 +14,5 @@
     <color name="black_overlay">#66000000</color>
     <color name="dark_translucent_status">#99000000</color>
     <color name="light_translucent_status">#99FFFFFF</color>
+    <color name="status_bar_scrim">#AA000000</color>
 </resources>

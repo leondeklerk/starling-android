@@ -29,14 +29,14 @@
             android:id="@+id/appBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
+            android:background="@color/status_bar_scrim"
+            android:theme="@style/Starling.Widget.AppBar"
             app:elevation="2dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <androidx.appcompat.widget.Toolbar
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
-                android:background="@drawable/transparent_header"
                 android:layout_height="?actionBarSize"/>
         </com.google.android.material.appbar.AppBarLayout>
 

@@ -13,9 +13,4 @@
         <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
     </style>
-
-    <style name="Theme.Starling.FullScreen.Transparent" parent="Theme.Starling">
-        <item name="android:statusBarColor">@color/dark_translucent_status</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
 </resources>
