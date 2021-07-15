@@ -4,13 +4,14 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.core.view.isGone
@@ -39,8 +40,9 @@ class GalleryFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
+
     companion object {
-        private const val READ_EXTERNAL_STORAGE_PERMISSION_FLAG = 1
         private const val READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG =
             "READ_EXTERNAL_STORAGE_PERMISSION_FLAG"
     }
@@ -73,55 +75,6 @@ class GalleryFragment : Fragment() {
         _binding = null
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        when (requestCode) {
-            READ_EXTERNAL_STORAGE_PERMISSION_FLAG -> {
-                // If a permission is requested for the first time it should not show the settings rationale immediately.
-                val isFirstRequest =
-                    sharedPrefs.getBoolean(READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG, true)
-                if (isFirstRequest) {
-                    sharedPrefs.edit().putBoolean(READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG, false)
-                        .apply()
-                }
-                // If the permission was granted we can set the adapter
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    setAdapter()
-                } else {
-                    // We were not granted the permission so we can do two things:
-                    // 1. Show the permission rationale, with on button click showing the permission dialog again.
-                    // 2. We cannot show the dialog again (Either Android 11+ or user clicked don't ask again),
-                    // so we need to redirect to the settings (Note: Only if this was not the first request)
-                    val permission = Manifest.permission.READ_EXTERNAL_STORAGE
-                    binding.permissionRationaleView.isGone = false
-
-                    if (shouldShowRequestPermissionRationale(permission)) {
-                        // Case 1: we can show the permission dialog again on click
-                        binding.permissionRationaleButton.setOnClickListener {
-                            requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
-                        }
-                    } else {
-                        // If we got a rejection and it was not the first time, we need to show the settings rationale
-                        if (!isFirstRequest) {
-                            // Case 2: We cannot show the dialog, but we can (willingly) redirect the user to settings.
-                            galleryViewModel.updateRationale(true)
-                            binding.permissionRationaleButton.setOnClickListener {
-                                goToSettings()
-                            }
-                        } else {
-                            binding.permissionRationaleButton.setOnClickListener {
-                                requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     /**
      * Helper function to check and ask for the [Manifest.permission.MANAGE_EXTERNAL_STORAGE] permission.
      * This will check if the permission is granted, if so we can call [setAdapter].
@@ -129,6 +82,8 @@ class GalleryFragment : Fragment() {
      */
     private fun handleReadStoragePermission() {
         val permission = Manifest.permission.READ_EXTERNAL_STORAGE
+
+        registerPermissionLauncher()
 
         if (hasPermission(permission)) {
             // We can bind the adapter to the view
@@ -140,10 +95,35 @@ class GalleryFragment : Fragment() {
                 binding.permissionRationaleView.isGone = false
                 // Setup the view and button listener
                 binding.permissionRationaleButton.setOnClickListener {
-                    requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
+                    requestPermissionLauncher.launch(permission)
                 }
             } else {
-                requestPermission(permission, READ_EXTERNAL_STORAGE_PERMISSION_FLAG)
+                requestPermissionLauncher.launch(permission)
+            }
+        }
+    }
+
+    /**
+     * Helper function to register the [ActivityResultLauncher] permission launcher.
+     * Responsible for requesting permission and hanlding the result.
+     */
+    private fun registerPermissionLauncher() {
+        requestPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts
+                .RequestPermission()
+        ) {
+            // If a permission is requested for the first time it should not show the settings rationale immediately.
+            val isFirstRequest =
+                sharedPrefs.getBoolean(READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG, true)
+            if (isFirstRequest) {
+                sharedPrefs.edit().putBoolean(READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG, false)
+                    .apply()
+            }
+
+            if (it) {
+                setAdapter()
+            } else {
+                handleRejectedPermission(isFirstRequest)
             }
         }
     }
@@ -205,6 +185,39 @@ class GalleryFragment : Fragment() {
     }
 
     /**
+     * Helper function to manage rejected permissions.
+     * From a rejected permission there are multiple cases:
+     * 1. Show the permission rationale, with on button click showing the permission dialog again.
+     * 2. We cannot show the dialog again (Either Android 11+ or user clicked don't ask again),
+     * so we need to redirect to the settings (Note: Only if this was not the first request)
+     * @param isFirstRequest: a boolean indicating if this was the first ever request for this permission or not.
+     */
+    private fun handleRejectedPermission(isFirstRequest: Boolean) {
+        val permission = Manifest.permission.READ_EXTERNAL_STORAGE
+        binding.permissionRationaleView.isGone = false
+
+        if (shouldShowRequestPermissionRationale(permission)) {
+            // Case 1: we can show the permission dialog again on click
+            binding.permissionRationaleButton.setOnClickListener {
+                requestPermissionLauncher.launch(permission)
+            }
+        } else {
+            // If we got a rejection and it was not the first time, we need to show the settings rationale
+            if (!isFirstRequest) {
+                // Case 2: We cannot show the dialog, but we can (willingly) redirect the user to settings.
+                galleryViewModel.updateRationale(true)
+                binding.permissionRationaleButton.setOnClickListener {
+                    goToSettings()
+                }
+            } else {
+                binding.permissionRationaleButton.setOnClickListener {
+                    requestPermissionLauncher.launch(permission)
+                }
+            }
+        }
+    }
+
+    /**
      * Helper function to check if the user granted a specific permission to the application
      * @param permission: The permission that should be checked, a [String] from [Manifest.permission]
      * @return: A [Boolean] indicating if the permission was granted or not
@@ -214,15 +227,6 @@ class GalleryFragment : Fragment() {
             requireContext(),
             permission
         ) == PermissionChecker.PERMISSION_GRANTED
-    }
-
-    /**
-     * Helper function to request a specific permission and associate the [onRequestPermissionsResult] flag.
-     * @param permission: A [String] containing the permission we want to request, from [Manifest.permission]
-     * @param flag: An [Int] containing the flag we associate with this request, needed in [onRequestPermissionsResult]
-     */
-    private fun requestPermission(permission: String, flag: Int) {
-        requestPermission(permission, flag)
     }
 
     /**
