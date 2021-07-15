@@ -58,7 +58,7 @@ class FolderFragment : Fragment() {
 
     /**
      * Makes sure everything is set so the fragment can properly show the recyclerview.
-     * Handles the removal of a (potential) permission rationale as well as creating the layout and adapter.
+     * Handles the creation and setup of the grid.
      * Also instantiates an observer for the viewModel data.
      */
     private fun setAdapter(bucketId: Long) {

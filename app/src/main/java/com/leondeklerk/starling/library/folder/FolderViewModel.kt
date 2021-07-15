@@ -48,7 +48,8 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
 
     /**
      * Function used to start loading in the media.
-     * Loads in all images and videos from the [MediaStore] using coroutines.
+     * Loads in all images and videos of the folder from the [MediaStore] using coroutines.
+     * @param buckedId: the id of the bucket this folder represents
      */
     fun loadMedia(buckedId: Long) {
         viewModelScope.launch {
@@ -74,6 +75,7 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
      * Implemented with a [ContentResolver] using a cursor.
      * This list uses [MediaItem] to represent the data.
      * Also responsible for adding headers into the list based on the zoom level of the application.
+     * @param bucketId: the id of the folder bucket, used in the content query.
      * @return: A list of [MediaItem]s containing all [HeaderItem]s, [VideoItem]s and [ImageItem]s.
      */
     private suspend fun queryMedia(bucketId: Long): List<MediaItem> {
@@ -176,7 +178,8 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * Create a selection query to retrieve only two specific media types from the MediaStore.
+     * Create a selection query to retrieve all files in the bucket but only two specific media types from the
+     * MediaStore.
      * Helper function with potential to enable filter options later
      */
     private fun createSelection(): String {
@@ -187,6 +190,7 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
     /**
      * Create a list of arguments used in the selection query.
      * Helper function with potential to enable filter options later
+     * @param bucketId: The id of the bucket items should be in
      */
     private fun createSelectionArgs(bucketId: Long): Array<String> {
         return arrayOf(

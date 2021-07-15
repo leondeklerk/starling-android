@@ -4,6 +4,11 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
 import com.leondeklerk.starling.data.FolderItem
 
+/**
+ * [ListAdapter] instance responsible for populating a gallery with [FolderItem]s.
+ * The adapter makes uses of [LibraryFolderViewHolder].
+ * Responsible for creating the holder and binding the items to the holder.
+ */
 class LibraryAdapter : ListAdapter<FolderItem, LibraryFolderViewHolder>(FolderItem.DiffCallback) {
     lateinit var onFolderClick: ((FolderItem) -> Unit)
 

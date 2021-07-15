@@ -6,6 +6,14 @@ import androidx.recyclerview.widget.DiffUtil
 import java.util.Objects
 import kotlinx.parcelize.Parcelize
 
+/**
+ * Data class to represent folder items
+ * This handles the [DiffUtil.Callback] for all folder items based on the id of the item.
+ * @param id: the id of the bucket associated with this folder
+ * @param name: the name of the folder
+ * @param thumbnailUri: The URI of the latest media item added to the folder
+ * @param type: the type of media the
+ */
 @Parcelize
 data class FolderItem(val id: Long, val name: String, val thumbnailUri: Uri, val type: Int) : Parcelable {
     override fun equals(other: Any?): Boolean {

@@ -16,6 +16,7 @@ class StarlingApplication : Application(), ImageLoaderFactory {
     }
 
     override fun newImageLoader(): ImageLoader {
+        // Enable Video and Gif features in Coil
         return ImageLoader.Builder(applicationContext)
             .crossfade(true)
             .componentRegistry {

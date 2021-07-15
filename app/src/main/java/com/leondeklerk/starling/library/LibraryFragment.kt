@@ -23,7 +23,7 @@ import com.leondeklerk.starling.databinding.FragmentLibraryBinding
 
 /**
  * A simple [Fragment] responsible for showing all media on the device (device only) in a folder structure.
- * This is also responsible for setting sync settings on all folders.
+ * This will also responsible for setting sync settings on all folders. TODO
  */
 class LibraryFragment : Fragment() {
 

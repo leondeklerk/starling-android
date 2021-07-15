@@ -23,7 +23,6 @@ import kotlinx.coroutines.withContext
  * Basic [ViewModel] that handles the data of a [LibraryViewModel].
  * This handles the current value of the rationale text and button text, for the permissions.
  * Its main functionality is to provide the data for the adapter.
- * TODO: Implement handling of cloud images
  * Uses [MutableLiveData] and [LiveData] to store and provide data that is kept up to date.
  */
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
