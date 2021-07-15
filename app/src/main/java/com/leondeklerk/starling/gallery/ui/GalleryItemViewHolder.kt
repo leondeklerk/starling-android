@@ -6,7 +6,10 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.databinding.ViewDataBinding
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
+import coil.fetch.VideoFrameUriFetcher
+import coil.imageLoader
+import coil.load
+import coil.request.ImageRequest
 import com.leondeklerk.starling.data.HeaderItem
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
@@ -84,14 +87,13 @@ class GalleryVideoViewHolder private constructor(
             onClick.invoke(item)
         }
 
-        // Load the video thumbnail with glide
+        // Load the video thumbnail with coil
         // TODO: Look into live preview playback (Exoplayer?)
-        Glide.with(imageView)
-            .load(item.contentUri)
+        val request = ImageRequest.Builder(imageView.context)
             .placeholder(ColorDrawable(Color.GRAY))
-            .thumbnail(0.2f)
-            .centerCrop()
-            .into(imageView)
+            .fetcher(VideoFrameUriFetcher(imageView.context))
+            .data(item.contentUri).target(imageView).build()
+        imageView.context.imageLoader.enqueue(request)
         binding.executePendingBindings()
     }
 
@@ -132,13 +134,10 @@ class GalleryImageViewHolder private constructor(
             onClick.invoke(item)
         }
 
-        // Load image with Glide into the imageView
-        Glide.with(imageView)
-            .load(item.contentUri)
-            .placeholder(ColorDrawable(Color.GRAY))
-            .thumbnail(0.2f)
-            .centerCrop()
-            .into(imageView)
+        // Load image with Coil into the imageView
+        imageView.load(item.contentUri) {
+            placeholder(ColorDrawable(Color.GRAY))
+        }
         binding.executePendingBindings()
     }
 

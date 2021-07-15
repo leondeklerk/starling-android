@@ -24,6 +24,7 @@
             android:layout_marginStart="2dp"
             android:layout_marginTop="4dp"
             android:contentDescription="@{item.displayName}"
+            android:scaleType="centerCrop"
             tools:src="@tools:sample/avatars" />
 
         <ImageView
