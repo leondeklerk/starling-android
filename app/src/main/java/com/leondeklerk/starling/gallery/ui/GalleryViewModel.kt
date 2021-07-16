@@ -168,18 +168,18 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                         MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> {
                             mediaItem = VideoItem(
                                 id,
+                                contentUri,
                                 displayName,
                                 date,
                                 duration,
-                                contentUri,
                             )
                         }
                         MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> {
                             mediaItem = ImageItem(
                                 id,
+                                contentUri,
                                 displayName,
                                 date,
-                                contentUri,
                                 width,
                                 height
                             )

@@ -1,14 +1,8 @@
 package com.leondeklerk.starling.library
 
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import coil.fetch.VideoFrameUriFetcher
-import coil.imageLoader
-import coil.load
-import coil.request.ImageRequest
-import coil.transform.RoundedCornersTransformation
 import com.leondeklerk.starling.data.FolderItem
 import com.leondeklerk.starling.databinding.LibraryFolderViewBinding
 
@@ -28,27 +22,11 @@ class LibraryFolderViewHolder private constructor(
      * @param item: A folder item containing the folder data
      */
     fun bind(item: FolderItem) {
-        val folderThumb = binding.folderThumb
-
         binding.item = item
 
         // Register the click listener
         binding.folderItem.setOnClickListener {
             onClick(item)
-        }
-
-        // If the folder thumbnail should be made from a video, use the coil IamgeLoader
-        if (item.type == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO) {
-            val request = ImageRequest.Builder(folderThumb.context)
-                .fetcher(VideoFrameUriFetcher(folderThumb.context))
-                .transformations(RoundedCornersTransformation(32f))
-                .data(item.thumbnailUri).target(folderThumb).build()
-            folderThumb.context.imageLoader.enqueue(request)
-        } else {
-            // Otherwise just load the URI
-            folderThumb.load(item.thumbnailUri) {
-                transformations(RoundedCornersTransformation(32f))
-            }
         }
 
         binding.executePendingBindings()

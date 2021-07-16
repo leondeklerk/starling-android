@@ -12,10 +12,15 @@ import kotlinx.parcelize.Parcelize
  * @param id: the id of the bucket associated with this folder
  * @param name: the name of the folder
  * @param thumbnailUri: The URI of the latest media item added to the folder
- * @param type: the type of media the
+ * @param type: the type of media of the thumbnail
  */
 @Parcelize
-data class FolderItem(val id: Long, val name: String, val thumbnailUri: Uri, val type: Int) : Parcelable {
+data class FolderItem(
+    val id: Long,
+    val name: String,
+    val thumbnailUri: Uri,
+    val type: MediaItemTypes
+) : Parcelable {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false

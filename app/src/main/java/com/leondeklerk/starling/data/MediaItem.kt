@@ -16,10 +16,12 @@ enum class MediaItemTypes : Parcelable {
  * This handles the [DiffUtil.Callback] for all gallery items based on the id of the item.
  * @param id: the id of this object, based on the MediaStore id for videos and images, date for Header objects.
  * @param type: The [MediaItemTypes] type indicates what type of item this is.
+ * @param uri: The uri of the media item or null (header)
  */
 sealed class MediaItem(
     open val id: Long,
-    open val type: MediaItemTypes
+    open val type: MediaItemTypes,
+    open val uri: Uri?
 ) : Parcelable {
 
     companion object {
@@ -50,38 +52,38 @@ data class HeaderItem(
     override val id: Long,
     val date: Date,
     val zoomLevel: Int
-) : MediaItem(id, MediaItemTypes.HEADER)
+) : MediaItem(id, MediaItemTypes.HEADER, null)
 
 /**
  * [MediaItem] specific for image type, indicated by [MediaItemTypes.IMAGE].
+ * @param uri: The uri which points to the image in storage
  * @param displayName: The name given to this image by the MediaStore
  * @param dateAdded: The date this image was added to the system
- * @param contentUri: The uri which points to the image in storage
  * @param width: The pixel width of the image
  * @param height: The pixel height of the image
  */
 @Parcelize
 data class ImageItem(
     override val id: Long,
+    override val uri: Uri,
     val displayName: String,
     val dateAdded: Date,
-    val contentUri: Uri,
     val width: Number,
     val height: Number
-) : MediaItem(id, MediaItemTypes.IMAGE)
+) : MediaItem(id, MediaItemTypes.IMAGE, uri)
 
 /**
  * [MediaItem] specific for video type, indicated by [MediaItemTypes.VIDEO].
+ * @param uri: The uri which points to the video in storage
  * @param displayName: The name given to this video by the MediaStore
  * @param dateAdded: The date this video was added to the system
  * @param duration: The length of this video in milli.
- * @param contentUri: The uri which points to the video in storage
  */
 @Parcelize
 data class VideoItem(
     override val id: Long,
+    override val uri: Uri,
     val displayName: String,
     val dateAdded: Date,
     val duration: Int,
-    val contentUri: Uri,
-) : MediaItem(id, MediaItemTypes.VIDEO)
+) : MediaItem(id, MediaItemTypes.VIDEO, uri)

@@ -9,9 +9,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.leondeklerk.starling.data.FolderItem
+import com.leondeklerk.starling.data.ImageItem
+import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.data.MediaItemTypes
+import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.databinding.FragmentFolderBinding
 import com.leondeklerk.starling.gallery.GalleryAdapter
+import com.leondeklerk.starling.gallery.ui.GalleryFragmentDirections
 
 /**
  * [FolderFragment] is a gallery containing all items in a device folder.
@@ -65,19 +69,19 @@ class FolderFragment : Fragment() {
         // Start loading the media from the device
         folderViewModel.loadMedia(bucketId)
 
+        // Create item click listener
+        val mediaItemClickListener = { item: MediaItem ->
+            if (item.type == MediaItemTypes.VIDEO) {
+                val directions = GalleryFragmentDirections.actionNavigationGalleryToVideoActivity(item as VideoItem)
+                findNavController().navigate(directions)
+            } else if (item.type == MediaItemTypes.IMAGE) {
+                val directions = GalleryFragmentDirections.actionNavigationGalleryToImageActivity(item as ImageItem)
+                findNavController().navigate(directions)
+            }
+        }
+
         // Create a GalleryAdapter and add the data to it
-        val adapter = GalleryAdapter()
-
-        // Register on item click
-        adapter.onImageClick = { item ->
-            val directions = FolderFragmentDirections.actionFolderFragmentToImageActivity(item)
-            findNavController().navigate(directions)
-        }
-
-        adapter.onVideoClick = { item ->
-            val directions = FolderFragmentDirections.actionFolderFragmentToVideoActivity(item)
-            findNavController().navigate(directions)
-        }
+        val adapter = GalleryAdapter(mediaItemClickListener)
 
         folderViewModel.data.observe(
             viewLifecycleOwner,

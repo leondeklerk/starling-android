@@ -1,15 +1,9 @@
 package com.leondeklerk.starling.gallery.ui
 
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.databinding.ViewDataBinding
 import androidx.recyclerview.widget.RecyclerView
-import coil.fetch.VideoFrameUriFetcher
-import coil.imageLoader
-import coil.load
-import coil.request.ImageRequest
 import com.leondeklerk.starling.data.HeaderItem
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
@@ -69,7 +63,7 @@ class GalleryHeaderViewHolder private constructor(private val binding: GalleryHe
  */
 class GalleryVideoViewHolder private constructor(
     private val binding: GalleryVideoViewBinding,
-    private val onClick: ((VideoItem) -> Unit)
+    private val onClick: ((MediaItem) -> Unit)
 ) : GalleryItemViewHolder(binding) {
 
     /**
@@ -78,7 +72,6 @@ class GalleryVideoViewHolder private constructor(
      */
     override fun bind(item: MediaItem) {
         val imageView = binding.imageView
-        item as VideoItem
 
         // Bind the variable
         binding.item = item
@@ -87,13 +80,6 @@ class GalleryVideoViewHolder private constructor(
             onClick.invoke(item)
         }
 
-        // Load the video thumbnail with coil
-        // TODO: Look into live preview playback (Exoplayer?)
-        val request = ImageRequest.Builder(imageView.context)
-            .placeholder(ColorDrawable(Color.GRAY))
-            .fetcher(VideoFrameUriFetcher(imageView.context))
-            .data(item.contentUri).target(imageView).build()
-        imageView.context.imageLoader.enqueue(request)
         binding.executePendingBindings()
     }
 
@@ -103,7 +89,7 @@ class GalleryVideoViewHolder private constructor(
          * @param parent: The [ViewGroup] the context can be retrieved from
          * @return A [GalleryVideoViewHolder] instance that can be populated with data.
          */
-        fun from(parent: ViewGroup, onClick: ((VideoItem) -> Unit)): GalleryVideoViewHolder {
+        fun from(parent: ViewGroup, onClick: ((MediaItem) -> Unit)): GalleryVideoViewHolder {
             val layoutInflater = LayoutInflater.from(parent.context)
             val binding = GalleryVideoViewBinding.inflate(layoutInflater, parent, false)
             return GalleryVideoViewHolder(binding, onClick)
@@ -117,7 +103,7 @@ class GalleryVideoViewHolder private constructor(
  */
 class GalleryImageViewHolder private constructor(
     private val binding: GalleryImageViewBinding,
-    private val onClick: ((ImageItem) -> Unit)
+    private val onClick: ((MediaItem) -> Unit)
 ) : GalleryItemViewHolder(binding) {
 
     /**
@@ -126,7 +112,7 @@ class GalleryImageViewHolder private constructor(
      */
     override fun bind(item: MediaItem) {
         val imageView = binding.imageView
-        item as ImageItem
+
         // Inject variable
         binding.item = item
 
@@ -134,10 +120,6 @@ class GalleryImageViewHolder private constructor(
             onClick.invoke(item)
         }
 
-        // Load image with Coil into the imageView
-        imageView.load(item.contentUri) {
-            placeholder(ColorDrawable(Color.GRAY))
-        }
         binding.executePendingBindings()
     }
 
@@ -147,7 +129,7 @@ class GalleryImageViewHolder private constructor(
          * @param parent: The [ViewGroup] the context can be retrieved from
          * @return A [GalleryImageViewHolder] instance that can be populated with data.
          */
-        fun from(parent: ViewGroup, onClick: ((ImageItem) -> Unit)): GalleryImageViewHolder {
+        fun from(parent: ViewGroup, onClick: ((MediaItem) -> Unit)): GalleryImageViewHolder {
             val layoutInflater = LayoutInflater.from(parent.context)
             val binding = GalleryImageViewBinding.inflate(layoutInflater, parent, false)
             return GalleryImageViewHolder(binding, onClick)

@@ -15,6 +15,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.FolderItem
+import com.leondeklerk.starling.data.MediaItemTypes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -136,7 +137,17 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                         mediaId,
                     )
 
-                    val folderItem = FolderItem(id, name, mediaUri, type)
+                    val folderItem = if (type == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
+                        FolderItem(
+                            id, name,
+                            mediaUri, MediaItemTypes.IMAGE
+                        )
+                    } else {
+                        FolderItem(
+                            id, name,
+                            mediaUri, MediaItemTypes.VIDEO
+                        )
+                    }
 
                     folders += folderItem
                 }

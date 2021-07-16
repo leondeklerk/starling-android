@@ -10,7 +10,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.ViewModelProvider
-import coil.load
+import com.bumptech.glide.Glide
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ActivityImageBinding
 
@@ -61,7 +61,9 @@ class ImageActivity : AppCompatActivity() {
         }
 
         // Load image with Coil into the imageView
-        imageView.load(imageItem.contentUri)
+        Glide.with(imageView.context)
+            .load(imageItem.uri)
+            .into(imageView)
     }
 
     override fun onSupportNavigateUp(): Boolean {

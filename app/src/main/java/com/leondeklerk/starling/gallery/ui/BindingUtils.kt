@@ -1,14 +1,110 @@
 package com.leondeklerk.starling.gallery.ui
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.icu.util.Calendar
+import android.net.Uri
 import android.text.format.DateFormat
+import android.view.View
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.app.ComponentActivity
 import androidx.databinding.BindingAdapter
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.findFragment
+import androidx.lifecycle.LifecycleOwner
+import com.bumptech.glide.Glide
+import com.bumptech.glide.Priority
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.bumptech.glide.request.RequestOptions
 import com.leondeklerk.starling.R
+import com.leondeklerk.starling.data.FolderItem
 import com.leondeklerk.starling.data.HeaderItem
 import com.leondeklerk.starling.data.ImageItem
+import com.leondeklerk.starling.data.MediaItem
+import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.data.VideoItem
 import java.util.Date
+
+@BindingAdapter("media_uri", "folder_uri", requireAll = false)
+fun setMediaUri(view: ImageView, media: MediaItem?, folder: FolderItem?) {
+    val type: MediaItemTypes
+    val uri: Uri
+    if (media != null) {
+        type = media.type
+        uri = media.uri!!
+    } else {
+        type = folder!!.type
+        uri = folder.thumbnailUri
+    }
+
+    if (type == MediaItemTypes.VIDEO) {
+        val options = RequestOptions()
+            .skipMemoryCache(false)
+            .priority(Priority.LOW)
+            .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+
+        val builder = Glide.with(view.context)
+            .load(uri)
+            .transform(CenterCrop())
+            .thumbnail(0.2f)
+            .apply(options)
+            .transition(DrawableTransitionOptions.withCrossFade())
+
+        builder.into(view)
+    } else {
+        Glide.with(view)
+            .load(uri)
+            .transform(CenterCrop())
+            .placeholder(ColorDrawable(Color.GRAY))
+            .thumbnail(0.2f)
+            .into(view)
+    }
+
+    // TODO: implement coil if loading issues are fixed
+    // view.lifecycleOwner?.lifecycleScope?.launch {
+    //     withContext(Dispatchers.Default) {
+    //         val request: ImageRequest = if (item.type === MediaItemTypes.VIDEO) {
+    //             item as VideoItem
+    //             ImageRequest.Builder(view.context)
+    //                 .placeholder(ColorDrawable(Color.GRAY))
+    //                 .fetcher(VideoFrameUriFetcher(view.context))
+    //                 .data(item.contentUri).target(view).build()
+    //         } else {
+    //             item as ImageItem
+    //             ImageRequest.Builder(view.context)
+    //                 .placeholder(ColorDrawable(Color.GRAY))
+    //                 .data(item.contentUri).target(view).build()
+    //         }
+    //         view.context.imageLoader.enqueue(request)
+    //     }
+    // }
+}
+
+tailrec fun Context?.getActivity(): Activity? = when (this) {
+    is Activity -> this
+
+    else -> {
+        val contextWrapper = this as? ContextWrapper
+        contextWrapper?.baseContext?.getActivity()
+    }
+}
+
+val View.lifecycleOwner: LifecycleOwner?
+    get() = try {
+        val fragment = findFragment<Fragment>()
+        fragment.viewLifecycleOwner
+    } catch (e: IllegalStateException) {
+        when (val activity = context.getActivity()) {
+            is ComponentActivity -> activity
+            else -> null
+        }
+    }
 
 @BindingAdapter("idFormatted")
 fun TextView.setIdFormatted(item: ImageItem) {
@@ -17,7 +113,7 @@ fun TextView.setIdFormatted(item: ImageItem) {
 
 @BindingAdapter("uriFormatted")
 fun TextView.setUriFormatted(item: ImageItem) {
-    text = item.contentUri.toString()
+    text = item.uri.toString()
 }
 
 /**
@@ -26,11 +122,13 @@ fun TextView.setUriFormatted(item: ImageItem) {
  * @param item: [VideoItem] containing the duration of the video.
  */
 @BindingAdapter("video_duration")
-fun TextView.setVideoDuration(item: VideoItem) {
-    text = DateFormat.format(
-        "mm:ss",
-        item.duration.toLong()
-    )
+fun TextView.setVideoDuration(item: MediaItem) {
+    if (item is VideoItem) {
+        text = DateFormat.format(
+            "mm:ss",
+            item.duration.toLong()
+        )
+    }
 }
 
 /**

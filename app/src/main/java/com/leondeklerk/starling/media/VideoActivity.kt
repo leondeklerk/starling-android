@@ -73,7 +73,7 @@ class VideoActivity : AppCompatActivity() {
         videoView.player = player
 
         // Set up and start the player
-        val item = MediaItem.fromUri(videoItem.contentUri)
+        val item = MediaItem.fromUri(videoItem.uri)
         player.setMediaItem(item)
         player.repeatMode = Player.REPEAT_MODE_ALL
         player.prepare()

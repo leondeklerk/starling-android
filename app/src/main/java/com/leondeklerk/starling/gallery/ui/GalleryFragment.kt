@@ -19,7 +19,10 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
+import com.leondeklerk.starling.data.ImageItem
+import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.data.MediaItemTypes
+import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.databinding.FragmentGalleryBinding
 import com.leondeklerk.starling.gallery.GalleryAdapter
 
@@ -140,19 +143,19 @@ class GalleryFragment : Fragment() {
         // Handle the permission rationale
         binding.permissionRationaleView.isGone = true
 
+        // Create item click listener
+        val mediaItemClickListener = { item: MediaItem ->
+            if (item.type == MediaItemTypes.VIDEO) {
+                val directions = GalleryFragmentDirections.actionNavigationGalleryToVideoActivity(item as VideoItem)
+                findNavController().navigate(directions)
+            } else if (item.type == MediaItemTypes.IMAGE) {
+                val directions = GalleryFragmentDirections.actionNavigationGalleryToImageActivity(item as ImageItem)
+                findNavController().navigate(directions)
+            }
+        }
+
         // Create a GalleryAdapter and add the data to it
-        val adapter = GalleryAdapter()
-
-        // Register on item click
-        adapter.onImageClick = { item ->
-            val directions = GalleryFragmentDirections.actionNavigationGalleryToImageActivity(item)
-            findNavController().navigate(directions)
-        }
-
-        adapter.onVideoClick = { item ->
-            val directions = GalleryFragmentDirections.actionNavigationGalleryToVideoActivity(item)
-            findNavController().navigate(directions)
-        }
+        val adapter = GalleryAdapter(mediaItemClickListener)
 
         galleryViewModel.data.observe(
             viewLifecycleOwner,
