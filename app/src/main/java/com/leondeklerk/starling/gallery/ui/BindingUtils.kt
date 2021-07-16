@@ -65,25 +65,6 @@ fun setMediaUri(view: ImageView, media: MediaItem?, folder: FolderItem?) {
             .thumbnail(0.2f)
             .into(view)
     }
-
-    // TODO: implement coil if loading issues are fixed
-    // view.lifecycleOwner?.lifecycleScope?.launch {
-    //     withContext(Dispatchers.Default) {
-    //         val request: ImageRequest = if (item.type === MediaItemTypes.VIDEO) {
-    //             item as VideoItem
-    //             ImageRequest.Builder(view.context)
-    //                 .placeholder(ColorDrawable(Color.GRAY))
-    //                 .fetcher(VideoFrameUriFetcher(view.context))
-    //                 .data(item.contentUri).target(view).build()
-    //         } else {
-    //             item as ImageItem
-    //             ImageRequest.Builder(view.context)
-    //                 .placeholder(ColorDrawable(Color.GRAY))
-    //                 .data(item.contentUri).target(view).build()
-    //         }
-    //         view.context.imageLoader.enqueue(request)
-    //     }
-    // }
 }
 
 tailrec fun Context?.getActivity(): Activity? = when (this) {

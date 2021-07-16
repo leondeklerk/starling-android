@@ -60,7 +60,7 @@ class ImageActivity : AppCompatActivity() {
             }
         }
 
-        // Load image with Coil into the imageView
+        // Load image with Glide into the imageView
         Glide.with(imageView.context)
             .load(imageItem.uri)
             .into(imageView)
