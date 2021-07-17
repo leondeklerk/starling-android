@@ -1,19 +1,16 @@
-package com.leondeklerk.starling.gallery
+package com.leondeklerk.starling.media
 
 import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
 import com.leondeklerk.starling.data.MediaItem
-import com.leondeklerk.starling.gallery.ui.GalleryHeaderViewHolder
-import com.leondeklerk.starling.gallery.ui.GalleryImageViewHolder
-import com.leondeklerk.starling.gallery.ui.GalleryItemViewHolder
-import com.leondeklerk.starling.gallery.ui.GalleryVideoViewHolder
 
 /**
  * [ListAdapter] instance responsible for populating a gallery with [MediaItem]s.
  * The adapter makes uses of the generic class [GalleryItemViewHolder] which has specific subtypes for each item type.
  * Responsible for creating the specific holders and binding the item to the holder.
  */
-class GalleryAdapter(private val onItemClick: ((MediaItem) -> Unit)) : ListAdapter<MediaItem, GalleryItemViewHolder>(
+class MediaGalleryAdapter(private val onItemClick: ((MediaItem) -> Unit)) : ListAdapter<MediaItem,
+    GalleryItemViewHolder>(
     MediaItem.DiffCallback
 ) {
 

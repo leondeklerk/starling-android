@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.gallery.ui
+package com.leondeklerk.starling
 
 import android.app.Activity
 import android.content.Context

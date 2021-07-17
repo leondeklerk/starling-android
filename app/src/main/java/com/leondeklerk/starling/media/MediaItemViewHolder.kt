@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.gallery.ui
+package com.leondeklerk.starling.media
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -35,7 +35,7 @@ class GalleryHeaderViewHolder private constructor(private val binding: GalleryHe
     GalleryItemViewHolder(binding) {
 
     /**
-     * Bind a [MediaItem] to the layout using databinding
+     * Bind a [MediaItem] to the layout using data binding
      * @param item: the gallery item that should be displayed in this view.
      */
     override fun bind(item: MediaItem) {

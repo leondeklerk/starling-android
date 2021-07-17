@@ -1,19 +1,14 @@
-package com.leondeklerk.starling.gallery.ui
+package com.leondeklerk.starling.gallery
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import androidx.core.content.PermissionChecker
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -24,12 +19,14 @@ import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.databinding.FragmentGalleryBinding
-import com.leondeklerk.starling.gallery.GalleryAdapter
+import com.leondeklerk.starling.extensions.goToSettings
+import com.leondeklerk.starling.extensions.hasPermission
+import com.leondeklerk.starling.media.MediaGalleryAdapter
 
 /**
  * [GalleryFragment] is the main fragment of the application.
  * It contains the main recyclerView that contains all images and videos on the device and synced.
- * Uses a [GalleryAdapter] assisted by [GalleryViewModel] to display
+ * Uses a [MediaGalleryAdapter] assisted by [GalleryViewModel] to display
  * [com.leondeklerk.starling.data.MediaItem]s.
  * This fragment handles the required permission.
  */
@@ -155,7 +152,7 @@ class GalleryFragment : Fragment() {
         }
 
         // Create a GalleryAdapter and add the data to it
-        val adapter = GalleryAdapter(mediaItemClickListener)
+        val adapter = MediaGalleryAdapter(mediaItemClickListener)
 
         galleryViewModel.data.observe(
             viewLifecycleOwner,
@@ -217,33 +214,6 @@ class GalleryFragment : Fragment() {
                     requestPermissionLauncher.launch(permission)
                 }
             }
-        }
-    }
-
-    /**
-     * Helper function to check if the user granted a specific permission to the application
-     * @param permission: The permission that should be checked, a [String] from [Manifest.permission]
-     * @return: A [Boolean] indicating if the permission was granted or not
-     */
-    private fun hasPermission(permission: String): Boolean {
-        return ContextCompat.checkSelfPermission(
-            requireContext(),
-            permission
-        ) == PermissionChecker.PERMISSION_GRANTED
-    }
-
-    /**
-     * Helper function that will redirect the user to the settings screen of this application using [Intent]
-     */
-    private fun goToSettings() {
-        Intent(
-            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-            Uri.parse("package:${requireActivity().packageName}")
-        ).apply {
-            addCategory(Intent.CATEGORY_DEFAULT)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }.also { intent ->
-            startActivity(intent)
         }
     }
 }

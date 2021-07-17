@@ -7,13 +7,13 @@
         <import type="android.view.View"/>
         <variable
             name="viewModel"
-            type="com.leondeklerk.starling.gallery.ui.GalleryViewModel" />
+            type="com.leondeklerk.starling.gallery.GalleryViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".gallery.ui.GalleryFragment">
+        tools:context=".gallery.GalleryFragment">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/gallery_grid"

@@ -8,12 +8,11 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.leondeklerk.starling.R
+import com.leondeklerk.starling.PermissionViewModel
 import com.leondeklerk.starling.data.FolderItem
 import com.leondeklerk.starling.data.MediaItemTypes
 import kotlinx.coroutines.Dispatchers
@@ -26,43 +25,13 @@ import kotlinx.coroutines.withContext
  * Its main functionality is to provide the data for the adapter.
  * Uses [MutableLiveData] and [LiveData] to store and provide data that is kept up to date.
  */
-class LibraryViewModel(application: Application) : AndroidViewModel(application) {
+class LibraryViewModel(application: Application) : PermissionViewModel(application) {
 
     private val _data = MutableLiveData<List<FolderItem>>()
 
     val data: LiveData<List<FolderItem>> = _data
 
-    private val _permissionTextId = MutableLiveData<Int>().apply {
-        value = R.string.permission_rationale
-    }
-
-    val permissionTextId: LiveData<Int> = _permissionTextId
-
-    private val _permissionButtonTextId = MutableLiveData<Int>().apply {
-        value = R.string.permission_button
-    }
-
-    val permissionButtonTextId: LiveData<Int> = _permissionButtonTextId
-
     private var contentObserver: ContentObserver? = null
-
-    /**
-     * TODO: generify permission handling between the fragments
-     * Updates the rationale for the storage permission. If possible this will show the regular rationale.
-     * If a user has denied the permission twice (android 11+) or click "don't ask again", a settings rationale will be shown instead.
-     * @param showSettings: A [Boolean] that indicates if this is a regular or a settings permission rationale.
-     */
-    fun updateRationale(showSettings: Boolean) {
-        if (showSettings) {
-            // Set all resource ids to setting resource ids
-            _permissionTextId.value = R.string.permission_rationale_settings
-            _permissionButtonTextId.value = R.string.permission_button_settings
-        } else {
-            // Set all ids to regular rationale ids
-            _permissionTextId.value = R.string.permission_rationale
-            _permissionButtonTextId.value = R.string.permission_button
-        }
-    }
 
     /**
      * On removal of the [ViewModel], remove the [ContentObserver] to prevent a memory leak.

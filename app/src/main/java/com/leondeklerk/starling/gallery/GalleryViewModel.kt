@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.library.folder
+package com.leondeklerk.starling.gallery
 
 import android.app.Application
 import android.content.ContentResolver
@@ -7,21 +7,22 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.leondeklerk.starling.PermissionViewModel
 import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.media.MediaRetriever
 import kotlinx.coroutines.launch
 
 /**
- * Basic [ViewModel] that handles the data of a [FolderFragment].
+ * Basic [ViewModel] that handles the data of a [GalleryFragment].
+ * This handles the current value of the rationale text and button text, for the permissions.
  * Its main functionality is to provide the data for the adapter.
  * Uses [MutableLiveData] and [LiveData] to store and provide data that is kept up to date.
  */
-class FolderViewModel(application: Application) : AndroidViewModel(application) {
+class GalleryViewModel(application: Application) : PermissionViewModel(application) {
 
     private val _data = MutableLiveData<List<MediaItem>>()
 
@@ -40,15 +41,15 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
 
     /**
      * Function used to start loading in the media.
-     * Loads in all images and videos of the folder from the [MediaStore] using coroutines.
-     * @param buckedId: the id of the bucket this folder represents
+     * This is only called after all proper permissions are granted.
+     * Loads in all images and videos from the [MediaStore] using coroutines.
      */
-    fun loadMedia(bucketId: Long) {
+    fun loadMedia() {
         viewModelScope.launch {
             // Create the query parameters
             val projection = createProjection()
             val selection = createSelection()
-            val selectionArgs = createSelectionArgs(bucketId)
+            val selectionArgs = createSelectionArgs()
             val sortOrder = createSortOrder()
 
             // Create the image retriever
@@ -65,7 +66,7 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
                     MediaStore.Files.getContentUri("external")
                 ) {
                     // Upon a detected change it reloads the media.
-                    loadMedia(bucketId)
+                    loadMedia()
                 }
             }
         }
@@ -88,23 +89,20 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * Create a selection query to retrieve all files in the bucket but only two specific media types from the
-     * MediaStore.
+     * Create a selection query to retrieve only two specific media types from the MediaStore.
      * Helper function with potential to enable filter options later
      */
     private fun createSelection(): String {
-        return "${MediaStore.Files.FileColumns.BUCKET_ID} = ? AND (${MediaStore.Files.FileColumns.MEDIA_TYPE} = ? OR " +
-            "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?)"
+        return "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ? OR " +
+            "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
     }
 
     /**
      * Create a list of arguments used in the selection query.
      * Helper function with potential to enable filter options later
-     * @param bucketId: The id of the bucket items should be in
      */
-    private fun createSelectionArgs(bucketId: Long): Array<String> {
+    private fun createSelectionArgs(): Array<String> {
         return arrayOf(
-            bucketId.toString(),
             MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
             MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString()
         )

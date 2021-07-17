@@ -8,7 +8,7 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 enum class MediaItemTypes : Parcelable {
-    HEADER, IMAGE, VIDEO
+    HEADER, IMAGE, VIDEO, FOLDER
 }
 
 /**
@@ -87,3 +87,26 @@ data class VideoItem(
     val dateAdded: Date,
     val duration: Int,
 ) : MediaItem(id, MediaItemTypes.VIDEO, uri)
+
+// /**
+//  */
+// @Parcelize
+// data class FolderItem(
+//     override val id: Long,
+//     val name: String
+// ) : MediaItem(id, MediaItemTypes.FOLDER, null) {
+//     override fun equals(other: Any?): Boolean {
+//         if (this === other) return true
+//         if (other == null || javaClass != other.javaClass) return false
+//         val that = other as FolderItem
+//         return name == that.name && id == that.id
+//     }
+//
+//     override fun hashCode(): Int {
+//         return Objects.hash(name, id)
+//     }
+//
+//     override fun toString(): String {
+//         return name
+//     }
+// }

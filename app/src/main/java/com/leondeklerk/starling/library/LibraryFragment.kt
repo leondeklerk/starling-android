@@ -2,28 +2,25 @@ package com.leondeklerk.starling.library
 
 import android.Manifest
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import androidx.core.content.PermissionChecker
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.leondeklerk.starling.databinding.FragmentLibraryBinding
+import com.leondeklerk.starling.extensions.goToSettings
+import com.leondeklerk.starling.extensions.hasPermission
 
 /**
  * A simple [Fragment] responsible for showing all media on the device (device only) in a folder structure.
- * This will also responsible for setting sync settings on all folders. TODO
+ * TODO: This will also responsible for setting sync settings on all folders.
  */
 class LibraryFragment : Fragment() {
 
@@ -193,33 +190,6 @@ class LibraryFragment : Fragment() {
                     requestPermissionLauncher.launch(permission)
                 }
             }
-        }
-    }
-
-    /**
-     * Helper function to check if the user granted a specific permission to the application
-     * @param permission: The permission that should be checked, a [String] from [Manifest.permission]
-     * @return: A [Boolean] indicating if the permission was granted or not
-     */
-    private fun hasPermission(permission: String): Boolean {
-        return ContextCompat.checkSelfPermission(
-            requireContext(),
-            permission
-        ) == PermissionChecker.PERMISSION_GRANTED
-    }
-
-    /**
-     * Helper function that will redirect the user to the settings screen of this application using [Intent]
-     */
-    private fun goToSettings() {
-        Intent(
-            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-            Uri.parse("package:${requireActivity().packageName}")
-        ).apply {
-            addCategory(Intent.CATEGORY_DEFAULT)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }.also { intent ->
-            startActivity(intent)
         }
     }
 }
