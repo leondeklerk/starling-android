@@ -41,7 +41,7 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
     /**
      * Function used to start loading in the media.
      * Loads in all images and videos of the folder from the [MediaStore] using coroutines.
-     * @param buckedId: the id of the bucket this folder represents
+     * @param bucketId: the id of the bucket this folder represents
      */
     fun loadMedia(bucketId: Long) {
         viewModelScope.launch {

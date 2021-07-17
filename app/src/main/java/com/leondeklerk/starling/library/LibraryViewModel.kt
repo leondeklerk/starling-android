@@ -108,13 +108,11 @@ class LibraryViewModel(application: Application) : PermissionViewModel(applicati
 
                     val folderItem = if (type == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
                         FolderItem(
-                            id, name,
-                            mediaUri, MediaItemTypes.IMAGE
+                            id, mediaUri, name, MediaItemTypes.IMAGE
                         )
                     } else {
                         FolderItem(
-                            id, name,
-                            mediaUri, MediaItemTypes.VIDEO
+                            id, mediaUri, name, MediaItemTypes.VIDEO
                         )
                     }
 

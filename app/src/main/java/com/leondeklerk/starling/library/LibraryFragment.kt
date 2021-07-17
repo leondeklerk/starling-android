@@ -14,9 +14,13 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
+import com.leondeklerk.starling.data.FolderItem
+import com.leondeklerk.starling.data.MediaItem
+import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.databinding.FragmentLibraryBinding
 import com.leondeklerk.starling.extensions.goToSettings
 import com.leondeklerk.starling.extensions.hasPermission
+import com.leondeklerk.starling.media.MediaGalleryAdapter
 
 /**
  * A simple [Fragment] responsible for showing all media on the device (device only) in a folder structure.
@@ -131,14 +135,16 @@ class LibraryFragment : Fragment() {
         // Handle the permission rationale
         binding.permissionRationaleView.isGone = true
 
-        // Create a LibraryAdapter and add the data to it
-        val adapter = LibraryAdapter()
-
-        // Register on item click
-        adapter.onFolderClick = { item ->
-            val directions = LibraryFragmentDirections.actionNavigationLibraryToFolderFragment(item)
-            findNavController().navigate(directions)
+        // Create item click listener
+        val mediaItemClickListener = { item: MediaItem ->
+            if (item.type == MediaItemTypes.FOLDER) {
+                val directions = LibraryFragmentDirections.actionNavigationLibraryToFolderFragment(item as FolderItem)
+                findNavController().navigate(directions)
+            }
         }
+
+        // Create a LibraryAdapter and add the data to it
+        val adapter = MediaGalleryAdapter(mediaItemClickListener)
 
         libraryViewModel.data.observe(
             viewLifecycleOwner,

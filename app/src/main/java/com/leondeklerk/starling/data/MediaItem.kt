@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.Parcelable
 import androidx.recyclerview.widget.DiffUtil
 import java.util.Date
+import java.util.Objects
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
@@ -88,25 +89,27 @@ data class VideoItem(
     val duration: Int,
 ) : MediaItem(id, MediaItemTypes.VIDEO, uri)
 
-// /**
-//  */
-// @Parcelize
-// data class FolderItem(
-//     override val id: Long,
-//     val name: String
-// ) : MediaItem(id, MediaItemTypes.FOLDER, null) {
-//     override fun equals(other: Any?): Boolean {
-//         if (this === other) return true
-//         if (other == null || javaClass != other.javaClass) return false
-//         val that = other as FolderItem
-//         return name == that.name && id == that.id
-//     }
-//
-//     override fun hashCode(): Int {
-//         return Objects.hash(name, id)
-//     }
-//
-//     override fun toString(): String {
-//         return name
-//     }
-// }
+/**
+ */
+@Parcelize
+data class FolderItem(
+    override val id: Long,
+    override val uri: Uri,
+    val name: String,
+    val thumbnailType: MediaItemTypes
+) : MediaItem(id, MediaItemTypes.FOLDER, uri) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as FolderItem
+        return name == that.name && id == that.id
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(name, id)
+    }
+
+    override fun toString(): String {
+        return name
+    }
+}
