@@ -6,4 +6,7 @@
     <string name="permission_rationale_settings">To look up your photos and videos, this application requires permission to access the storage of this device. You can enable this via "Settings" > "Permissions" > "Files and media"</string>
     <string name="permission_button">Grant permission</string>
     <string name="permission_button_settings">Settings</string>
+    <string name="video_play">Play</string>
+    <string name="date_yesterday">Yesterday</string>
+    <string name="date_today">Today</string>
 </resources>

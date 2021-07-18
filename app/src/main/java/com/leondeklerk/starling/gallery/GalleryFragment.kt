@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.library
+package com.leondeklerk.starling.gallery
 
 import android.Manifest
 import android.content.Context
@@ -14,24 +14,30 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
-import com.leondeklerk.starling.data.FolderItem
+import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.data.MediaItemTypes
-import com.leondeklerk.starling.databinding.FragmentLibraryBinding
+import com.leondeklerk.starling.data.VideoItem
+import com.leondeklerk.starling.databinding.FragmentGalleryBinding
 import com.leondeklerk.starling.extensions.goToSettings
 import com.leondeklerk.starling.extensions.hasPermission
 import com.leondeklerk.starling.media.MediaGalleryAdapter
 
 /**
- * A simple [Fragment] responsible for showing all media on the device (device only) in a folder structure.
- * TODO: This will also responsible for setting sync settings on all folders.
+ * [GalleryFragment] is the main fragment of the application.
+ * It contains the main recyclerView that contains all images and videos on the device and synced.
+ * Uses a [MediaGalleryAdapter] assisted by [GalleryViewModel] to display
+ * [com.leondeklerk.starling.data.MediaItem]s.
+ * This fragment handles the required permission.
  */
-class LibraryFragment : Fragment() {
+class GalleryFragment : Fragment() {
 
-    private lateinit var libraryViewModel: LibraryViewModel
-    private var _binding: FragmentLibraryBinding? = null
+    private lateinit var galleryViewModel: GalleryViewModel
+    private var _binding: FragmentGalleryBinding? = null
     private lateinit var sharedPrefs: SharedPreferences
 
+    // This property is only valid between onCreateView and
+    // onDestroyView.
     private val binding get() = _binding!!
 
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
@@ -46,22 +52,21 @@ class LibraryFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        // Instantiate the viewModel
-        libraryViewModel =
-            ViewModelProvider(this).get(LibraryViewModel::class.java)
+        // Create the viewModel
+        galleryViewModel =
+            ViewModelProvider(this).get(GalleryViewModel::class.java)
 
-        // Inflate the bindings
-        _binding = FragmentLibraryBinding.inflate(inflater, container, false)
+        // Inflate the binding
+        _binding = FragmentGalleryBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
         // Set binding basics
         binding.lifecycleOwner = this
-        binding.viewModel = libraryViewModel
+        binding.viewModel = galleryViewModel
 
         sharedPrefs = requireActivity().getPreferences(Context.MODE_PRIVATE)
 
         handleReadStoragePermission()
-
         return root
     }
 
@@ -129,24 +134,27 @@ class LibraryFragment : Fragment() {
      * Also instantiates an observer for the viewModel data.
      */
     private fun setAdapter() {
-        // Start loading all media folders
-        libraryViewModel.loadFolders()
+        // Start loading the media from the device
+        galleryViewModel.loadMedia()
 
         // Handle the permission rationale
         binding.permissionRationaleView.isGone = true
 
         // Create item click listener
         val mediaItemClickListener = { item: MediaItem ->
-            if (item.type == MediaItemTypes.FOLDER) {
-                val directions = LibraryFragmentDirections.actionNavigationLibraryToFolderFragment(item as FolderItem)
+            if (item.type == MediaItemTypes.VIDEO) {
+                val directions = GalleryFragmentDirections.actionNavigationGalleryToVideoActivity(item as VideoItem)
+                findNavController().navigate(directions)
+            } else if (item.type == MediaItemTypes.IMAGE) {
+                val directions = GalleryFragmentDirections.actionNavigationGalleryToImageActivity(item as ImageItem)
                 findNavController().navigate(directions)
             }
         }
 
-        // Create a LibraryAdapter and add the data to it
+        // Create a GalleryAdapter and add the data to it
         val adapter = MediaGalleryAdapter(mediaItemClickListener)
 
-        libraryViewModel.data.observe(
+        galleryViewModel.data.observe(
             viewLifecycleOwner,
             {
                 it?.let {
@@ -157,10 +165,20 @@ class LibraryFragment : Fragment() {
 
         // Create a grid layout manager
         // TODO: allow for updates of the layout + allow for more flexibility in size
-        val manager = GridLayoutManager(activity, 2, GridLayoutManager.VERTICAL, false)
+        val manager = GridLayoutManager(activity, 5, GridLayoutManager.VERTICAL, false)
+
+        // Give headers a full span
+        manager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                return when (adapter.getItemViewType(position)) {
+                    MediaItemTypes.HEADER.ordinal -> manager.spanCount
+                    else -> 1
+                }
+            }
+        }
 
         // Bind this data to the view to populate the recyclerView
-        binding.libraryGrid.let {
+        binding.galleryGrid.let {
             it.adapter = adapter
             it.layoutManager = manager
         }
@@ -187,7 +205,7 @@ class LibraryFragment : Fragment() {
             // If we got a rejection and it was not the first time, we need to show the settings rationale
             if (!isFirstRequest) {
                 // Case 2: We cannot show the dialog, but we can (willingly) redirect the user to settings.
-                libraryViewModel.updateRationale(true)
+                galleryViewModel.updateRationale(true)
                 binding.permissionRationaleButton.setOnClickListener {
                     goToSettings()
                 }

@@ -7,14 +7,66 @@
 
     <fragment
         android:id="@+id/navigation_gallery"
-        android:name="com.leondeklerk.starling.gallery.ui.GalleryFragment"
+        android:name="com.leondeklerk.starling.gallery.GalleryFragment"
         android:label="@string/title_gallery"
-        tools:layout="@layout/fragment_gallery" />
+        tools:layout="@layout/fragment_gallery" >
+        <action
+            android:id="@+id/action_navigation_gallery_to_image_activity"
+            app:destination="@id/image_activity"
+            app:popUpTo="@id/navigation_gallery"
+            app:popUpToInclusive="false" />
+        <action
+            android:id="@+id/action_navigation_gallery_to_videoActivity"
+            app:destination="@id/videoActivity" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_library"
         android:name="com.leondeklerk.starling.library.LibraryFragment"
         android:label="@string/title_library"
-        tools:layout="@layout/fragment_library" />
+        tools:layout="@layout/fragment_library" >
+        <action
+            android:id="@+id/action_navigation_library_to_folderFragment"
+            app:destination="@id/navigation_folder"
+            app:popUpTo="@id/navigation_library"
+            app:popUpToInclusive="false" />
+    </fragment>
+    <activity
+        android:id="@+id/image_activity"
+        android:name="com.leondeklerk.starling.media.ImageActivity"
+        android:label="ImageFragment"
+        tools:layout="@layout/activity_image">
+        <argument
+            android:name="imageItem"
+            app:argType="com.leondeklerk.starling.data.ImageItem" />
+    </activity>
+    <activity
+        android:id="@+id/videoActivity"
+        android:name="com.leondeklerk.starling.media.VideoActivity"
+        android:label="VideoActivity"
+        tools:layout="@layout/activity_video">
+        <argument
+            android:name="videoItem"
+            app:argType="com.leondeklerk.starling.data.VideoItem" />
+    </activity>
+    <fragment
+        android:id="@+id/navigation_folder"
+        tools:layout="@layout/fragment_folder"
+        android:label="{folderItem}"
+        android:name="com.leondeklerk.starling.library.folder.FolderFragment">
+        <action
+            android:id="@+id/action_folderFragment_to_videoActivity"
+            app:destination="@id/videoActivity"
+            app:popUpTo="@id/navigation_folder"
+            app:popUpToInclusive="false" />
+        <action
+            android:id="@+id/action_folderFragment_to_image_activity"
+            app:destination="@id/image_activity"
+            app:popUpTo="@id/navigation_folder"
+            app:popUpToInclusive="false" />
+        <argument
+            android:name="folderItem"
+            app:argType="com.leondeklerk.starling.data.FolderItem" />
+    </fragment>
 
 </navigation>

@@ -1,0 +1,5 @@
+<resources>
+    <style name="Starling.Widget.RoundedImageView" parent="">
+        <item name="cornerSize">12dp</item>
+    </style>
+</resources>
