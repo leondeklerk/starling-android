@@ -40,80 +40,80 @@ class MediaRetriever {
         sortOrder: String
     ):
         List<MediaItem> {
-            val media = mutableListOf<MediaItem>()
+        val media = mutableListOf<MediaItem>()
 
-            withContext(Dispatchers.IO) {
-                contentResolver.query(
-                    MediaStore.Files.getContentUri("external"),
-                    projection,
-                    selection,
-                    selectionArgs,
-                    sortOrder
-                )?.use { cursor ->
-                    val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-                    val dateColumn =
-                        cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
-                    val displayNameColumn =
-                        cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-                    val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.WIDTH)
-                    val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.HEIGHT)
-                    val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
-                    val mediaTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+        withContext(Dispatchers.IO) {
+            contentResolver.query(
+                MediaStore.Files.getContentUri("external"),
+                projection,
+                selection,
+                selectionArgs,
+                sortOrder
+            )?.use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                val dateColumn =
+                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
+                val displayNameColumn =
+                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.WIDTH)
+                val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.HEIGHT)
+                val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
+                val mediaTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
 
-                    val baseDate = Calendar.getInstance()
-                    baseDate.time = Date(Long.MAX_VALUE)
+                val baseDate = Calendar.getInstance()
+                baseDate.time = Date(Long.MAX_VALUE)
 
-                    while (cursor.moveToNext()) {
+                while (cursor.moveToNext()) {
 
-                        val id = cursor.getLong(idColumn)
-                        val date =
-                            Date(TimeUnit.SECONDS.toMillis(cursor.getLong(dateColumn)))
-                        val displayName = cursor.getString(displayNameColumn)
+                    val id = cursor.getLong(idColumn)
+                    val date =
+                        Date(TimeUnit.SECONDS.toMillis(cursor.getLong(dateColumn)))
+                    val displayName = cursor.getString(displayNameColumn)
 
-                        val width = cursor.getLong(widthColumn)
-                        val height = cursor.getLong(heightColumn)
+                    val width = cursor.getLong(widthColumn)
+                    val height = cursor.getLong(heightColumn)
 
-                        val duration = cursor.getInt(durationColumn)
+                    val duration = cursor.getInt(durationColumn)
 
-                        val mediaType = cursor.getInt(mediaTypeColumn)
+                    val mediaType = cursor.getInt(mediaTypeColumn)
 
-                        val contentUri = ContentUris.withAppendedId(
-                            MediaStore.Files.getContentUri("external"),
-                            id
-                        )
+                    val contentUri = ContentUris.withAppendedId(
+                        MediaStore.Files.getContentUri("external"),
+                        id
+                    )
 
-                        updateHeaders(media, date, baseDate)
+                    updateHeaders(media, date, baseDate)
 
-                        val mediaItem: MediaItem
+                    val mediaItem: MediaItem
 
-                        when (mediaType) {
-                            MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> {
-                                mediaItem = VideoItem(
-                                    id,
-                                    contentUri,
-                                    displayName,
-                                    date,
-                                    duration,
-                                )
-                            }
-                            MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> {
-                                mediaItem = ImageItem(
-                                    id,
-                                    contentUri,
-                                    displayName,
-                                    date,
-                                    width,
-                                    height
-                                )
-                            }
-                            else -> continue
+                    when (mediaType) {
+                        MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> {
+                            mediaItem = VideoItem(
+                                id,
+                                contentUri,
+                                displayName,
+                                date,
+                                duration,
+                            )
                         }
-                        media += mediaItem
+                        MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> {
+                            mediaItem = ImageItem(
+                                id,
+                                contentUri,
+                                displayName,
+                                date,
+                                width,
+                                height
+                            )
+                        }
+                        else -> continue
                     }
+                    media += mediaItem
                 }
             }
-            return media
         }
+        return media
+    }
 
     /**
      * Based on the current zoom level, insert headers into the media gallery.
