@@ -1,8 +1,15 @@
 package com.leondeklerk.starling.media
 
+import android.app.Activity
+import android.content.DialogInterface
+import android.os.Build
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -11,6 +18,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ActivityImageBinding
 
@@ -23,13 +32,14 @@ class ImageActivity : AppCompatActivity() {
 
     private lateinit var viewModel: ImageViewModel
     private lateinit var binding: ActivityImageBinding
+    private lateinit var imageItem: ImageItem
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Create the viewModel
         viewModel = ViewModelProvider(this).get(ImageViewModel::class.java)
 
-        val imageItem: ImageItem = ImageActivityArgs.fromBundle(intent.extras!!).imageItem
+        imageItem = ImageActivityArgs.fromBundle(intent.extras!!).imageItem
 
         // Inflate the binding
         binding = ActivityImageBinding.inflate(layoutInflater)
@@ -49,6 +59,19 @@ class ImageActivity : AppCompatActivity() {
 
         val imageView = binding.imageView
 
+        // Create an ActivityResult handler for the permission popups on android Q and up.
+        val permissionResult = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                    // We can now delete the pending image
+                    viewModel.deletePending()
+                } else {
+                    // The image is deleted so the fragment can be closed
+                    onBackPressed()
+                }
+            }
+        }
+
         // On clicking the image the system ui and the toolbar should disappear for a fullscreen experience.
         imageView.setOnClickListener {
             supportActionBar?.hide()
@@ -60,6 +83,26 @@ class ImageActivity : AppCompatActivity() {
             }
         }
 
+        // Observer to handle cases where additional permission are needed to delete an item (Q and up)
+        viewModel.requiresPermission.observe(
+            this,
+            { intentSender ->
+                intentSender?.let {
+                    permissionResult.launch(IntentSenderRequest.Builder(intentSender).build())
+                }
+            }
+        )
+
+        // Observer to check if the current fragment should be closed or not
+        viewModel.shouldClose.observe(
+            this,
+            {
+                if (it) {
+                    onBackPressed()
+                }
+            }
+        )
+
         // Load image with Glide into the imageView
         Glide.with(imageView.context)
             .load(imageItem.uri)
@@ -70,6 +113,21 @@ class ImageActivity : AppCompatActivity() {
         // navigate back to the previous activity
         onBackPressed()
         return true
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.media_toolbar_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.media_action_delete -> {
+                deleteMedia()
+                return true
+            }
+        }
+        return false
     }
 
     /**
@@ -98,5 +156,22 @@ class ImageActivity : AppCompatActivity() {
      */
     private fun View.setMarginTop(value: Int) = updateLayoutParams<ViewGroup.MarginLayoutParams> {
         topMargin = value
+    }
+
+    /**
+     * Builds a MaterialAlertDialog asking the user to confirm a delete.
+     * On ok the viewModel.delete will be called and the delete process starts.
+     */
+    private fun deleteMedia() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.image_delete_title))
+            .setMessage(getString(R.string.image_delete_message))
+            .setPositiveButton(getString(R.string.media_delete)) { _: DialogInterface, _: Int ->
+                viewModel.delete(imageItem)
+            }
+            .setNegativeButton(getString(android.R.string.cancel)) { dialog: DialogInterface, _: Int ->
+                dialog.dismiss()
+            }
+            .show()
     }
 }

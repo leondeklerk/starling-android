@@ -2,11 +2,16 @@ package com.leondeklerk.starling.media
 
 import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.IntentSender
 import android.icu.util.Calendar
+import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import com.leondeklerk.starling.data.HeaderItem
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
+import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.data.VideoItem
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -17,7 +22,7 @@ import kotlinx.coroutines.withContext
  * Class responsible for handling the retrieval of media items.
  * TODO: Implement handling of media from starling-backend
  */
-class MediaRetriever {
+class MediaInterface {
 
     /**
      * Queries all media on the device.
@@ -113,6 +118,79 @@ class MediaRetriever {
             }
         }
         return media
+    }
+
+    /**
+     * Function to delete a media item from the device, pre Android Q API changes
+     * @param contentResolver: the contentResolver associated with the MediaStore
+     * @param media: the actual media item representing the file to be deleted
+     * @return: The number of rows this operation has deleted
+     */
+    fun deletePreQ(contentResolver: ContentResolver, media: MediaItem): Int {
+        return contentResolver.delete(buildUri(media), null, null)
+    }
+
+    /**
+     * Function to delete a media item from the device on API level Q.
+     * Will throw a securityException if the user explicitly needs to grant permission to delete.
+     * @param contentResolver: the contentResolver associated with the MediaStore
+     * @param media: the actual media item representing the file to be deleted
+     * @return: The number of rows this operation has deleted
+     */
+    @Throws(SecurityException::class)
+    fun deleteQ(contentResolver: ContentResolver, media: MediaItem): Int {
+        return contentResolver.delete(
+            buildUri(media),
+            "${MediaStore.Files.FileColumns._ID} = ?",
+            arrayOf(
+                media.id.toString()
+            )
+        )
+    }
+
+    /**
+     * Function to delete a media item from the device on API levels Q+.
+     * @param contentResolver: the contentResolver associated with the MediaStore
+     * @param media: the actual media item representing the file to be deleted
+     * @return: An IntentSender used to open the user permission popup
+     */
+    @RequiresApi(Build.VERSION_CODES.R)
+    fun deletePostQ(contentResolver: ContentResolver, media: MediaItem): IntentSender {
+        return MediaStore.createDeleteRequest(contentResolver, listOf(buildUri(media))).intentSender
+    }
+
+    /**
+     * Helper function that will generate the proper Uri from a media item.
+     * The media items are generated from MediaStore.Files, but these URIs don't work for deleting.
+     * Therefore this function converts Uris back to their respective MediaStore.Image and MediaStore.Video types.
+     * @param media: The media item containing the details of the item.
+     * @return: The newly created URI in the correct MediaStore group.
+     */
+    private fun buildUri(media: MediaItem): Uri {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Uri.parse("${getExternalUriFromType(media.type)}/${media.id}")
+        } else {
+            media.uri!!
+        }
+    }
+
+    /**
+     * Retrieves the external Uri based on the type of [MediaItemTypes].
+     * @param type: the type of media to retrieve the external uri for.
+     * @return A string representation of the external uri
+     */
+    private fun getExternalUriFromType(type: MediaItemTypes): String {
+        return when (type) {
+            MediaItemTypes.VIDEO -> {
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI.toString()
+            }
+            MediaItemTypes.IMAGE -> {
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI.toString()
+            }
+            else -> {
+                MediaStore.Files.getContentUri("external").toString()
+            }
+        }
     }
 
     /**

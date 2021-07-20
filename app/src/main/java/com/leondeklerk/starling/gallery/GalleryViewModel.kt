@@ -13,7 +13,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.leondeklerk.starling.PermissionViewModel
 import com.leondeklerk.starling.data.MediaItem
-import com.leondeklerk.starling.media.MediaRetriever
+import com.leondeklerk.starling.media.MediaInterface
 import kotlinx.coroutines.launch
 
 /**
@@ -53,7 +53,7 @@ class GalleryViewModel(application: Application) : PermissionViewModel(applicati
             val sortOrder = createSortOrder()
 
             // Create the image retriever
-            val retriever = MediaRetriever()
+            val retriever = MediaInterface()
             val resolver = getApplication<Application>().contentResolver
 
             // Start querying media.

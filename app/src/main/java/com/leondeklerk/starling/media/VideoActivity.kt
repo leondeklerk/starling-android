@@ -1,8 +1,15 @@
 package com.leondeklerk.starling.media
 
+import android.app.Activity
+import android.content.DialogInterface
+import android.os.Build
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -13,6 +20,8 @@ import androidx.lifecycle.ViewModelProvider
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.databinding.ActivityVideoBinding
 
@@ -26,6 +35,7 @@ class VideoActivity : AppCompatActivity() {
     private lateinit var viewModel: VideoViewModel
     private lateinit var binding: ActivityVideoBinding
     private lateinit var player: SimpleExoPlayer
+    private lateinit var videoItem: VideoItem
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,7 +43,7 @@ class VideoActivity : AppCompatActivity() {
         // Create the viewModel
         viewModel = ViewModelProvider(this).get(VideoViewModel::class.java)
 
-        val videoItem: VideoItem = VideoActivityArgs.fromBundle(intent.extras!!).videoItem
+        videoItem = VideoActivityArgs.fromBundle(intent.extras!!).videoItem
 
         // Inflate the binding
         binding = ActivityVideoBinding.inflate(layoutInflater)
@@ -58,6 +68,39 @@ class VideoActivity : AppCompatActivity() {
             controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
             controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
         }
+
+        // Create an ActivityResult handler for the permission popups on android Q and up.
+        val permissionResult = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                    // We can now delete the pending image
+                    viewModel.deletePending()
+                } else {
+                    // The image is deleted so the fragment can be closed
+                    onBackPressed()
+                }
+            }
+        }
+
+        // Observer to handle cases where additional permission are needed to delete an item (Q and up)
+        viewModel.requiresPermission.observe(
+            this,
+            { intentSender ->
+                intentSender?.let {
+                    permissionResult.launch(IntentSenderRequest.Builder(intentSender).build())
+                }
+            }
+        )
+
+        // Observer to check if the current fragment should be closed or not
+        viewModel.shouldClose.observe(
+            this,
+            {
+                if (it) {
+                    onBackPressed()
+                }
+            }
+        )
 
         // Set up video view
         val videoView = binding.videoView
@@ -127,6 +170,21 @@ class VideoActivity : AppCompatActivity() {
         return true
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.media_toolbar_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.media_action_delete -> {
+                deleteMedia()
+                return true
+            }
+        }
+        return false
+    }
+
     /**
      * Handle the insets for the toolbar.
      * This is required for having a semi transparent toolbar and system ui,
@@ -147,5 +205,22 @@ class VideoActivity : AppCompatActivity() {
      */
     private fun View.setMarginTop(value: Int) = updateLayoutParams<ViewGroup.MarginLayoutParams> {
         topMargin = value
+    }
+
+    /**
+     * Builds a MaterialAlertDialog asking the user to confirm a delete.
+     * On ok the viewModel.delete will be called and the delete process starts.
+     */
+    private fun deleteMedia() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.video_delete_title))
+            .setMessage(getString(R.string.video_delete_message))
+            .setPositiveButton(getString(R.string.media_delete)) { _: DialogInterface, _: Int ->
+                viewModel.delete(videoItem)
+            }
+            .setNegativeButton(getString(android.R.string.cancel)) { dialog: DialogInterface, _: Int ->
+                dialog.dismiss()
+            }
+            .show()
     }
 }
