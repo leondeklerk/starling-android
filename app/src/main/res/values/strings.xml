@@ -9,4 +9,9 @@
     <string name="video_play">Play</string>
     <string name="date_yesterday">Yesterday</string>
     <string name="date_today">Today</string>
+    <string name="media_delete">Delete</string>
+    <string name="video_delete_title">Delete Video</string>
+    <string name="video_delete_message">Are you sure you want to delete this video?</string>
+    <string name="image_delete_title">Delete Image</string>
+    <string name="image_delete_message">Are you sure you want to delete this image?</string>
 </resources>

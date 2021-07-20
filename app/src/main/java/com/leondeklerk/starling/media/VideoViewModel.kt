@@ -1,7 +1,9 @@
 package com.leondeklerk.starling.media
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import com.leondeklerk.starling.data.VideoItem
 
-class VideoViewModel : ViewModel() {
-    // TODO: Implement the ViewModel
-}
+/**
+ * [MediaViewModel] responsible for handling functionality specific to [VideoItem] media.
+ */
+class VideoViewModel(application: Application) : MediaViewModel(application)

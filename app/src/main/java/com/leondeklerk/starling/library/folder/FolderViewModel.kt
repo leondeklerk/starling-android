@@ -13,7 +13,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.leondeklerk.starling.data.MediaItem
-import com.leondeklerk.starling.media.MediaRetriever
+import com.leondeklerk.starling.media.MediaInterface
 import kotlinx.coroutines.launch
 
 /**
@@ -52,7 +52,7 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
             val sortOrder = createSortOrder()
 
             // Create the image retriever
-            val retriever = MediaRetriever()
+            val retriever = MediaInterface()
             val resolver = getApplication<Application>().contentResolver
 
             // Start querying media.
