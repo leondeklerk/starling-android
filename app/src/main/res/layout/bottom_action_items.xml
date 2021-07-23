@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/action_items"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintStart_toStartOf="parent">
+
+    <com.google.android.material.button.MaterialButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:text="@string/media_delete"
+        android:textColor="@android:color/white"
+        app:iconTint="@android:color/white"
+        app:icon="@drawable/ic_outline_delete_24"
+        app:iconGravity="textTop"
+        app:iconSize="24dp"
+        android:textSize="14sp"
+        android:textAllCaps="false"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:id="@+id/media_action_delete"
+        app:layout_constraintStart_toEndOf="@id/media_action_share"
+        app:layout_constraintHorizontal_bias="0.5"
+        android:layout_marginBottom="12dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:text="@string/media_share"
+        android:textColor="@android:color/white"
+        app:iconTint="@android:color/white"
+        app:icon="@drawable/ic_outline_share_24"
+        app:iconGravity="textTop"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:iconSize="24dp"
+        android:textSize="14sp"
+        android:textAllCaps="false"
+        android:id="@+id/media_action_share"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintEnd_toStartOf="@id/media_action_delete"
+        android:layout_marginBottom="12dp" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

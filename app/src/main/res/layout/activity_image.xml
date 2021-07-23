@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <data>
 
@@ -8,6 +9,7 @@
             name="item"
             type="com.leondeklerk.starling.data.ImageItem" />
     </data>
+
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/layout"
@@ -20,6 +22,7 @@
             android:layout_width="match_parent"
             android:scaleType="fitCenter"
             android:clipToPadding="false"
+            tools:srcCompat="@tools:sample/avatars"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -36,11 +39,26 @@
 
             <androidx.appcompat.widget.Toolbar
                 android:id="@+id/toolbar"
-                app:menu="@menu/media_toolbar_menu"
+
                 android:layout_width="match_parent"
-                android:layout_height="?actionBarSize"/>
+                android:layout_height="?actionBarSize" />
         </com.google.android.material.appbar.AppBarLayout>
 
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/bottom_action_bar"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:background="@drawable/image_bottom_bar_gradient"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
+            <include
+                android:id="@+id/bottom_action_items"
+                layout="@layout/bottom_action_items"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

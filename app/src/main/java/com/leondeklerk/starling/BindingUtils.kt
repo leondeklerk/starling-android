@@ -13,6 +13,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestOptions
+import com.google.android.material.slider.Slider
 import com.leondeklerk.starling.data.FolderItem
 import com.leondeklerk.starling.data.HeaderItem
 import com.leondeklerk.starling.data.MediaItem
@@ -132,4 +133,10 @@ fun TextView.setHeaderItem(item: HeaderItem) {
             }
         }
     }
+}
+
+@BindingAdapter("range")
+fun Slider.setRange(duration: Int) {
+    val seconds = duration / 1000
+    valueTo = seconds.toFloat()
 }

@@ -62,6 +62,7 @@ data class HeaderItem(
  * @param dateAdded: The date this image was added to the system
  * @param width: The pixel width of the image
  * @param height: The pixel height of the image
+ * @param mimeType: the MIME type of the media item
  */
 @Parcelize
 data class ImageItem(
@@ -70,7 +71,8 @@ data class ImageItem(
     val displayName: String,
     val dateAdded: Date,
     val width: Number,
-    val height: Number
+    val height: Number,
+    val mimeType: String
 ) : MediaItem(id, MediaItemTypes.IMAGE, uri)
 
 /**
@@ -79,6 +81,7 @@ data class ImageItem(
  * @param displayName: The name given to this video by the MediaStore
  * @param dateAdded: The date this video was added to the system
  * @param duration: The length of this video in milli.
+ * @param mimeType: the MIME type of the media item
  */
 @Parcelize
 data class VideoItem(
@@ -87,6 +90,7 @@ data class VideoItem(
     val displayName: String,
     val dateAdded: Date,
     val duration: Int,
+    val mimeType: String
 ) : MediaItem(id, MediaItemTypes.VIDEO, uri)
 
 /**

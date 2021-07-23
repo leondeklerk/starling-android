@@ -83,7 +83,8 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
             MediaStore.Files.FileColumns.HEIGHT,
             MediaStore.Files.FileColumns.WIDTH,
             MediaStore.Files.FileColumns.DURATION,
-            MediaStore.Files.FileColumns.MEDIA_TYPE
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.Files.FileColumns.MIME_TYPE
         )
     }
 

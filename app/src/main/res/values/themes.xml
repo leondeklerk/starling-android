@@ -18,11 +18,14 @@
         <item name="colorControlNormal">@android:color/white</item>
     </style>
 
-    <style name="Theme.Starling.FullScreen.Transparent" parent="Theme.Starling">
+    <style name="Theme.Starling.Navigation.Transparent" parent="Theme.Starling">
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-
+        <item name="android:statusBarColor">@color/status_bar_scrim</item>
         <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.Starling.FullScreen.Transparent" parent="Theme.Starling.Navigation.Transparent">
+        <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
 </resources>

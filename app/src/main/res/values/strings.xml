@@ -14,4 +14,6 @@
     <string name="video_delete_message">Are you sure you want to delete this video?</string>
     <string name="image_delete_title">Delete Image</string>
     <string name="image_delete_message">Are you sure you want to delete this image?</string>
+    <string name="media_share">Share</string>
+    <string name="media_share_error">Sharing is currently not available</string>
 </resources>

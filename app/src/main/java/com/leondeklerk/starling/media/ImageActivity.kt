@@ -2,12 +2,12 @@ package com.leondeklerk.starling.media
 
 import android.app.Activity
 import android.content.DialogInterface
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -75,6 +75,7 @@ class ImageActivity : AppCompatActivity() {
         // On clicking the image the system ui and the toolbar should disappear for a fullscreen experience.
         imageView.setOnClickListener {
             supportActionBar?.hide()
+            binding.bottomActionBar.animate().alpha(0f)
 
             // Set the system ui visibility.
             WindowInsetsControllerCompat(window, window.decorView).let { controller ->
@@ -103,6 +104,14 @@ class ImageActivity : AppCompatActivity() {
             }
         )
 
+        binding.bottomActionItems.mediaActionDelete.setOnClickListener {
+            deleteMedia()
+        }
+
+        binding.bottomActionItems.mediaActionShare.setOnClickListener {
+            shareMedia()
+        }
+
         // Load image with Glide into the imageView
         Glide.with(imageView.context)
             .load(imageItem.uri)
@@ -115,19 +124,23 @@ class ImageActivity : AppCompatActivity() {
         return true
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.media_toolbar_menu, menu)
-        return true
-    }
+    /**
+     * Share the media item to other applications.
+     * Creates an Intent that other apps can receive, containing the Uri of the media item.
+     */
+    private fun shareMedia() {
+        Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_STREAM, imageItem.uri)
+            type = imageItem.mimeType
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.media_action_delete -> {
-                deleteMedia()
-                return true
+            try {
+                startActivity(Intent.createChooser(this, getString(R.string.media_share)))
+            } catch (e: Exception) {
+                Toast.makeText(applicationContext, R.string.media_share_error, Toast.LENGTH_SHORT).show()
             }
         }
-        return false
     }
 
     /**
@@ -144,6 +157,7 @@ class ImageActivity : AppCompatActivity() {
             // If the status bar and navigation bar reappear, so should the toolbar
             if (insets.isVisible(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())) {
                 supportActionBar?.show()
+                binding.bottomActionBar.animate().alpha(1f)
             }
 
             binding.toolbar.setMarginTop(insets.getInsets(WindowInsetsCompat.Type.systemBars()).top)

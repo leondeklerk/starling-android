@@ -2,15 +2,18 @@ package com.leondeklerk.starling.media
 
 import android.app.Activity
 import android.content.DialogInterface
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -21,6 +24,7 @@ import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.slider.Slider
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.databinding.ActivityVideoBinding
@@ -36,6 +40,9 @@ class VideoActivity : AppCompatActivity() {
     private lateinit var binding: ActivityVideoBinding
     private lateinit var player: SimpleExoPlayer
     private lateinit var videoItem: VideoItem
+    private var playerVolume: Float = 0f
+    private var handler = Handler(Looper.myLooper()!!)
+    private lateinit var runner: Runnable
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +50,7 @@ class VideoActivity : AppCompatActivity() {
         // Create the viewModel
         viewModel = ViewModelProvider(this).get(VideoViewModel::class.java)
 
+        // Get the data model for this screen
         videoItem = VideoActivityArgs.fromBundle(intent.extras!!).videoItem
 
         // Inflate the binding
@@ -56,93 +64,60 @@ class VideoActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setDisplayShowHomeEnabled(true)
         supportActionBar?.setDisplayShowTitleEnabled(false)
-
         setupInsets()
 
+        // Set up the binding
         binding.lifecycleOwner = this
+        binding.viewModel = viewModel
+        binding.item = videoItem
 
-        supportActionBar?.hide()
+        // Set up all listeners, handler and objects
+        setupUiListeners()
+        setupDeleteHandlers()
+        setupVideoPlayer()
+        setupPauseHandler()
 
-        // Hide the status bar and navigation bars
-        WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-            controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
-        }
-
-        // Create an ActivityResult handler for the permission popups on android Q and up.
-        val permissionResult = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
-            if (it.resultCode == Activity.RESULT_OK) {
-                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
-                    // We can now delete the pending image
-                    viewModel.deletePending()
-                } else {
-                    // The image is deleted so the fragment can be closed
-                    onBackPressed()
-                }
-            }
-        }
-
-        // Observer to handle cases where additional permission are needed to delete an item (Q and up)
-        viewModel.requiresPermission.observe(
-            this,
-            { intentSender ->
-                intentSender?.let {
-                    permissionResult.launch(IntentSenderRequest.Builder(intentSender).build())
-                }
-            }
-        )
-
-        // Observer to check if the current fragment should be closed or not
-        viewModel.shouldClose.observe(
+        viewModel.soundEnabled.observe(
             this,
             {
                 if (it) {
-                    onBackPressed()
+                    player.volume = playerVolume
+                } else {
+                    player.volume = 0f
                 }
             }
         )
 
-        // Set up video view
-        val videoView = binding.videoView
-        videoView.useController = false
-        videoView.setShowNextButton(false)
-        videoView.setShowPreviousButton(false)
-        videoView.setShowRewindButton(true)
-        videoView.setShowRewindButton(false)
-        videoView.setShowFastForwardButton(false)
+        binding.videoProgress.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                player.pause()
+            }
 
-        // Build and bind the player
-        player = SimpleExoPlayer.Builder(this).build()
-        videoView.player = player
+            override fun onStopTrackingTouch(slider: Slider) {
+                player.play()
+            }
+        })
 
-        // Set up and start the player
-        val item = MediaItem.fromUri(videoItem.uri)
-        player.setMediaItem(item)
-        player.repeatMode = Player.REPEAT_MODE_ALL
-        player.prepare()
-        player.play()
-
-        // Handle system ui changes
-        // Using a setOnApplyWindowInsetsListener does not work properly, therefore deprecated methods are used.
-        @Suppress("DEPRECATION")
-        window.decorView.setOnSystemUiVisibilityChangeListener { visibility ->
-            if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
-                videoView.useController = true
-                // If the system ui is visible the toolbar should reappear
-                supportActionBar?.show()
-                videoView.showController()
+        binding.videoProgress.addOnChangeListener { _, value, user ->
+            if (user) {
+                player.seekTo(value.toLong() * 1000L)
+                player.prepare()
             }
         }
 
-        // On clicking the video the system ui and the toolbar should disappear for a fullscreen experience.
-        videoView.setOnClickListener {
-            supportActionBar?.hide()
+        // Set initial state
+        hideUiElements()
+        viewModel.setPausedState()
+        viewModel.setSeconds(videoItem.duration / 1000) // Convert from ms to s
 
-            // Hide the navigation and status bar on click
-            WindowInsetsControllerCompat(window, window.decorView).hide(
-                WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars()
-            )
+        runner = object : Runnable {
+            override fun run() {
+                viewModel.setPosition(player.currentPosition)
+                handler.postDelayed(this, 500)
+            }
         }
+
+        handler.postDelayed(runner, 500)
     }
 
     override fun onPause() {
@@ -150,12 +125,14 @@ class VideoActivity : AppCompatActivity() {
         // Pause the video
         if (player.isPlaying) {
             player.pause()
+            viewModel.setPausedState()
         }
     }
 
     override fun onResume() {
         super.onResume()
         player.playWhenReady = true
+        viewModel.setPausedState()
     }
 
     override fun onDestroy() {
@@ -168,21 +145,6 @@ class VideoActivity : AppCompatActivity() {
         // navigate back to the previous activity
         onBackPressed()
         return true
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.media_toolbar_menu, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.media_action_delete -> {
-                deleteMedia()
-                return true
-            }
-        }
-        return false
     }
 
     /**
@@ -208,6 +170,73 @@ class VideoActivity : AppCompatActivity() {
     }
 
     /**
+     * Sets up all the listeners that handle system changes and user interaction.
+     */
+    private fun setupUiListeners() {
+        // Listener for System UI changes
+        // Using a setOnApplyWindowInsetsListener does not work properly, therefore deprecated methods are used.
+        @Suppress("DEPRECATION")
+        window.decorView.setOnSystemUiVisibilityChangeListener { visibility ->
+            if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
+                showUiElements()
+            }
+        }
+
+        // Click listener for the screen layout
+        binding.layout.setOnClickListener {
+            hideUiElements()
+        }
+
+        // Click listener for the delete button
+        binding.bottomActionItems.mediaActionDelete.setOnClickListener {
+            deleteMedia()
+        }
+
+        // Click listener for the pause/play button
+        binding.videoPause.setOnClickListener {
+            viewModel.setPausedState()
+        }
+
+        // Click listener for the share button
+        binding.bottomActionItems.mediaActionShare.setOnClickListener {
+            shareMedia()
+        }
+
+        // Check listener for the sound button
+        binding.videoSound.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setSound(isChecked)
+        }
+
+        // binding.videoProgressBar
+    }
+
+    /**
+     * Makes the UI elements visible again, after the system ui reappeared.
+     * Relates to: the toolbar, play/pause button, bottom bar controls
+     */
+    private fun showUiElements() {
+        supportActionBar?.show()
+        binding.videoPause.animate().alpha(0.67f)
+        // binding.bottomActionBar.layout.animate().alpha(1f)
+    }
+
+    /**
+     * Hides the screen and system UI elements.
+     * Screen elements: Toolbar, play/pause button, bottom action bar
+     * UI Elements: status bar, navigation bar
+     */
+    private fun hideUiElements() {
+        supportActionBar?.hide()
+        binding.videoPause.animate().alpha(0f)
+        // binding.bottomActionBar.layout.animate().alpha(0f)
+
+        // Hide the navigation and status bar on click
+        WindowInsetsControllerCompat(window, window.decorView).hide(
+            WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars()
+        )
+    }
+
+    /**
      * Builds a MaterialAlertDialog asking the user to confirm a delete.
      * On ok the viewModel.delete will be called and the delete process starts.
      */
@@ -222,5 +251,107 @@ class VideoActivity : AppCompatActivity() {
                 dialog.dismiss()
             }
             .show()
+    }
+
+    /**
+     * Share the media item to other applications.
+     * Creates an Intent that other apps can receive, containing the Uri of the media item.
+     */
+    private fun shareMedia() {
+        Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_STREAM, videoItem.uri)
+            type = videoItem.mimeType
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+            try {
+                startActivity(Intent.createChooser(this, getString(R.string.media_share)))
+            } catch (e: Exception) {
+                Toast.makeText(applicationContext, R.string.media_share_error, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Registers the observers for changes in the delete related variables.
+     * Responsible for creating the ActivityLauncher that asks a user for explicit delete permission.
+     */
+    private fun setupDeleteHandlers() {
+        // Create an ActivityResult handler for the permission popups on android Q and up.
+        val permissionResult = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                    // We can now delete the pending image
+                    viewModel.deletePending()
+                } else {
+                    // The image is deleted so this screen can be closed
+                    onBackPressed()
+                }
+            }
+        }
+
+        // Observer to handle cases where additional permission are needed to delete an item (Q and up)
+        viewModel.requiresPermission.observe(
+            this,
+            { intentSender ->
+                intentSender?.let {
+                    permissionResult.launch(IntentSenderRequest.Builder(intentSender).build())
+                }
+            }
+        )
+
+        // Observer to check if the current fragment should be closed or not after delete operations
+        viewModel.shouldClose.observe(
+            this,
+            {
+                if (it) {
+                    onBackPressed()
+                }
+            }
+        )
+    }
+
+    /**
+     * Creates the videoplayer object and binds it to the UI.
+     * Also configures the player with the correct settings.
+     */
+    private fun setupVideoPlayer() {
+        // Set up video view
+        val videoView = binding.videoView
+
+        // Build and bind the player
+        player = SimpleExoPlayer.Builder(this).build()
+        videoView.player = player
+
+        // Set up and start the player
+        val item = MediaItem.fromUri(videoItem.uri)
+        player.setMediaItem(item)
+        player.repeatMode = Player.REPEAT_MODE_ALL
+        player.prepare()
+
+        playerVolume = player.volume
+    }
+
+    /**
+     * Registers the observer for pause operations.
+     * Responsible for changing the play/pause icon and pausing the video player.
+     */
+    private fun setupPauseHandler() {
+        viewModel.paused.observe(
+            this,
+            {
+                if (it) {
+                    player.play()
+                    binding.videoPause.icon = AppCompatResources.getDrawable(this, R.drawable.ic_outline_pause_24)
+                    handler.postDelayed(runner, 500)
+
+                    // Call the hide after a 2s timeout
+                } else {
+                    player.pause()
+                    binding.videoPause.icon = AppCompatResources.getDrawable(this, R.drawable.ic_outline_play_arrow_24)
+                    handler.removeCallbacksAndMessages(null)
+                }
+            }
+        )
     }
 }
