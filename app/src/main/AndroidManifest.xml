@@ -30,7 +30,7 @@
 
         <activity
             android:name=".media.VideoActivity"
-            android:theme="@style/Theme.Starling.FullScreen.Transparent" />
+            android:theme="@style/Theme.Starling.Navigation.Transparent" />
     </application>
 
 </manifest>

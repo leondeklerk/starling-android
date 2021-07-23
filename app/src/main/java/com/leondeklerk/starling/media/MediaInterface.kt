@@ -64,6 +64,7 @@ class MediaInterface {
                 val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.HEIGHT)
                 val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
                 val mediaTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+                val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
 
                 val baseDate = Calendar.getInstance()
                 baseDate.time = Date(Long.MAX_VALUE)
@@ -87,6 +88,8 @@ class MediaInterface {
                         id
                     )
 
+                    val mimeType = cursor.getString(mimeTypeColumn)
+
                     updateHeaders(media, date, baseDate)
 
                     val mediaItem: MediaItem
@@ -99,6 +102,7 @@ class MediaInterface {
                                 displayName,
                                 date,
                                 duration,
+                                mimeType
                             )
                         }
                         MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> {
@@ -108,7 +112,8 @@ class MediaInterface {
                                 displayName,
                                 date,
                                 width,
-                                height
+                                height,
+                                mimeType
                             )
                         }
                         else -> continue
