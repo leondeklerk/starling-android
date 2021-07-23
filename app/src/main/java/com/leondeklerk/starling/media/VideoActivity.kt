@@ -23,6 +23,7 @@ import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.ui.DefaultTimeBar
 import com.google.android.exoplayer2.ui.TimeBar
+import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.VideoItem
@@ -69,44 +70,14 @@ class VideoActivity : AppCompatActivity() {
         binding.item = videoItem
 
         // Set up all listeners, handler and objects
+        setupVideoPlayer()
         setupUiListeners()
         setupDeleteHandlers()
-        setupVideoPlayer()
-        setupPauseHandler()
-
-        // viewModel.soundEnabled.observe(
-        //     this,
-        //     {
-        //         if (it) {
-        //             player.volume = playerVolume
-        //         } else {
-        //             player.volume = 0f
-        //         }
-        //     }
-        // )
+        setupUiHandlers()
 
         // Set initial state
         hideUiElements()
         viewModel.setPausedState()
-
-        val previewTimeBar = findViewById<DefaultTimeBar>(R.id.exo_progress)
-        previewTimeBar.addListener(object : TimeBar.OnScrubListener {
-            override fun onScrubMove(timeBar: TimeBar, position: Long) {
-                val currentPosition = player.currentPosition / 500
-                if (position / 500 != currentPosition) {
-                    player.seekTo((position / 500) * 500)
-                }
-            }
-
-            override fun onScrubStop(timeBar: TimeBar, position: Long, canceled: Boolean) {
-                player.play()
-            }
-
-            override fun onScrubStart(timeBar: TimeBar, position: Long) {
-                player.pause()
-                // viewModel.setPausedState()
-            }
-        })
     }
 
     override fun onPause() {
@@ -176,6 +147,11 @@ class VideoActivity : AppCompatActivity() {
             hideUiElements()
         }
 
+        // Click listener for the video view
+        binding.videoView.setOnClickListener {
+            hideUiElements()
+        }
+
         // Click listener for the delete button
         binding.bottomActionItems.mediaActionDelete.setOnClickListener {
             deleteMedia()
@@ -191,12 +167,40 @@ class VideoActivity : AppCompatActivity() {
             shareMedia()
         }
 
-        // // Check listener for the sound button
-        // binding.videoSound.setOnCheckedChangeListener { _, isChecked ->
-        //     viewModel.setSound(isChecked)
-        // }
+        // Check listener for the sound button
+        findViewById<MaterialCheckBox>(R.id.video_sound).setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setSound(isChecked)
+        }
 
-        // binding.videoProgressBar
+        // Progress bar listeners
+        findViewById<DefaultTimeBar>(R.id.exo_progress).addListener(object : TimeBar.OnScrubListener {
+            override fun onScrubMove(timeBar: TimeBar, position: Long) {
+                // Only seek in steps of 0.25 seconds
+                val currentPosition = player.currentPosition / 250
+                if (position / 250 != currentPosition) {
+                    player.seekTo((position / 250) * 250)
+                }
+            }
+
+            override fun onScrubStop(timeBar: TimeBar, position: Long, canceled: Boolean) {
+                // If before on pause, stay on pause
+                // If was playing, start again
+                if (viewModel.beforeScrubState) {
+                    player.play()
+                    binding.videoPause.icon =
+                        AppCompatResources.getDrawable(applicationContext, R.drawable.ic_outline_pause_24)
+                }
+            }
+
+            override fun onScrubStart(timeBar: TimeBar, position: Long) {
+                // If on pause, stay paused
+                // If playing, pause
+                player.pause()
+                viewModel.setPausedScrubState()
+                binding.videoPause.icon =
+                    AppCompatResources.getDrawable(applicationContext, R.drawable.ic_outline_play_arrow_24)
+            }
+        })
     }
 
     /**
@@ -206,7 +210,9 @@ class VideoActivity : AppCompatActivity() {
     private fun showUiElements() {
         supportActionBar?.show()
         binding.videoPause.animate().alpha(0.67f)
-        // binding.bottomActionBar.layout.animate().alpha(1f)
+        binding.videoView.useController = true
+        binding.videoView.showController()
+        binding.bottomActionBar.animate().alpha(1f)
     }
 
     /**
@@ -217,7 +223,9 @@ class VideoActivity : AppCompatActivity() {
     private fun hideUiElements() {
         supportActionBar?.hide()
         binding.videoPause.animate().alpha(0f)
-        // binding.bottomActionBar.layout.animate().alpha(0f)
+        binding.videoView.useController = false
+
+        binding.bottomActionBar.animate().alpha(0f)
 
         // Hide the navigation and status bar on click
         WindowInsetsControllerCompat(window, window.decorView).hide(
@@ -325,7 +333,8 @@ class VideoActivity : AppCompatActivity() {
      * Registers the observer for pause operations.
      * Responsible for changing the play/pause icon and pausing the video player.
      */
-    private fun setupPauseHandler() {
+    private fun setupUiHandlers() {
+        // Pause handler
         viewModel.paused.observe(
             this,
             {
@@ -340,12 +349,17 @@ class VideoActivity : AppCompatActivity() {
                 }
             }
         )
-    }
 
-    // override fun loadPreview(currentPosition: Long, max: Long) {
-    //     Timber.d(currentPosition.toString())
-    //     Glide.with(this).load(videoItem.uri).override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)
-    //         .transform(GlideThumbnailTransformation(currentPosition))
-    //         .into(previewView)
-    // }
+        // Sound handler
+        viewModel.soundEnabled.observe(
+            this,
+            {
+                if (it) {
+                    player.volume = playerVolume
+                } else {
+                    player.volume = 0f
+                }
+            }
+        )
+    }
 }

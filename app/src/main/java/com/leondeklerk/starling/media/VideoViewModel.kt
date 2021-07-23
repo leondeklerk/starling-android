@@ -15,14 +15,10 @@ class VideoViewModel(application: Application) : MediaViewModel(application) {
     private val _paused = MutableLiveData(false)
     val paused: LiveData<Boolean> = _paused
 
-    private val _seconds = MutableLiveData<Int>()
-    val seconds = _seconds
-
-    private val _currentPosition = MutableLiveData<Float>()
-    val currentPosition: LiveData<Float> = _currentPosition
+    var beforeScrubState: Boolean = false
 
     /**
-     * Update the curren sound state
+     * Update the current sound state
      * @param value: a [Boolean] indicating if the sound is on (true) or of (false)
      */
     fun setSound(value: Boolean) {
@@ -39,22 +35,10 @@ class VideoViewModel(application: Application) : MediaViewModel(application) {
         }
     }
 
-    fun setSeconds(value: Int) {
-        _seconds.postValue(value)
-    }
-
-    fun setPosition(value: Long) {
-        val position = value.toFloat() / 1000
-        when {
-            value <= seconds.value!! * 1000 -> {
-                _currentPosition.postValue(position)
-            }
-            value < 0 -> {
-                _currentPosition.postValue(0.0f)
-            }
-            else -> {
-                _currentPosition.postValue(2.0f)
-            }
-        }
+    /**
+     * Saves the current pause state before scrubbing trough the video
+     */
+    fun setPausedScrubState() {
+        beforeScrubState = _paused.value!!
     }
 }
