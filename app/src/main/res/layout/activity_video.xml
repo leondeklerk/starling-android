@@ -23,13 +23,11 @@
             android:id="@+id/videoView"
             android:layout_height="match_parent"
             android:layout_width="match_parent"
-            app:use_controller="false"
+            app:controller_layout_id="@layout/exoplayer_controls"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintVertical_bias="0.0" />
+            app:layout_constraintBottom_toBottomOf="parent"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/video_pause"
@@ -77,54 +75,54 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent">
 
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/video_text_time_passed"
-                app:video_duration="@{item.duration}"
-                tools:text="0:00"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintBottom_toTopOf="@+id/bottom_action_items"
-                app:layout_constraintTop_toTopOf="parent"
-                android:layout_marginStart="16dp" />
+<!--            <com.google.android.material.textview.MaterialTextView-->
+<!--                android:id="@+id/video_text_time_passed"-->
+<!--                app:video_duration="@{item.duration}"-->
+<!--                tools:text="0:00"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                app:layout_constraintStart_toStartOf="parent"-->
+<!--                app:layout_constraintBottom_toTopOf="@+id/bottom_action_items"-->
+<!--                app:layout_constraintTop_toTopOf="parent"-->
+<!--                android:layout_marginStart="16dp" />-->
 
-            <com.google.android.material.slider.Slider
-                android:id="@+id/video_progress"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:valueFrom="0.0"
-                android:value="@{viewModel.currentPosition}"
-                app:labelBehavior="gone"
-                app:range="@{item.duration}"
-                app:layout_constraintStart_toEndOf="@+id/video_text_time_passed"
-                app:layout_constraintEnd_toStartOf="@id/video_text_duration"
-                app:layout_constraintBottom_toTopOf="@+id/bottom_action_items"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintHorizontal_bias="0.5"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp" />
+<!--            <com.google.android.material.slider.Slider-->
+<!--                android:id="@+id/video_progress"-->
+<!--                android:layout_width="0dp"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:valueFrom="0.0"-->
+<!--                android:value="@{viewModel.currentPosition}"-->
+<!--                app:labelBehavior="gone"-->
+<!--                app:range="@{item.duration}"-->
+<!--                app:layout_constraintStart_toEndOf="@+id/video_text_time_passed"-->
+<!--                app:layout_constraintEnd_toStartOf="@id/video_text_duration"-->
+<!--                app:layout_constraintBottom_toTopOf="@+id/bottom_action_items"-->
+<!--                app:layout_constraintTop_toTopOf="parent"-->
+<!--                app:layout_constraintHorizontal_bias="0.5"-->
+<!--                android:layout_marginStart="8dp"-->
+<!--                android:layout_marginEnd="8dp" />-->
 
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/video_text_duration"
-                app:video_duration="@{item.duration}"
-                tools:text="1:00"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:layout_constraintEnd_toStartOf="@+id/video_sound"
-                app:layout_constraintBottom_toTopOf="@+id/bottom_action_items"
-                app:layout_constraintTop_toTopOf="parent"
-                android:layout_marginEnd="16dp" />
+<!--            <com.google.android.material.textview.MaterialTextView-->
+<!--                android:id="@+id/video_text_duration"-->
+<!--                app:video_duration="@{item.duration}"-->
+<!--                tools:text="1:00"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                app:layout_constraintEnd_toStartOf="@+id/video_sound"-->
+<!--                app:layout_constraintBottom_toTopOf="@+id/bottom_action_items"-->
+<!--                app:layout_constraintTop_toTopOf="parent"-->
+<!--                android:layout_marginEnd="16dp" />-->
 
-            <com.google.android.material.checkbox.MaterialCheckBox
-                android:checked="@{viewModel.soundEnabled}"
-                android:id="@+id/video_sound"
-                android:buttonTint="@color/white"
-                android:button="@drawable/sl_video_volume"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintBottom_toTopOf="@+id/bottom_action_items"
-                app:layout_constraintTop_toTopOf="parent" />
+<!--            <com.google.android.material.checkbox.MaterialCheckBox-->
+<!--                android:checked="@{viewModel.soundEnabled}"-->
+<!--                android:id="@+id/video_sound"-->
+<!--                android:buttonTint="@color/white"-->
+<!--                android:button="@drawable/sl_video_volume"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                app:layout_constraintEnd_toEndOf="parent"-->
+<!--                app:layout_constraintBottom_toTopOf="@+id/bottom_action_items"-->
+<!--                app:layout_constraintTop_toTopOf="parent" />-->
 
             <include
                 android:id="@+id/bottom_action_items"

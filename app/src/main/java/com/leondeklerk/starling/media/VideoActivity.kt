@@ -5,8 +5,6 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -23,8 +21,9 @@ import androidx.lifecycle.ViewModelProvider
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.exoplayer2.ui.DefaultTimeBar
+import com.google.android.exoplayer2.ui.TimeBar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.slider.Slider
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.databinding.ActivityVideoBinding
@@ -41,8 +40,6 @@ class VideoActivity : AppCompatActivity() {
     private lateinit var player: SimpleExoPlayer
     private lateinit var videoItem: VideoItem
     private var playerVolume: Float = 0f
-    private var handler = Handler(Looper.myLooper()!!)
-    private lateinit var runner: Runnable
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,47 +74,39 @@ class VideoActivity : AppCompatActivity() {
         setupVideoPlayer()
         setupPauseHandler()
 
-        viewModel.soundEnabled.observe(
-            this,
-            {
-                if (it) {
-                    player.volume = playerVolume
-                } else {
-                    player.volume = 0f
-                }
-            }
-        )
-
-        binding.videoProgress.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
-            override fun onStartTrackingTouch(slider: Slider) {
-                player.pause()
-            }
-
-            override fun onStopTrackingTouch(slider: Slider) {
-                player.play()
-            }
-        })
-
-        binding.videoProgress.addOnChangeListener { _, value, user ->
-            if (user) {
-                player.seekTo(value.toLong() * 1000L)
-                player.prepare()
-            }
-        }
+        // viewModel.soundEnabled.observe(
+        //     this,
+        //     {
+        //         if (it) {
+        //             player.volume = playerVolume
+        //         } else {
+        //             player.volume = 0f
+        //         }
+        //     }
+        // )
 
         // Set initial state
         hideUiElements()
         viewModel.setPausedState()
-        viewModel.setSeconds(videoItem.duration / 1000) // Convert from ms to s
 
-        runner = object : Runnable {
-            override fun run() {
-                viewModel.setPosition(player.currentPosition)
-                handler.postDelayed(this, 500)
+        val previewTimeBar = findViewById<DefaultTimeBar>(R.id.exo_progress)
+        previewTimeBar.addListener(object : TimeBar.OnScrubListener {
+            override fun onScrubMove(timeBar: TimeBar, position: Long) {
+                val currentPosition = player.currentPosition / 500
+                if (position / 500 != currentPosition) {
+                    player.seekTo((position / 500) * 500)
+                }
             }
-        }
 
-        handler.postDelayed(runner, 500)
+            override fun onScrubStop(timeBar: TimeBar, position: Long, canceled: Boolean) {
+                player.play()
+            }
+
+            override fun onScrubStart(timeBar: TimeBar, position: Long) {
+                player.pause()
+                // viewModel.setPausedState()
+            }
+        })
     }
 
     override fun onPause() {
@@ -202,10 +191,10 @@ class VideoActivity : AppCompatActivity() {
             shareMedia()
         }
 
-        // Check listener for the sound button
-        binding.videoSound.setOnCheckedChangeListener { _, isChecked ->
-            viewModel.setSound(isChecked)
-        }
+        // // Check listener for the sound button
+        // binding.videoSound.setOnCheckedChangeListener { _, isChecked ->
+        //     viewModel.setSound(isChecked)
+        // }
 
         // binding.videoProgressBar
     }
@@ -343,15 +332,20 @@ class VideoActivity : AppCompatActivity() {
                 if (it) {
                     player.play()
                     binding.videoPause.icon = AppCompatResources.getDrawable(this, R.drawable.ic_outline_pause_24)
-                    handler.postDelayed(runner, 500)
 
                     // Call the hide after a 2s timeout
                 } else {
                     player.pause()
                     binding.videoPause.icon = AppCompatResources.getDrawable(this, R.drawable.ic_outline_play_arrow_24)
-                    handler.removeCallbacksAndMessages(null)
                 }
             }
         )
     }
+
+    // override fun loadPreview(currentPosition: Long, max: Long) {
+    //     Timber.d(currentPosition.toString())
+    //     Glide.with(this).load(videoItem.uri).override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)
+    //         .transform(GlideThumbnailTransformation(currentPosition))
+    //         .into(previewView)
+    // }
 }
