@@ -61,7 +61,7 @@ class GalleryFragment : Fragment() {
         val root: View = binding.root
 
         // Set binding basics
-        binding.lifecycleOwner = this
+        binding.lifecycleOwner = viewLifecycleOwner
         binding.viewModel = galleryViewModel
 
         sharedPrefs = requireActivity().getPreferences(Context.MODE_PRIVATE)

@@ -20,6 +20,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.SeekParameters
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.ui.DefaultTimeBar
 import com.google.android.exoplayer2.ui.TimeBar
@@ -318,6 +319,7 @@ class VideoActivity : AppCompatActivity() {
 
         // Build and bind the player
         player = SimpleExoPlayer.Builder(this).build()
+        player.setSeekParameters(SeekParameters.CLOSEST_SYNC)
         videoView.player = player
 
         // Set up and start the player
