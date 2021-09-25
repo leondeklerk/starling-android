@@ -3,10 +3,13 @@ package com.leondeklerk.starling.media
 import android.app.Activity
 import android.content.DialogInterface
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,6 +21,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.ImageItem
@@ -58,6 +63,7 @@ class ImageActivity : AppCompatActivity() {
         binding.lifecycleOwner = this
 
         val imageView = binding.imageView
+        // binding.editView.visibility = View.VISIBLE
 
         // Create an ActivityResult handler for the permission popups on android Q and up.
         val permissionResult = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
@@ -76,6 +82,7 @@ class ImageActivity : AppCompatActivity() {
         imageView.setOnClickListener {
             supportActionBar?.hide()
             binding.bottomActionBar.animate().alpha(0f)
+                .withEndAction { binding.bottomActionBar.visibility = View.INVISIBLE }
 
             // Set the system ui visibility.
             WindowInsetsControllerCompat(window, window.decorView).let { controller ->
@@ -104,6 +111,48 @@ class ImageActivity : AppCompatActivity() {
             }
         )
 
+        viewModel.mode.observe(
+            this,
+            {
+                if (it == ImageViewModel.Mode.VIEW) {
+                    binding.editView.visibility = View.INVISIBLE
+                    binding.imageView.visibility = View.VISIBLE
+
+                    setupInsets()
+
+                    // Set the system ui visibility.
+                    WindowInsetsControllerCompat(window, window.decorView).systemBarsBehavior =
+                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+
+                    loadImage(imageView)
+                } else {
+                    imageView.visibility = View.INVISIBLE
+                    supportActionBar?.hide()
+                    binding.bottomActionBar.animate().alpha(0f).withEndAction {
+                        binding.bottomActionBar.visibility = View.INVISIBLE
+                    }
+
+                    // Set the system ui visibility.
+                    WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+                        controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+                        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
+                    }
+
+                    ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { _, insets ->
+                        // If the status bar and navigation bar reappear, so should the toolbar
+                        if (insets.isVisible(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())) {
+                        }
+
+                        binding.toolbar.setMarginTop(insets.getInsets(WindowInsetsCompat.Type.systemBars()).top)
+                        insets
+                    }
+
+                    binding.editView.visibility = View.VISIBLE
+                    loadImage(binding.editView)
+                }
+            }
+        )
+
         binding.bottomActionItems.mediaActionDelete.setOnClickListener {
             deleteMedia()
         }
@@ -112,10 +161,33 @@ class ImageActivity : AppCompatActivity() {
             shareMedia()
         }
 
+        binding.bottomActionItems.mediaActionCrop.let { button ->
+
+            button.setOnClickListener {
+                viewModel.switchMode()
+            }
+            button.visibility = View.VISIBLE
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // loadImage(binding.editView)
+    }
+
+    private fun loadImage(imageView: ImageView) {
         // Load image with Glide into the imageView
         Glide.with(imageView.context)
+            .asBitmap()
             .load(imageItem.uri)
-            .into(imageView)
+            .into(object : CustomTarget<Bitmap>() {
+                override fun onResourceReady(bitmap: Bitmap, transition: Transition<in Bitmap>?) {
+                    imageView.setImageBitmap(bitmap)
+                }
+
+                override fun onLoadCleared(placeholder: Drawable?) {
+                }
+            })
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -157,7 +229,9 @@ class ImageActivity : AppCompatActivity() {
             // If the status bar and navigation bar reappear, so should the toolbar
             if (insets.isVisible(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())) {
                 supportActionBar?.show()
-                binding.bottomActionBar.animate().alpha(1f)
+                binding.bottomActionBar.animate().alpha(1f).withEndAction {
+                    binding.bottomActionBar.visibility = View.VISIBLE
+                }
             }
 
             binding.toolbar.setMarginTop(insets.getInsets(WindowInsetsCompat.Type.systemBars()).top)

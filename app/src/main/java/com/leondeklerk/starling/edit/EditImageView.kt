@@ -20,6 +20,7 @@ import android.view.ScaleGestureDetector
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.graphics.values
 import androidx.core.view.ScaleGestureDetectorCompat
+import kotlin.math.max
 import kotlin.math.round
 
 class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatImageView(
@@ -84,7 +85,6 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             singleTapDetected = false
-            // Timber.d("Single tap! ${e.x}, ${e.y}")
             return false
         }
 
@@ -132,6 +132,8 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
     private val imgHeight: Float
         get() = if (drawable != null) drawable.intrinsicHeight * matrixValues[Matrix.MSCALE_Y] else 0f
 
+    var onZoom: ((zoom: Float) -> Unit)? = null
+
     companion object {
         private const val MIN_SCALE = 1f
         private const val MAX_SCALE = 8f
@@ -149,7 +151,6 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
         bm?.let {
             val values = imageMatrix.values()
-
             origScale = values[Matrix.MSCALE_X]
 
             setStartValues()
@@ -168,7 +169,54 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                 PointF(left, bottom)
             )
 
-            moveHandler = CropMoveHandler(imageBounds, borderBox!!, handleBounds, px(64f))
+            val heightToWidth = max(1f, height.toFloat() / width.toFloat())
+            val widthToHeight = max(1f, width.toFloat() / height.toFloat())
+
+            moveHandler = CropMoveHandler(
+                imageBounds, borderBox!!, handleBounds, px(64f), widthToHeight,
+                heightToWidth, px(48f), px(1.2f)
+            )
+            moveHandler?.onBoundsHitListener = { coords, xType, yType ->
+                if (scaleType != ScaleType.MATRIX) {
+                    super.setScaleType(ScaleType.MATRIX)
+                }
+
+                m.set(imageMatrix)
+                m.getValues(matrixValues)
+                updateBounds(matrixValues)
+                if (matrixValues[Matrix.MSCALE_X] > origScale) {
+                    var moveX = 0f
+                    var moveY = 0f
+
+                    if (xType == CropMoveHandler.HandlerType.LEFT && m.values()[Matrix.MTRANS_X] + coords.x <= 0) {
+                        // case left
+                        moveX = coords.x
+                    }
+
+                    if (xType == CropMoveHandler.HandlerType.RIGHT && m.values()[Matrix.MTRANS_X] + coords.x >=
+                        width - imgWidth
+                    ) {
+                        moveX = coords.x
+                    }
+
+                    if (yType == CropMoveHandler.HandlerType.TOP && m.values()[Matrix.MTRANS_Y] + coords.y <= 0) {
+                        moveY = coords.y
+                    }
+
+                    if (yType == CropMoveHandler.HandlerType.BOTTOM && m.values()[Matrix.MTRANS_Y] + coords.y >=
+                        height - imgHeight
+                    ) {
+                        moveY = coords.y
+                    }
+
+                    m.postTranslate(moveX, moveY)
+
+                    imageMatrix = m
+                    m.set(imageMatrix)
+                    m.getValues(matrixValues)
+                    updateBounds(matrixValues)
+                }
+            }
             moveHandler?.onZoomListener = { center, zoomOut ->
 
                 if (scaleType != ScaleType.MATRIX) {
@@ -179,25 +227,101 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                 m.getValues(matrixValues)
                 updateBounds(matrixValues)
 
+                val factor = round(matrixValues[Matrix.MSCALE_X] / origScale)
+
+
                 if (zoomOut) {
+                    zoomLevel = when (factor) {
+                        0f -> 1f
+                        1f, 2f, 4f, 8f -> factor
+                        3f -> 4f
+                        5f, 6f, 7f -> 8f
+                        else -> 8f
+                    }
+
+                    onZoom?.invoke(factor)
+
+                    moveHandler?.zoomLevel = zoomLevel
+
                     if (zoomLevel != MIN_SCALE) {
                         zoomLevel /= 2f
+                        onZoom?.invoke(zoomLevel)
+                        moveHandler?.zoomLevel = zoomLevel
                         zoomedOut = true
 
-                        val zoomMatrix = Matrix(m)
+                        var zoomMatrix = Matrix(m)
+                        var zoomValues = zoomMatrix.values()
+                        val scalar = (zoomLevel * origScale) / zoomValues[Matrix.MSCALE_X]
 
-                        zoomMatrix.postScale(0.5f, 0.5f, center.x, center.y)
+                        zoomMatrix.postScale(scalar, scalar, center.x, center.y)
+                        zoomValues = zoomMatrix.values()
+                        val imWidth = drawable.intrinsicWidth * zoomValues[Matrix.MSCALE_X]
+
+                        val imHeight = drawable.intrinsicHeight * zoomValues[Matrix.MSCALE_Y]
+
+                        var imgLeft = zoomValues[Matrix.MTRANS_X]
+                        var imgTop = zoomValues[Matrix.MTRANS_Y]
+                        var imgRight = imWidth + zoomValues[Matrix.MTRANS_X]
+                        var imgBottom = imHeight + zoomValues[Matrix.MTRANS_Y]
+
+                        val zoomBounds = RectF()
+
+                        zoomBounds.set(imgLeft, imgTop, imgRight, imgBottom)
+
+                        // Center X
+                        if (imWidth > width) {
+                            //the left edge is too far to the interior
+                            if (zoomBounds.left > 0) {
+                                zoomValues[Matrix.MTRANS_X] = 0f
+                            } else if (zoomBounds.right < width) {
+                                zoomValues[Matrix.MTRANS_X] = zoomBounds.left + width - zoomBounds.right
+                            }
+                        } else {
+                            zoomValues[Matrix.MTRANS_X] = (width - imWidth) / 2
+                        }
+
+                        // center y
+                        if (imHeight > height) {
+                            //the top edge is too far to the interior
+                            if (zoomBounds.top > 0) {
+                                zoomValues[Matrix.MTRANS_Y] = 0f
+                            } else if (zoomBounds.bottom < height) {
+                                zoomValues[Matrix.MTRANS_Y] = zoomBounds.top + height - zoomBounds.bottom
+                            }
+                        } else {
+                            zoomValues[Matrix.MTRANS_Y] = (height - imHeight) / 2
+                        }
+
+                        if (zoomLevel == 1f) {
+                            zoomMatrix = startMatrix
+                        }
+
+                        zoomMatrix.setValues(zoomValues)
 
                         animateMatrixTransformation(zoomMatrix)
                     }
                 } else {
+                    zoomLevel = when (factor) {
+                        0f -> 1f
+                        1f, 2f, 4f, 8f -> factor
+                        3f -> 2f
+                        5f, 6f, 7f -> 4f
+                        else -> 8f
+                    }
+                    onZoom?.invoke(factor)
+                    moveHandler?.zoomLevel = zoomLevel
+
                     if (zoomLevel != MAX_SCALE) {
                         zoomLevel *= 2f
+                        onZoom?.invoke(zoomLevel)
+                        moveHandler?.zoomLevel = zoomLevel
                         zoomedIn = true
 
                         val zoomMatrix = Matrix(m)
+                        val zoomValues = zoomMatrix.values()
+                        val scalar = (zoomLevel * origScale) / zoomValues[Matrix.MSCALE_X]
 
-                        zoomMatrix.postScale(2f, 2f, center.x, center.y)
+                        zoomMatrix.postScale(scalar, scalar, center.x, center.y)
 
                         animateMatrixTransformation(zoomMatrix)
                     }
@@ -216,44 +340,42 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
         drawBorder(canvas)
     }
 
+    var mainLast = PointF(0f, 0f)
+    var mainId = 0
+
+    var maxPointers = 0
+    var noMoveAllowed = false
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!isClickable && isEnabled) {
             if (scaleType != ScaleType.MATRIX) {
                 super.setScaleType(ScaleType.MATRIX)
             }
 
+            if (event.pointerCount > maxPointers) {
+                maxPointers = event.pointerCount
+            }
+
+            if (event.pointerCount != 2 && event.pointerCount < maxPointers) {
+                maxPointers = 0
+                noMoveAllowed = true
+            }
+
+            if (noMoveAllowed && event.action != MotionEvent.ACTION_DOWN) {
+                centerX()
+                centerY()
+                return true
+            }
+
             //get the current state of the image matrix, its values, and the bounds of the drawn bitmap
             m.set(imageMatrix)
             m.getValues(matrixValues)
             updateBounds(matrixValues)
+
             scaleDetector!!.onTouchEvent(event)
-
-            // if(!isScaling) {
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    moveHandler?.let {
-                        moving = it.startMove(event.x, event.y)
-                    }
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    moveHandler?.let {
-                        moving = it.endMove()
-                    }
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val changed = moveHandler?.onMove(event.x, event.y) ?: false
-                    if (changed) {
-                        invalidate()
-                    }
-                }
-            }
-            // }
-
-            if (moving) return true
-
-            currentPointerCount = event.pointerCount
-
             gestureDetector!!.onTouchEvent(event)
+
+            // handle a double tap
             if (doubleTapDetected) {
                 doubleTapDetected = false
                 singleTapDetected = false
@@ -268,19 +390,56 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                         scaleDetector!!.focusY
                     )
 
-                    val factor = round(matrixValues[Matrix.MSCALE_X] / origScale)
-                    zoomLevel = when (factor) {
-                        0f -> 1f
-                        1f, 2f, 4f, 8f -> factor
-                        3f -> 2f
-                        5f, 6f, 7f -> 4f
-                        else -> 8f
-                    }
-
                     animateMatrixTransformation(zoomMatrix)
                 }
                 return true
-            } else if (!singleTapDetected) {
+            }
+
+            if (event.pointerCount == 1) {
+                // This handles the crop Move handler, only valid when there is one pointer
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        noMoveAllowed = false
+                        mainId = event.getPointerId(0)
+                        mainLast = PointF(event.x, event.y)
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        // if we are not moving, check if we can start a movement
+                        // Only start a move if we moved at least x
+                        if (!moving) {
+                            moveHandler?.let {
+                                moving = it.startMove(event.x, event.y)
+                            }
+                        }
+
+                        // If we have a handler movement
+                        if (moving) {
+                            val changed = moveHandler?.onMove(event.x, event.y) ?: false
+                            if (changed) {
+                                invalidate()
+                            }
+                        }
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        moveHandler?.endMove()
+                        moving = false
+                        mainLast = PointF()
+                    }
+                }
+            } else {
+                // Cancel the move handler and allow for other movement, if applicable
+                moveHandler?.cancel()
+                moving = false
+            }
+
+            // If we are moving with the handler, there is no other action possible.
+            if (moving) {
+                return true
+            }
+
+            currentPointerCount = event.pointerCount
+
+            if (!doubleTapDetected && !singleTapDetected) {
                 /* if the event is a down touch, or if the number of touch points changed,
                  * we should reset our start point, as event origins have likely shifted to a
                  * different part of the screen*/
@@ -312,10 +471,13 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                     zoomLevel = when (factor) {
                         0f -> 1f
                         1f, 2f, 4f, 8f -> factor
-                        3f -> 2f
-                        5f, 6f, 7f -> 4f
+                        3f -> 4f
+                        5f, 6f, 7f -> 8f
                         else -> 8f
                     }
+                    onZoom?.invoke(factor)
+
+                    moveHandler?.zoomLevel = zoomLevel
 
                     last[focusX] = focusY
                 }
@@ -332,6 +494,7 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
             previousPointerCount = currentPointerCount
             return true
         }
+        // return true
         return super.onTouchEvent(event)
     }
 
@@ -528,8 +691,9 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                 }
 
                 if (zoomedOut) {
-                    centerX()
-                    centerY()
+                    moveHandler?.restrictBorder()
+                    // centerX()
+                    // centerY()
                     zoomedOut = false
                 } else {
                     moveHandler?.restrictBorder()

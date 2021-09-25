@@ -1,7 +1,10 @@
 package com.leondeklerk.starling.edit
 
+import android.animation.PointFEvaluator
+import android.animation.ValueAnimator
 import android.graphics.PointF
 import android.graphics.RectF
+import android.view.animation.LinearInterpolator
 import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.BOTTOM
 import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.BOX
 import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.LEFT
@@ -14,22 +17,26 @@ import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.RIGHT_TOP
 import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.TOP
 import java.lang.Float.max
 import java.lang.Float.min
+import kotlin.math.abs
 
 class CropMoveHandler(
     private var bounds: RectF,
     private val borderBox: Box,
     private val handlerBounds: Float,
-    private val minDimens: Float
+    private val minDimens: Float,
+    private val heightToWidth: Float,
+    private val widthToHeight: Float,
+    private val threshold: Float,
+    private val baseTranslate: Float
 ) {
 
     var onZoomListener: ((center: PointF, zoomOut: Boolean) -> Unit)? = null
+    var onBoundsHitListener: ((coords: PointF, xType: HandlerType, yType: HandlerType) -> Unit)? = null
+    var zoomLevel = 1f
 
     companion object {
         const val X_TYPE = "x"
         const val Y_TYPE = "y"
-    }
-
-    init {
     }
 
     enum class HandlerType {
@@ -62,7 +69,6 @@ class CropMoveHandler(
      */
     fun startMove(x: Float, y: Float): Boolean {
         moving = true
-        borderBoxStart = borderBox.copy()
         movingHandler = when {
             borderBox.leftTop.near(x, y, handlerBounds) -> {
                 LEFT_TOP
@@ -88,13 +94,14 @@ class CropMoveHandler(
             borderBox.left.near(x, y, handlerBounds) -> {
                 LEFT
             }
-            borderBox.isWithin(x, y) -> {
-                moving = false
+            // borderBox.center.near(x, y, handlerBounds) -> { // Center movement controls
+            borderBox.isWithin(x, y) -> { // Boundary movement control
+
                 // Save the current location data
                 boxMoveStart.x = x
                 boxMoveStart.y = y
                 borderBoxStart = borderBox.copy()
-                NONE
+                BOX
             }
             else -> {
                 moving = false
@@ -118,7 +125,13 @@ class CropMoveHandler(
             moving = false
             return true
         }
+
         return false
+    }
+
+    fun cancel() {
+        moving = false
+        movingHandler = NONE
     }
 
     fun updateBounds(newBounds: RectF) {
@@ -166,10 +179,6 @@ class CropMoveHandler(
             val ySmall = boxHeight <= (boundsHeight / 2)
 
             if (xSmall && ySmall) {
-                val oldBounds = RectF()
-                oldBounds.set(bounds)
-                // beforeZoomBounds = oldBounds
-
                 it(borderBox.center, false)
             }
 
@@ -186,6 +195,7 @@ class CropMoveHandler(
      * @return if moved or not
      */
     fun onMove(x: Float, y: Float): Boolean {
+        if (!moving) return false
 
         val (boundX, boundY) = withinBounds(x, y)
 
@@ -249,15 +259,16 @@ class CropMoveHandler(
     private fun withinBounds(x: Float, y: Float): Pair<Float, Float> {
         var boundedX = x
         var boundedY = y
+        var hitBounds = false
 
         // Check the left and right bounds (x)
         when {
             x < bounds.left -> {
-                boundsHitCounter++
+                hitBounds = true
                 boundedX = bounds.left
             }
             x > bounds.right -> {
-                boundsHitCounter++
+                hitBounds = true
                 boundedX = bounds.right
             }
         }
@@ -265,13 +276,17 @@ class CropMoveHandler(
         // check the top and bottom (y) bounds
         when {
             y < bounds.top -> {
-                boundsHitCounter++
+                hitBounds = true
                 boundedY = bounds.top
             }
             y > bounds.bottom -> {
-                boundsHitCounter++
+                hitBounds = true
                 boundedY = bounds.bottom
             }
+        }
+
+        if (hitBounds && movingHandler != BOX) {
+            boundsHitCounter++
         }
 
         return Pair(boundedX, boundedY)
@@ -326,6 +341,11 @@ class CropMoveHandler(
         }
     }
 
+    var xDir = NONE
+    var yDir = NONE
+
+    var animator: ValueAnimator? = null
+
     /**
      * Calculates movements for the whole borderBox. Will move both right and left by the difference between
      * the box location at the start of the movement and the touchX (capped at the bounds).
@@ -338,41 +358,95 @@ class CropMoveHandler(
         var dX = moveX - boxMoveStart.x
         var dY = moveY - boxMoveStart.y
 
+        val bX = dX
+        val bY = dY
+
+        var translateX = 0f
+        var translateY = 0f
+
+        var xType: HandlerType
+        var yType: HandlerType
+
+        val zoomMultiplier = max(1f, zoomLevel / 2f)
+        val xMultiplier = heightToWidth * zoomMultiplier
+        val yMultiplier = widthToHeight * zoomMultiplier
+
         // If the move is to the left
         if (dX < 0) {
+            xType = LEFT
             // If the move is beyond the bounds
-            if (borderBoxStart.left.x + dX < bounds.left) {
+            if (borderBoxStart.left.x + dX <= bounds.left) {
+                val diff = bounds.left - borderBoxStart.left.x
+                translateX = baseTranslate * xMultiplier
+
                 // Set the dX to the max value it could have
-                dX = bounds.left - borderBoxStart.left.x
+                dX = diff
             }
         } else {
+            xType = RIGHT
             // If the right move is beyond the bounds
-            if (borderBoxStart.right.x + dX > bounds.right) {
+            if (borderBoxStart.right.x + dX >= bounds.right) {
+                val diff = bounds.right - borderBoxStart.right.x
+                translateX = -baseTranslate * xMultiplier
                 // Cap at the right bound
-                dX = bounds.right - borderBoxStart.right.x
+                dX = diff
             }
         }
 
         // If the move is to the top
         if (dY < 0) {
+            yType = TOP
             // If beyond the top
-            if (borderBoxStart.top.y + dY < bounds.top) {
+            if (borderBoxStart.top.y + dY <= bounds.top) {
+                val diff = bounds.top - borderBoxStart.top.y
+                translateY = baseTranslate * yMultiplier
                 // Cap at top
-                dY = bounds.top - borderBoxStart.top.y
+                dY = diff
             }
         } else {
+            yType = BOTTOM
             // If beyond bottom
-            if (borderBoxStart.bottom.y + dY > bounds.bottom) {
+            if (borderBoxStart.bottom.y + dY >= bounds.bottom) {
+                val diff = bounds.bottom - borderBoxStart.bottom.y
+                translateY = -baseTranslate * yMultiplier
                 // cap at bottom
-                dY = bounds.bottom - borderBoxStart.bottom.y
+                dY = diff
             }
         }
 
-        // Move the borderBox
         borderBox.left.x = borderBoxStart.left.x + dX
         borderBox.right.x = borderBoxStart.right.x + dX
+
         borderBox.top.y = borderBoxStart.top.y + dY
         borderBox.bottom.y = borderBoxStart.bottom.y + dY
+
+        if (abs(bY) <= threshold) {
+            yType = NONE
+            translateY = 0f
+        }
+
+        if (abs(bX) <= threshold) {
+            xType = NONE
+            translateX = 0f
+        }
+
+        if (xDir != xType || yDir != yType) {
+            animator?.cancel()
+        }
+
+        xDir = xType
+        yDir = yType
+
+        animator = ValueAnimator.ofObject(PointFEvaluator(), PointF(), PointF(translateX, translateY))
+        animator?.interpolator = LinearInterpolator()
+        animator?.duration = 100
+
+        animator?.addUpdateListener { animation ->
+            val curPoint = animation.animatedValue as PointF
+            onBoundsHitListener?.invoke(curPoint, xType, yType)
+        }
+
+        animator?.start()
     }
 
     /**
