@@ -1,6 +1,7 @@
 package com.leondeklerk.starling.edit
 
 import android.graphics.PointF
+import android.graphics.RectF
 import com.google.gson.Gson
 
 data class Box(val leftTop: PointF, val rightTop: PointF, val rightBottom: PointF, val leftBottom: PointF) {
@@ -32,6 +33,10 @@ data class Box(val leftTop: PointF, val rightTop: PointF, val rightBottom: Point
 
     fun getPoints(): List<PointF> {
         return listOf(leftTop, rightTop, rightBottom, leftBottom)
+    }
+
+    fun getRect(): RectF {
+        return RectF(left.x, top.y, right.x, bottom.y)
     }
 
     fun isWithin(x: Float, y: Float): Boolean {

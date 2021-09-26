@@ -143,22 +143,25 @@ class CropMoveHandler(
         return RectF(left, top, right, bottom)
     }
 
-    fun restrictBorder() {
+    fun restrictBorder(): RectF {
+        val sizeTo = borderBox.getRect()
         if (borderBox.left.x < bounds.left) {
-            borderBox.left.x = bounds.left
+            sizeTo.left = bounds.left
         }
 
         if (borderBox.top.y < bounds.top) {
-            borderBox.top.y = bounds.top
+            sizeTo.top = bounds.top
         }
 
         if (borderBox.right.x > bounds.right) {
-            borderBox.right.x = bounds.right
+            sizeTo.right = bounds.right
         }
 
         if (borderBox.bottom.y > bounds.bottom) {
-            borderBox.bottom.y = bounds.bottom
+            sizeTo.bottom = bounds.bottom
         }
+
+        return sizeTo
     }
 
     private fun checkZoom() {

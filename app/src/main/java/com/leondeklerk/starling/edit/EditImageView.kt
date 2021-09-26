@@ -712,7 +712,9 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                     zoomedIn = false
                 }
 
-                moveHandler?.restrictBorder()
+                moveHandler?.let {
+                    resizeBox(it.restrictBorder())
+                }
 
                 if (zoomedOut) {
                     zoomedOut = false
@@ -810,7 +812,10 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
                 if (counter == 2) {
                     counter = 0
-                    moveHandler?.restrictBorder()
+
+                    moveHandler?.let {
+                        resizeBox(it.restrictBorder())
+                    }
                 }
             }
         })
