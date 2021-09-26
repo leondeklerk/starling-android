@@ -1,10 +1,7 @@
 package com.leondeklerk.starling.edit
 
-import android.animation.PointFEvaluator
-import android.animation.ValueAnimator
 import android.graphics.PointF
 import android.graphics.RectF
-import android.view.animation.LinearInterpolator
 import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.BOTTOM
 import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.BOX
 import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.LEFT
@@ -16,8 +13,8 @@ import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.RIGHT_BOTTOM
 import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.RIGHT_TOP
 import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.TOP
 import java.lang.Float.max
-import java.lang.Float.min
-import kotlin.math.abs
+import kotlin.math.min
+import timber.log.Timber
 
 class CropMoveHandler(
     private var bounds: RectF,
@@ -31,7 +28,7 @@ class CropMoveHandler(
 ) {
 
     var onZoomListener: ((center: PointF, zoomOut: Boolean) -> Unit)? = null
-    var onBoundsHitListener: ((coords: PointF, xType: HandlerType, yType: HandlerType) -> Unit)? = null
+    var onBoundsHitListener: ((dX: Float, dY: Float, xType: HandlerType, yType: HandlerType) -> Unit)? = null
     var zoomLevel = 1f
 
     companion object {
@@ -55,8 +52,6 @@ class CropMoveHandler(
     private var moving = false
     private var movingHandler = NONE
     private var boxMoveStart = PointF()
-    private lateinit var beforeZoomBox: Box
-    private lateinit var beforeZoomBounds: RectF
     private lateinit var borderBoxStart: Box
 
     /**
@@ -94,10 +89,7 @@ class CropMoveHandler(
             borderBox.left.near(x, y, handlerBounds) -> {
                 LEFT
             }
-            // borderBox.center.near(x, y, handlerBounds) -> { // Center movement controls
-            borderBox.isWithin(x, y) -> { // Boundary movement control
-
-                // Save the current location data
+            borderBox.isWithin(x, y) -> {
                 boxMoveStart.x = x
                 boxMoveStart.y = y
                 borderBoxStart = borderBox.copy()
@@ -116,26 +108,39 @@ class CropMoveHandler(
      * Handle the end of a touch event.
      * Resets the current movement details.
      */
-    fun endMove(): Boolean {
+    fun endMove() {
         boxMoveStart = PointF()
         borderBoxStart = borderBox.copy()
+        curDirectionX = NONE
+        curDirectionY = NONE
 
         if (moving) {
             checkZoom()
             moving = false
-            return true
         }
-
-        return false
     }
 
     fun cancel() {
         moving = false
         movingHandler = NONE
+        curDirectionX = NONE
+        curDirectionY = NONE
     }
 
     fun updateBounds(newBounds: RectF) {
         bounds = newBounds
+    }
+
+    fun scaleBox(): RectF {
+        val diffHor = (borderBox.right.x - borderBox.left.x) * (2f - 1f)
+        val diffVert = (borderBox.bottom.y - borderBox.top.y) * (2f - 1f)
+
+        val left = max(borderBox.left.x - diffHor / 2f, bounds.left)
+        val top = max(borderBox.top.y - diffVert / 2f, bounds.top)
+        val right = min(borderBox.right.x + diffHor / 2f, bounds.right)
+        val bottom = min(borderBox.bottom.y + diffVert / 2f, bounds.bottom)
+
+        return RectF(left, top, right, bottom)
     }
 
     fun restrictBorder() {
@@ -154,17 +159,6 @@ class CropMoveHandler(
         if (borderBox.bottom.y > bounds.bottom) {
             borderBox.bottom.y = bounds.bottom
         }
-    }
-
-    fun scaleBox() {
-        // Fix centering?
-        val diffHor = (borderBox.right.x - borderBox.left.x) * (2f - 1f)
-        val diffVert = (borderBox.bottom.y - borderBox.top.y) * (2f - 1f)
-
-        borderBox.left.x = max(borderBox.left.x - diffHor / 2f, bounds.left)
-        borderBox.top.y = max(borderBox.top.y - diffVert / 2f, bounds.top)
-        borderBox.right.x = min(borderBox.right.x + diffHor / 2f, bounds.right)
-        borderBox.bottom.y = min(borderBox.bottom.y + diffVert / 2f, bounds.bottom)
     }
 
     private fun checkZoom() {
@@ -341,10 +335,11 @@ class CropMoveHandler(
         }
     }
 
-    var xDir = NONE
-    var yDir = NONE
+    var curDirectionX = NONE
+    var curDirectionY = NONE
 
-    var animator: ValueAnimator? = null
+    var translateX = 0f
+    var translateY = 0f
 
     /**
      * Calculates movements for the whole borderBox. Will move both right and left by the difference between
@@ -361,56 +356,37 @@ class CropMoveHandler(
         val bX = dX
         val bY = dY
 
-        var translateX = 0f
-        var translateY = 0f
-
-        var xType: HandlerType
-        var yType: HandlerType
-
         val zoomMultiplier = max(1f, zoomLevel / 2f)
         val xMultiplier = heightToWidth * zoomMultiplier
         val yMultiplier = widthToHeight * zoomMultiplier
 
         // If the move is to the left
         if (dX < 0) {
-            xType = LEFT
             // If the move is beyond the bounds
             if (borderBoxStart.left.x + dX <= bounds.left) {
-                val diff = bounds.left - borderBoxStart.left.x
-                translateX = baseTranslate * xMultiplier
-
                 // Set the dX to the max value it could have
-                dX = diff
+                dX = bounds.left - borderBoxStart.left.x
             }
         } else {
-            xType = RIGHT
             // If the right move is beyond the bounds
             if (borderBoxStart.right.x + dX >= bounds.right) {
-                val diff = bounds.right - borderBoxStart.right.x
-                translateX = -baseTranslate * xMultiplier
                 // Cap at the right bound
-                dX = diff
+                dX = bounds.right - borderBoxStart.right.x
             }
         }
 
         // If the move is to the top
         if (dY < 0) {
-            yType = TOP
             // If beyond the top
             if (borderBoxStart.top.y + dY <= bounds.top) {
-                val diff = bounds.top - borderBoxStart.top.y
-                translateY = baseTranslate * yMultiplier
                 // Cap at top
-                dY = diff
+                dY = bounds.top - borderBoxStart.top.y
             }
         } else {
-            yType = BOTTOM
             // If beyond bottom
             if (borderBoxStart.bottom.y + dY >= bounds.bottom) {
-                val diff = bounds.bottom - borderBoxStart.bottom.y
-                translateY = -baseTranslate * yMultiplier
                 // cap at bottom
-                dY = diff
+                dY = bounds.bottom - borderBoxStart.bottom.y
             }
         }
 
@@ -420,33 +396,61 @@ class CropMoveHandler(
         borderBox.top.y = borderBoxStart.top.y + dY
         borderBox.bottom.y = borderBoxStart.bottom.y + dY
 
-        if (abs(bY) <= threshold) {
-            yType = NONE
-            translateY = 0f
+        var xChanged = false
+        var yChanged = false
+
+        if (curDirectionX == NONE) {
+            if (bX <= -threshold && borderBox.left.x == bounds.left) {
+                curDirectionX = LEFT
+                translateX = baseTranslate * xMultiplier
+                xChanged = true
+            } else if (bX >= threshold && borderBox.right.x == bounds.right) {
+                curDirectionX = RIGHT
+                translateX = -baseTranslate * xMultiplier
+                xChanged = true
+            }
+        } else {
+            if (curDirectionX == LEFT) {
+                if (bX > -threshold || borderBox.left.x != bounds.left) {
+                    curDirectionX = NONE
+                    xChanged = true
+                }
+            } else if (curDirectionX == RIGHT) {
+                if (bX < threshold || borderBox.right.x != bounds.right) {
+                    curDirectionX = NONE
+                    xChanged = true
+                }
+            }
         }
 
-        if (abs(bX) <= threshold) {
-            xType = NONE
-            translateX = 0f
+        if (curDirectionY == NONE) {
+            if (bY <= -threshold && borderBox.top.y == bounds.top) {
+                curDirectionY = TOP
+                translateY = baseTranslate * yMultiplier
+                yChanged = true
+            } else if (bY >= threshold && borderBox.bottom.y == bounds.bottom) {
+                curDirectionY = BOTTOM
+                translateY = -baseTranslate * yMultiplier
+                yChanged = true
+            }
+        } else {
+            if (curDirectionY == TOP) {
+                if (bY > -threshold || borderBox.top.y != bounds.top) {
+                    curDirectionY = NONE
+                    yChanged = true
+                }
+            } else if (curDirectionY == BOTTOM) {
+                if (bY < threshold || borderBox.bottom.y != bounds.bottom) {
+                    curDirectionY = NONE
+                    yChanged = true
+                }
+            }
         }
 
-        if (xDir != xType || yDir != yType) {
-            animator?.cancel()
+        if (xChanged || yChanged) {
+            Timber.d("$translateX, $translateY")
+            onBoundsHitListener?.invoke(translateX, translateY, curDirectionX, curDirectionY)
         }
-
-        xDir = xType
-        yDir = yType
-
-        animator = ValueAnimator.ofObject(PointFEvaluator(), PointF(), PointF(translateX, translateY))
-        animator?.interpolator = LinearInterpolator()
-        animator?.duration = 100
-
-        animator?.addUpdateListener { animation ->
-            val curPoint = animation.animatedValue as PointF
-            onBoundsHitListener?.invoke(curPoint, xType, yType)
-        }
-
-        animator?.start()
     }
 
     /**

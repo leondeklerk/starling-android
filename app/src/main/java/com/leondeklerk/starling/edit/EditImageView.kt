@@ -11,6 +11,9 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.RectF
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.GestureDetector
@@ -21,6 +24,7 @@ import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.graphics.values
 import androidx.core.view.ScaleGestureDetectorCompat
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.round
 
 class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatImageView(
@@ -93,6 +97,52 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
         }
     }
 
+    private var myHandler = Handler(Looper.getMainLooper())
+
+    private var transX = 0f
+    private var transY = 0f
+    private var xDir = CropMoveHandler.HandlerType.NONE
+    private var yDir = CropMoveHandler.HandlerType.NONE
+
+    private val handlerRunnable = object : Runnable {
+        override fun run() {
+            if (xDir == CropMoveHandler.HandlerType.NONE && yDir == CropMoveHandler.HandlerType.NONE) return
+
+            m.set(imageMatrix)
+            m.getValues(matrixValues)
+            updateBounds(matrixValues)
+
+            var moveX = 0f
+            var moveY = 0f
+
+            if (matrixValues[Matrix.MSCALE_X] > origScale) {
+                val matrixX = m.values()[Matrix.MTRANS_X]
+                val matrixY = m.values()[Matrix.MTRANS_Y]
+
+                if (xDir == CropMoveHandler.HandlerType.LEFT) {
+                    moveX = min(transX, 0 - matrixX)
+                } else if (xDir == CropMoveHandler.HandlerType.RIGHT) {
+                    moveX = max(transX, -(matrixX - (width - imgWidth)))
+                }
+
+                if (yDir == CropMoveHandler.HandlerType.TOP) {
+                    moveY = min(transY, 0 - matrixY)
+                } else if (yDir == CropMoveHandler.HandlerType.BOTTOM) {
+                    moveY = max(transY, -(matrixY - (height - imgHeight)))
+                }
+
+                m.postTranslate(moveX, moveY)
+
+                imageMatrix = m
+                m.set(imageMatrix)
+                m.getValues(matrixValues)
+                updateBounds(matrixValues)
+
+                myHandler.postDelayed(this, 1000L / refreshRate.toLong())
+            }
+        }
+    }
+
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
 
         override fun onScale(detector: ScaleGestureDetector): Boolean {
@@ -132,7 +182,7 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
     private val imgHeight: Float
         get() = if (drawable != null) drawable.intrinsicHeight * matrixValues[Matrix.MSCALE_Y] else 0f
 
-    var onZoom: ((zoom: Float) -> Unit)? = null
+    var refreshRate = 60f
 
     companion object {
         private const val MIN_SCALE = 1f
@@ -144,6 +194,15 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
         scaleDetector = ScaleGestureDetector(context, scaleListener)
         gestureDetector = GestureDetector(context, gestureListener)
         ScaleGestureDetectorCompat.setQuickScaleEnabled(scaleDetector, false)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            refreshRate = context.display?.refreshRate ?: 60f
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        myHandler.removeCallbacksAndMessages(null)
     }
 
     override fun setImageBitmap(bm: Bitmap?) {
@@ -174,47 +233,21 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
             moveHandler = CropMoveHandler(
                 imageBounds, borderBox!!, handleBounds, px(64f), widthToHeight,
-                heightToWidth, px(48f), px(1.2f)
+                heightToWidth, px(48f), px(4f)
             )
-            moveHandler?.onBoundsHitListener = { coords, xType, yType ->
+            // moveHandler?.onBoundsHitListener = { coords, xType, yType ->
+            moveHandler?.onBoundsHitListener = { dX, dY, xType, yType ->
                 if (scaleType != ScaleType.MATRIX) {
                     super.setScaleType(ScaleType.MATRIX)
                 }
 
-                m.set(imageMatrix)
-                m.getValues(matrixValues)
-                updateBounds(matrixValues)
-                if (matrixValues[Matrix.MSCALE_X] > origScale) {
-                    var moveX = 0f
-                    var moveY = 0f
-
-                    if (xType == CropMoveHandler.HandlerType.LEFT && m.values()[Matrix.MTRANS_X] + coords.x <= 0) {
-                        // case left
-                        moveX = coords.x
-                    }
-
-                    if (xType == CropMoveHandler.HandlerType.RIGHT && m.values()[Matrix.MTRANS_X] + coords.x >=
-                        width - imgWidth
-                    ) {
-                        moveX = coords.x
-                    }
-
-                    if (yType == CropMoveHandler.HandlerType.TOP && m.values()[Matrix.MTRANS_Y] + coords.y <= 0) {
-                        moveY = coords.y
-                    }
-
-                    if (yType == CropMoveHandler.HandlerType.BOTTOM && m.values()[Matrix.MTRANS_Y] + coords.y >=
-                        height - imgHeight
-                    ) {
-                        moveY = coords.y
-                    }
-
-                    m.postTranslate(moveX, moveY)
-
-                    imageMatrix = m
-                    m.set(imageMatrix)
-                    m.getValues(matrixValues)
-                    updateBounds(matrixValues)
+                if (xDir != xType || yDir != yType) {
+                    transX = dX
+                    transY = dY
+                    xDir = xType
+                    yDir = yType
+                    myHandler.removeCallbacksAndMessages(null)
+                    myHandler.postDelayed(handlerRunnable, 1000L / refreshRate.toLong())
                 }
             }
             moveHandler?.onZoomListener = { center, zoomOut ->
@@ -229,7 +262,6 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
                 val factor = round(matrixValues[Matrix.MSCALE_X] / origScale)
 
-
                 if (zoomOut) {
                     zoomLevel = when (factor) {
                         0f -> 1f
@@ -239,13 +271,10 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                         else -> 8f
                     }
 
-                    onZoom?.invoke(factor)
-
                     moveHandler?.zoomLevel = zoomLevel
 
                     if (zoomLevel != MIN_SCALE) {
                         zoomLevel /= 2f
-                        onZoom?.invoke(zoomLevel)
                         moveHandler?.zoomLevel = zoomLevel
                         zoomedOut = true
 
@@ -259,10 +288,10 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
                         val imHeight = drawable.intrinsicHeight * zoomValues[Matrix.MSCALE_Y]
 
-                        var imgLeft = zoomValues[Matrix.MTRANS_X]
-                        var imgTop = zoomValues[Matrix.MTRANS_Y]
-                        var imgRight = imWidth + zoomValues[Matrix.MTRANS_X]
-                        var imgBottom = imHeight + zoomValues[Matrix.MTRANS_Y]
+                        val imgLeft = zoomValues[Matrix.MTRANS_X]
+                        val imgTop = zoomValues[Matrix.MTRANS_Y]
+                        val imgRight = imWidth + zoomValues[Matrix.MTRANS_X]
+                        val imgBottom = imHeight + zoomValues[Matrix.MTRANS_Y]
 
                         val zoomBounds = RectF()
 
@@ -308,12 +337,10 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                         5f, 6f, 7f -> 4f
                         else -> 8f
                     }
-                    onZoom?.invoke(factor)
                     moveHandler?.zoomLevel = zoomLevel
 
                     if (zoomLevel != MAX_SCALE) {
                         zoomLevel *= 2f
-                        onZoom?.invoke(zoomLevel)
                         moveHandler?.zoomLevel = zoomLevel
                         zoomedIn = true
 
@@ -339,9 +366,6 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
         drawGuidelines(canvas)
         drawBorder(canvas)
     }
-
-    var mainLast = PointF(0f, 0f)
-    var mainId = 0
 
     var maxPointers = 0
     var noMoveAllowed = false
@@ -400,8 +424,6 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         noMoveAllowed = false
-                        mainId = event.getPointerId(0)
-                        mainLast = PointF(event.x, event.y)
                     }
                     MotionEvent.ACTION_MOVE -> {
                         // if we are not moving, check if we can start a movement
@@ -423,7 +445,6 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                     MotionEvent.ACTION_UP -> {
                         moveHandler?.endMove()
                         moving = false
-                        mainLast = PointF()
                     }
                 }
             } else {
@@ -475,8 +496,6 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                         5f, 6f, 7f -> 8f
                         else -> 8f
                     }
-                    onZoom?.invoke(factor)
-
                     moveHandler?.zoomLevel = zoomLevel
 
                     last[focusX] = focusY
@@ -686,17 +705,17 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                 updateBounds(matrixValues)
 
                 if (zoomedIn) {
-                    moveHandler?.scaleBox()
+                    moveHandler?.let {
+                        val rect = it.scaleBox()
+                        resizeBox(rect)
+                    }
                     zoomedIn = false
                 }
 
+                moveHandler?.restrictBorder()
+
                 if (zoomedOut) {
-                    moveHandler?.restrictBorder()
-                    // centerX()
-                    // centerY()
                     zoomedOut = false
-                } else {
-                    moveHandler?.restrictBorder()
                 }
             }
         })
@@ -795,6 +814,40 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                 }
             }
         })
+
+        animator.duration = RESET_DURATION.toLong()
+        animator.start()
+    }
+
+    private fun resizeBox(sizeTo: RectF) {
+        borderBox?.let {
+            animateBoxSide(CropMoveHandler.HandlerType.LEFT, it.left.x, sizeTo.left)
+            animateBoxSide(CropMoveHandler.HandlerType.TOP, it.top.y, sizeTo.top)
+            animateBoxSide(CropMoveHandler.HandlerType.RIGHT, it.right.x, sizeTo.right)
+            animateBoxSide(CropMoveHandler.HandlerType.BOTTOM, it.bottom.y, sizeTo.bottom)
+        }
+    }
+
+    private fun animateBoxSide(side: CropMoveHandler.HandlerType, from: Float, to: Float) {
+        val animator = ValueAnimator.ofFloat(from, to)
+
+        animator.addUpdateListener { animation ->
+            when (side) {
+                CropMoveHandler.HandlerType.LEFT -> {
+                    borderBox?.left?.x = animation.animatedValue as Float
+                }
+                CropMoveHandler.HandlerType.TOP -> {
+                    borderBox?.top?.y = animation.animatedValue as Float
+                }
+                CropMoveHandler.HandlerType.RIGHT -> {
+                    borderBox?.right?.x = animation.animatedValue as Float
+                }
+                CropMoveHandler.HandlerType.BOTTOM -> {
+                    borderBox?.bottom?.y = animation.animatedValue as Float
+                }
+            }
+            invalidate()
+        }
 
         animator.duration = RESET_DURATION.toLong()
         animator.start()
