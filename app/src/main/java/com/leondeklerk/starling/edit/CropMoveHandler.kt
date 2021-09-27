@@ -2,19 +2,18 @@ package com.leondeklerk.starling.edit
 
 import android.graphics.PointF
 import android.graphics.RectF
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.BOTTOM
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.BOX
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.LEFT
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.LEFT_BOTTOM
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.LEFT_TOP
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.NONE
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.RIGHT
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.RIGHT_BOTTOM
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.RIGHT_TOP
-import com.leondeklerk.starling.edit.CropMoveHandler.HandlerType.TOP
+import com.leondeklerk.starling.edit.HandlerType.BOTTOM
+import com.leondeklerk.starling.edit.HandlerType.BOX
+import com.leondeklerk.starling.edit.HandlerType.LEFT
+import com.leondeklerk.starling.edit.HandlerType.LEFT_BOTTOM
+import com.leondeklerk.starling.edit.HandlerType.LEFT_TOP
+import com.leondeklerk.starling.edit.HandlerType.NONE
+import com.leondeklerk.starling.edit.HandlerType.RIGHT
+import com.leondeklerk.starling.edit.HandlerType.RIGHT_BOTTOM
+import com.leondeklerk.starling.edit.HandlerType.RIGHT_TOP
+import com.leondeklerk.starling.edit.HandlerType.TOP
 import java.lang.Float.max
 import kotlin.math.min
-import timber.log.Timber
 
 class CropMoveHandler(
     private var bounds: RectF,
@@ -28,7 +27,7 @@ class CropMoveHandler(
 ) {
 
     var onZoomListener: ((center: PointF, zoomOut: Boolean) -> Unit)? = null
-    var onBoundsHitListener: ((dX: Float, dY: Float, xType: HandlerType, yType: HandlerType) -> Unit)? = null
+    var onBoundsHitListener: ((delta: PointF, types: Pair<HandlerType, HandlerType>) -> Unit)? = null
     var zoomLevel = 1f
 
     companion object {
@@ -36,23 +35,15 @@ class CropMoveHandler(
         const val Y_TYPE = "y"
     }
 
-    enum class HandlerType {
-        TOP,
-        RIGHT,
-        BOTTOM,
-        LEFT,
-        LEFT_TOP,
-        RIGHT_TOP,
-        RIGHT_BOTTOM,
-        LEFT_BOTTOM,
-        BOX,
-        NONE
-    }
-
     private var moving = false
     private var movingHandler = NONE
     private var boxMoveStart = PointF()
     private lateinit var borderBoxStart: Box
+    private var curDirectionX = NONE
+    private var curDirectionY = NONE
+
+    private var translateX = 0f
+    private var translateY = 0f
 
     /**
      * Starts a moving interaction.
@@ -338,12 +329,6 @@ class CropMoveHandler(
         }
     }
 
-    var curDirectionX = NONE
-    var curDirectionY = NONE
-
-    var translateX = 0f
-    var translateY = 0f
-
     /**
      * Calculates movements for the whole borderBox. Will move both right and left by the difference between
      * the box location at the start of the movement and the touchX (capped at the bounds).
@@ -451,14 +436,15 @@ class CropMoveHandler(
         }
 
         if (xChanged || yChanged) {
-            Timber.d("$translateX, $translateY")
-            onBoundsHitListener?.invoke(translateX, translateY, curDirectionX, curDirectionY)
+            val delta = PointF(translateX, translateY)
+            val types = Pair(curDirectionX, curDirectionY)
+            onBoundsHitListener?.invoke(delta, types)
         }
     }
 
     /**
      * Add extra helper function to the PointF class to check if a point (touchX, touchY) is within a radius (bounds)
-     * of the exsiting point.
+     * of the existing point.
      *
      * @param touchX: The x coordinate to test for
      * @param touchY: the y coordinate to test for
