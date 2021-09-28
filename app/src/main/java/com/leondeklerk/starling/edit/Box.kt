@@ -4,7 +4,12 @@ import android.graphics.PointF
 import android.graphics.RectF
 import com.google.gson.Gson
 
-data class Box(val leftTop: PointF, val rightTop: PointF, val rightBottom: PointF, val leftBottom: PointF) {
+data class Box(
+    val leftTop: PointF,
+    val rightTop: PointF,
+    val rightBottom: PointF,
+    val leftBottom: PointF
+) {
     var top: Line = Line(leftTop, rightTop)
     var right: Line = Line(rightTop, rightBottom)
     var bottom: Line = Line(rightBottom, leftBottom)
@@ -48,4 +53,3 @@ data class Box(val leftTop: PointF, val rightTop: PointF, val rightBottom: Point
         return Gson().fromJson(json, Box::class.java)
     }
 }
-

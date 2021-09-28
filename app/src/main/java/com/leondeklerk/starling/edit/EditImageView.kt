@@ -184,7 +184,7 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                 super.setScaleType(ScaleType.MATRIX)
             }
 
-            //get the current state of the image matrix, its values, and the bounds of the drawn bitmap
+            // get the current state of the image matrix, its values, and the bounds of the drawn bitmap
             updateMMatrix()
 
             scaleDetector!!.onTouchEvent(event)
@@ -192,6 +192,11 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
             // If there is a double tap, we only execute that
             if (doubleTap) {
+                // Only double tap within the bounds.
+                if (!bounds.contains(event.x, event.y)) {
+                    doubleTap = false
+                    return true
+                }
                 resetHandler()
                 doubleTap = false
 
@@ -423,17 +428,21 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
             val (dirX, dirY) = direction
 
             // Handle x movement (LEFT/RIGHT)
-            if (dirX == LEFT) {
-                moveX = min(trans.x, 0 - matrixX)
-            } else if (dirX == RIGHT) {
-                moveX = max(trans.x, -(matrixX - (width - imgWidth())))
+            if (imgWidth() > width) {
+                if (dirX == LEFT) {
+                    moveX = min(trans.x, 0 - matrixX)
+                } else if (dirX == RIGHT) {
+                    moveX = max(trans.x, -(matrixX - (width - imgWidth())))
+                }
             }
 
-            // Handle y movement (TOP/BOTTOM)
-            if (dirY == TOP) {
-                moveY = min(trans.y, 0 - matrixY)
-            } else if (dirY == BOTTOM) {
-                moveY = max(trans.y, -(matrixY - (height - imgHeight())))
+            if (imgHeight() > height) {
+                // Handle y movement (TOP/BOTTOM)
+                if (dirY == TOP) {
+                    moveY = min(trans.y, 0 - matrixY)
+                } else if (dirY == BOTTOM) {
+                    moveY = max(trans.y, -(matrixY - (height - imgHeight())))
+                }
             }
 
             m.postTranslate(moveX, moveY)
@@ -496,7 +505,7 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
         // Create a new zooming matrix
         var zoomMatrix = Matrix(m)
-        val zoomValues = zoomMatrix.values()
+        var zoomValues = zoomMatrix.values()
 
         // Update the zoom level
         updateZoomLevel(out)
@@ -523,6 +532,13 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
             // Set the matrix values
             zoomMatrix.postScale(scalar, scalar, center.x, center.y)
+            zoomValues = zoomMatrix.values()
+
+            // Make sure the image is still properly centered
+            val translation = center(zoomValues, getRect(zoomValues), false)
+            zoomValues[Matrix.MTRANS_X] = translation.x
+            zoomValues[Matrix.MTRANS_Y] = translation.y
+            zoomMatrix.setValues(zoomValues)
 
             if (zoomLevel == 1f) {
                 // Reset the zoomMatrix
@@ -578,7 +594,7 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
 
         // We can only translate if zoomed in
         if (currentScaleFactor > 1.0f) {
-            //calculate the distance for translation
+            // calculate the distance for translation
             val (dX, dY) = getDistance(focus, last)
             m.postTranslate(dX, dY)
         }
@@ -651,16 +667,25 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
      * It will either center exactly at the center if the image is smaller than the view.
      * Or it will make sure the edges of the image are always at the edge of the view.
      */
-    private fun center() {
-        val x = centerAxis(Pair(imgWidth(), width), Pair(bounds.left, bounds.right)) ?: matrixValues[Matrix.MTRANS_X]
-        val y = centerAxis(Pair(imgHeight(), height), Pair(bounds.top, bounds.bottom)) ?: matrixValues[Matrix.MTRANS_Y]
+    private fun center(
+        values: FloatArray = matrixValues,
+        box: RectF = bounds,
+        animate: Boolean = true
+    ): PointF {
+        val x = centerAxis(Pair(imgWidth(values), width), Pair(box.left, box.right)) ?: values[Matrix.MTRANS_X]
+        val y = centerAxis(Pair(imgHeight(values), height), Pair(box.top, box.bottom)) ?: values[Matrix.MTRANS_Y]
 
-        animateMatrixAxis(Matrix.MTRANS_X, x)
-        animateMatrixAxis(Matrix.MTRANS_Y, y)
+        if (animate) {
+            animateMatrixAxis(Matrix.MTRANS_X, x)
+            animateMatrixAxis(Matrix.MTRANS_Y, y)
+        }
+
+        return PointF(x, y)
     }
 
     /**
      * Center an axis, by centering it to the center or anchoring it to the edge of the view.
+     * Will only center if the image goes beyond an edge, but should fit within the view.
      * @param imgDimens a pair containing the current image dimension and the view dimension (e.g. imgWidth/Width)
      * @param bounds a pair containing the min and max bounds of an image (top/bottom pair or left/right pair)
      */
@@ -678,7 +703,11 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                 return min + maxDimens - max
             }
         } else {
-            // Otherwise we need to center at exactly half
+            // We should only center if the image fits in the bounds but goes beyond a bound.
+            if (min >= 0 && max <= maxDimens) {
+                return null
+            }
+            // Then we need to center at exactly half
             return (maxDimens - curDimens) / 2
         }
         return null
