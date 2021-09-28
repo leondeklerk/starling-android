@@ -592,12 +592,9 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
     private fun handleTranslate(delaySet: Boolean = false) {
         val focus = PointF(scaleDetector!!.focusX, scaleDetector!!.focusY)
 
-        // We can only translate if zoomed in
-        if (currentScaleFactor > 1.0f) {
-            // calculate the distance for translation
-            val (dX, dY) = getDistance(focus, last)
-            m.postTranslate(dX, dY)
-        }
+        // calculate the distance for translation
+        val (dX, dY) = getDistance(focus, last)
+        m.postTranslate(dX, dY)
 
         // If delaySet is set to false, update the image matrix
         if (!delaySet) {
