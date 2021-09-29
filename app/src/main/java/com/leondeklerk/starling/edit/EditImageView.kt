@@ -70,8 +70,6 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
     private var startScale = 1f
     private var scaleBy = 1f
     private var doubleTapScalar = 4f
-    private val currentScaleFactor: Float
-        get() = matrixValues[Matrix.MSCALE_X] / startValues!![Matrix.MSCALE_X]
 
     // Touch variables
     private val bounds = RectF()

@@ -137,7 +137,7 @@ class CropMoveHandler(
     fun updateBorder(): RectF {
         val imgWidth = bounds.right - bounds.left
         val imgHeight = bounds.bottom - bounds.top
-        var sizeTo = borderBox.getRect()
+        val sizeTo = borderBox.getRect()
 
         if (borderBox.width.toInt() <= imgWidth.toInt()) {
             if (borderBox.left.x < bounds.left) {
