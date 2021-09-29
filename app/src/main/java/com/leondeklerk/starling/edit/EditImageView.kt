@@ -137,7 +137,7 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
     companion object {
         private const val MIN_SCALE = 1f
         private const val MAX_SCALE = 8f
-        private const val MATRIX_DURATION = 200L
+        private const val MATRIX_DURATION = 100L
         private const val BOX_DURATION = 100L
         private const val NUMBER_OF_LINES = 3
     }
@@ -756,13 +756,13 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                     // We can resize the box to be larger
                     moveHandler?.let {
                         val rect = it.scaleBox()
-                        resizeBox(rect)
+                        animateBoxUpdate(rect, BOX_DURATION * 2L)
                     }
                     zoomedIn = false
                 } else {
                     // Otherwise we need to restrict the border, as we potentially crossed bounds
                     moveHandler?.let {
-                        resizeBox(it.restrictBorder())
+                        animateBoxUpdate(it.updateBorder())
                     }
                 }
 
@@ -804,9 +804,9 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
                 if (counter == 2) {
                     counter = 0
 
-                    // Resize the box.
-                    moveHandler?.let {
-                        resizeBox(it.restrictBorder())
+                    moveHandler?.let { moveHandler ->
+                        // Update the box based on the updated borders.
+                        animateBoxUpdate(moveHandler.updateBorder())
                     }
                 }
             }
@@ -817,15 +817,15 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
     }
 
     /**
-     * Will animate the resizing of the border box.
+     * Will animate the updating of the border box.
      * @param sizeTo the rectangle (box) to animate the borderBox to.
      */
-    private fun resizeBox(sizeTo: RectF) {
+    private fun animateBoxUpdate(sizeTo: RectF, duration: Long = BOX_DURATION) {
         borderBox?.let {
-            animateBoxSide(LEFT, it.left.x, sizeTo.left)
-            animateBoxSide(TOP, it.top.y, sizeTo.top)
-            animateBoxSide(RIGHT, it.right.x, sizeTo.right)
-            animateBoxSide(BOTTOM, it.bottom.y, sizeTo.bottom)
+            animateBoxSide(LEFT, it.left.x, sizeTo.left, duration)
+            animateBoxSide(TOP, it.top.y, sizeTo.top, duration)
+            animateBoxSide(RIGHT, it.right.x, sizeTo.right, duration)
+            animateBoxSide(BOTTOM, it.bottom.y, sizeTo.bottom, duration)
         }
     }
 
@@ -835,7 +835,7 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
      * @param from the original value
      * @param to the new value
      */
-    private fun animateBoxSide(side: Side, from: Float, to: Float) {
+    private fun animateBoxSide(side: Side, from: Float, to: Float, duration: Long) {
         val animator = ValueAnimator.ofFloat(from, to)
 
         animator.addUpdateListener { animation ->
@@ -860,7 +860,7 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
             }
         }
 
-        animator.duration = BOX_DURATION
+        animator.duration = duration
         animator.start()
     }
     //endregion

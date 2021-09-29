@@ -134,22 +134,49 @@ class CropMoveHandler(
         return RectF(left, top, right, bottom)
     }
 
-    fun restrictBorder(): RectF {
-        val sizeTo = borderBox.getRect()
-        if (borderBox.left.x < bounds.left) {
-            sizeTo.left = bounds.left
+    fun updateBorder(): RectF {
+        val imgWidth = bounds.right - bounds.left
+        val imgHeight = bounds.bottom - bounds.top
+        var sizeTo = borderBox.getRect()
+
+        if (borderBox.width.toInt() <= imgWidth.toInt()) {
+            if (borderBox.left.x < bounds.left) {
+                val diff = bounds.left - borderBox.left.x
+                sizeTo.left += diff
+                sizeTo.right += diff
+            } else if (borderBox.right.x > bounds.right) {
+                val diff = bounds.right - borderBox.right.x
+                sizeTo.right += diff
+                sizeTo.left += diff
+            }
+        } else {
+            if (borderBox.left.x < bounds.left) {
+                sizeTo.left = bounds.left
+            }
+
+            if (borderBox.right.x > bounds.right) {
+                sizeTo.right = bounds.right
+            }
         }
 
-        if (borderBox.top.y < bounds.top) {
-            sizeTo.top = bounds.top
-        }
+        if (borderBox.height.toInt() <= imgHeight.toInt()) {
+            if (borderBox.top.y < bounds.top) {
+                val diff = bounds.top - borderBox.top.y
+                sizeTo.top += diff
+                sizeTo.bottom += diff
+            } else if (borderBox.bottom.y > bounds.bottom) {
+                val diff = bounds.bottom - borderBox.bottom.y
+                sizeTo.top += diff
+                sizeTo.bottom += diff
+            }
+        } else {
+            if (borderBox.bottom.y > bounds.bottom) {
+                sizeTo.bottom = bounds.bottom
+            }
 
-        if (borderBox.right.x > bounds.right) {
-            sizeTo.right = bounds.right
-        }
-
-        if (borderBox.bottom.y > bounds.bottom) {
-            sizeTo.bottom = bounds.bottom
+            if (borderBox.top.y < bounds.top) {
+                sizeTo.top = bounds.top
+            }
         }
 
         return sizeTo
