@@ -334,9 +334,12 @@ class EditImageView(context: Context, attributeSet: AttributeSet?) : AppCompatIm
         val widthToHeight = max(1f, width.toFloat() / height.toFloat())
 
         // Setup the CropMoveHandler
+        // moveHandler = CropMoveHandler(
+        //     rect, borderBox!!, handleBounds, px(64f), widthToHeight,
+        //     heightToWidth, px(48f), px(4f)
+        // )
         moveHandler = CropMoveHandler(
-            rect, borderBox!!, handleBounds, px(64f), widthToHeight,
-            heightToWidth, px(48f), px(4f)
+            rect, borderBox!!, handleBounds, px(64f), px(48f), px(4f)
         )
     }
 

@@ -79,17 +79,17 @@ class ImageActivity : AppCompatActivity() {
         }
 
         // On clicking the image the system ui and the toolbar should disappear for a fullscreen experience.
-        imageView.setOnClickListener {
-            supportActionBar?.hide()
-            binding.bottomActionBar.animate().alpha(0f)
-                .withEndAction { binding.bottomActionBar.visibility = View.INVISIBLE }
-
-            // Set the system ui visibility.
-            WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-                controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
-                controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
-            }
-        }
+        // imageView.setOnClickListener {
+        //     supportActionBar?.hide()
+        //     binding.bottomActionBar.animate().alpha(0f)
+        //         .withEndAction { binding.bottomActionBar.visibility = View.INVISIBLE }
+        //
+        //     // Set the system ui visibility.
+        //     WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+        //         controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+        //         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+        //     }
+        // }
 
         // Observer to handle cases where additional permission are needed to delete an item (Q and up)
         viewModel.requiresPermission.observe(
@@ -122,8 +122,7 @@ class ImageActivity : AppCompatActivity() {
 
                     // Set the system ui visibility.
                     WindowInsetsControllerCompat(window, window.decorView).systemBarsBehavior =
-                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
-
+                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
                     loadImage(imageView)
                 } else {
                     imageView.visibility = View.INVISIBLE
@@ -148,7 +147,7 @@ class ImageActivity : AppCompatActivity() {
                     }
 
                     binding.editView.visibility = View.VISIBLE
-                    loadImage(binding.editView)
+                    loadImage(binding.editView.binding.interactiveImageView)
                 }
             }
         )
@@ -172,7 +171,7 @@ class ImageActivity : AppCompatActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        // loadImage(binding.editView)
+        loadImage(binding.imageView)
     }
 
     private fun loadImage(imageView: ImageView) {

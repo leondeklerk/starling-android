@@ -2,6 +2,8 @@ package com.leondeklerk.starling.edit
 
 import android.graphics.PointF
 import android.graphics.RectF
+import android.os.Handler
+import android.os.Looper
 import com.leondeklerk.starling.edit.HandlerType.BOTTOM
 import com.leondeklerk.starling.edit.HandlerType.BOX
 import com.leondeklerk.starling.edit.HandlerType.LEFT
@@ -16,12 +18,10 @@ import java.lang.Float.max
 import kotlin.math.min
 
 class CropMoveHandler(
-    private var bounds: RectF,
+    var bounds: RectF,
     private val borderBox: Box,
     private val handlerBounds: Float,
     private val minDimens: Float,
-    private val heightToWidth: Float,
-    private val widthToHeight: Float,
     private val threshold: Float,
     private val baseTranslate: Float
 ) {
@@ -34,6 +34,12 @@ class CropMoveHandler(
         const val X_TYPE = "x"
         const val Y_TYPE = "y"
     }
+
+    private var zoomOutHandler = Handler(Looper.getMainLooper())
+    private val zoomOutRunnable = Runnable {
+        checkZoomOut()
+    }
+    private var zoomOutRunning = false
 
     private var moving = false
     private var movingHandler = NONE
@@ -100,18 +106,24 @@ class CropMoveHandler(
      * Resets the current movement details.
      */
     fun endMove() {
+        zoomOutHandler.removeCallbacksAndMessages(null)
+        zoomOutRunning = false
+
         boxMoveStart = PointF()
         borderBoxStart = borderBox.copy()
         curDirectionX = NONE
         curDirectionY = NONE
 
         if (moving) {
-            checkZoom()
+            checkZoomIn()
             moving = false
         }
     }
 
     fun cancel() {
+        zoomOutHandler.removeCallbacksAndMessages(null)
+        zoomOutRunning = false
+
         moving = false
         movingHandler = NONE
         curDirectionX = NONE
@@ -182,7 +194,14 @@ class CropMoveHandler(
         return sizeTo
     }
 
-    private fun checkZoom() {
+    private fun checkZoomOut() {
+        onZoomListener?.invoke(borderBox.center, true)
+        if (zoomLevel != 1f) {
+            zoomOutHandler.postDelayed(zoomOutRunnable, 1000)
+        }
+    }
+
+    private fun checkZoomIn() {
         onZoomListener?.let {
             val boxWidth = borderBox.width
             val boxHeight = borderBox.height
@@ -196,8 +215,6 @@ class CropMoveHandler(
             if (xSmall && ySmall) {
                 it(borderBox.center, false)
             }
-
-            boundsHitCounter = 0
         }
     }
 
@@ -253,15 +270,8 @@ class CropMoveHandler(
             }
         }
 
-        if (boundsHitCounter > 20) {
-            onZoomListener?.invoke(borderBox.center, true)
-            boundsHitCounter = 0
-        }
-
         return true
     }
-
-    private var boundsHitCounter = 0
 
     /**
      * Check if a value is within the bound set on constructing.
@@ -300,8 +310,14 @@ class CropMoveHandler(
             }
         }
 
-        if (hitBounds && movingHandler != BOX) {
-            boundsHitCounter++
+        if (hitBounds && movingHandler != BOX && movingHandler != NONE) {
+            if (!zoomOutRunning) {
+                zoomOutRunning = true
+                zoomOutHandler.postDelayed(zoomOutRunnable, 500)
+            }
+        } else {
+            zoomOutRunning = false
+            zoomOutHandler.removeCallbacksAndMessages(null)
         }
 
         return Pair(boundedX, boundedY)
@@ -317,19 +333,22 @@ class CropMoveHandler(
      * @param moveEdge the edge that is moved by the user interaction
      * @param moveTo the touch value
      * @param type indicates if this is an X or Y movement
+     * @return if the max edge was hit or not
      */
-    private fun handleMaxEdge(maxEdge: Line, moveEdge: Line, moveTo: Float, type: String) {
+    private fun handleMaxEdge(maxEdge: Line, moveEdge: Line, moveTo: Float, type: String): Boolean {
         val maxEdgeVal = maxEdge.getByType(type)
 
         // The distance between the lines must always be equal or larger than the minDimens
         val diff = maxEdgeVal - moveTo
 
         // If the distance between the lines is larger than the max distance just set it
-        if (diff >= minDimens) {
+        return if (diff >= minDimens) {
             moveEdge.setByType(moveTo, type)
+            false
         } else {
             // Otherwise set it to the max allowed value
             moveEdge.setByType(maxEdgeVal - minDimens, type)
+            true
         }
     }
 
@@ -343,16 +362,19 @@ class CropMoveHandler(
      * @param moveEdge the edge that is moved by the user interaction
      * @param moveTo the touch value
      * @param type indicates if this is an X or Y movement
+     * @return if the min edge was hit or not
      */
-    private fun handleMinEdge(minEdge: Line, moveEdge: Line, moveTo: Float, type: String) {
+    private fun handleMinEdge(minEdge: Line, moveEdge: Line, moveTo: Float, type: String): Boolean {
         val minEdgeVal = minEdge.getByType(type)
 
         // if the new value is still larger than the minimum height
-        if (moveTo >= minEdgeVal + minDimens) {
+        return if (moveTo >= minEdgeVal + minDimens) {
             moveEdge.setByType(moveTo, type)
+            false
         } else {
             // Otherwise it is the minimum line + the min value (minDimens)
             moveEdge.setByType(minEdgeVal + minDimens, type)
+            true
         }
     }
 
@@ -372,8 +394,6 @@ class CropMoveHandler(
         val bY = dY
 
         val zoomMultiplier = max(1f, zoomLevel / 2f)
-        val xMultiplier = heightToWidth * zoomMultiplier
-        val yMultiplier = widthToHeight * zoomMultiplier
 
         // If the move is to the left
         if (dX < 0) {
@@ -417,11 +437,11 @@ class CropMoveHandler(
         if (curDirectionX == NONE) {
             if (bX <= -threshold && borderBox.left.x == bounds.left) {
                 curDirectionX = LEFT
-                translateX = baseTranslate * xMultiplier
+                translateX = baseTranslate * zoomMultiplier
                 xChanged = true
             } else if (bX >= threshold && borderBox.right.x == bounds.right) {
                 curDirectionX = RIGHT
-                translateX = -baseTranslate * xMultiplier
+                translateX = -baseTranslate * zoomMultiplier
                 xChanged = true
             }
         } else {
@@ -441,11 +461,11 @@ class CropMoveHandler(
         if (curDirectionY == NONE) {
             if (bY <= -threshold && borderBox.top.y == bounds.top) {
                 curDirectionY = TOP
-                translateY = baseTranslate * yMultiplier
+                translateY = baseTranslate * zoomMultiplier
                 yChanged = true
             } else if (bY >= threshold && borderBox.bottom.y == bounds.bottom) {
                 curDirectionY = BOTTOM
-                translateY = -baseTranslate * yMultiplier
+                translateY = -baseTranslate * zoomMultiplier
                 yChanged = true
             }
         } else {
