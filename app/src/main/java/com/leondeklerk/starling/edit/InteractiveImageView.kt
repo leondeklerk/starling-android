@@ -41,7 +41,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
 ) {
     // Matrix variables
     private val m = Matrix()
-    private var startMatrix = Matrix()
+    var startMatrix = Matrix()
     private val matrixValues = FloatArray(9)
     var startValues: FloatArray? = null
 
@@ -61,6 +61,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     private var scaleDetector: ScaleGestureDetector? = null
     private var gestureDetector: GestureDetector? = null
     private var doubleTap = false
+
     var allowTranslation = false
 
     // Zooming

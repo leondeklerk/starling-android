@@ -29,8 +29,7 @@ class CropHandlerView(context: Context, attributeSet: AttributeSet?) : View(
     val cropBox: RectF
         get() = borderBox?.getRect() ?: RectF()
 
-    val xOffset: Float
-        get() = (borderBox?.getRect()?.left ?: 0f) - (moveHandler?.bounds?.left ?: 0f)
+    var originalBounds = RectF()
 
     private var borderBox: Box? = null
     private val handleBounds = px(16f)
@@ -65,6 +64,8 @@ class CropHandlerView(context: Context, attributeSet: AttributeSet?) : View(
         moveHandler = CropMoveHandler(
             rect, borderBox!!, handleBounds, px(64f), px(56f), px(8f)
         )
+
+        originalBounds = rect
 
         // Set up listeners
         moveHandler?.onBoundsHitListener = { delta, types ->

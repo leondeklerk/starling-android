@@ -16,12 +16,19 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.toRect
 import androidx.core.graphics.values
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
 import com.leondeklerk.starling.databinding.ImageEditLayoutBinding
 import com.leondeklerk.starling.edit.Side.NONE
 import java.io.IOException
+import java.util.UUID
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+import timber.log.Timber
 
 /**
  * Class that takes in a image and provides edit options.
@@ -157,47 +164,201 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     }
 
     private fun saveToStorage() {
-        // TODO
-        // var bitmap = imageView.drawable.toBitmap()
+        // ODO
+        var bitmap = imageView.drawable.toBitmap()
         //
         // // bitmap = Bitmap.createBitmap(bitmap, 0, 0, origWidth, origHeight, imageView.imageMatrix, false)
-        // val scale = imageView.imageMatrix.values()[Matrix.MSCALE_X]
-        // val cropBox = cropHandler.cropBox
+        val scale = imageView.imageMatrix.values()[Matrix.MSCALE_X]
+        val startScale = imageView.startValues!![Matrix.MSCALE_X]
+        val cropBox = cropHandler.cropBox.toRect()
         //
-        // val bmWidth = bitmap.width
-        // val bmHeight = bitmap.height
+        val bmWidth = bitmap.width
+        val bmHeight = bitmap.height
+
+        val startWidth = bitmap.width * startScale
+        val startHeight = bitmap.height * startScale
+
+        val widthRatio = bmWidth / startWidth
+        val heightRatio = bmHeight / startHeight
+
+        var startLeft = imageView.startValues!![Matrix.MTRANS_X]
+        var startTop = imageView.startValues!![Matrix.MTRANS_Y]
+        val curLeft = imageView.imageMatrix.values()[Matrix.MTRANS_X]
+        val curTop = imageView.imageMatrix.values()[Matrix.MTRANS_Y]
+
+        // if (curLeft <= 0) {
+        //     startLeft = 0f
+        // }
         //
-        // val origWidth = floor(cropBox.width())
-        // val origHeight = floor(cropBox.height())
+        // if (curTop <= 0) {
+        //     startTop = 0f
+        // }
+
+        // //
+        // // val origWidth = floor(cropBox.width())
+        // // val origHeight = floor(cropBox.height())
+        // //
+        // // val ratio = bmWidth / origWidth
+        // //
+        // // val baseWidth = origWidth * (bmWidth / origWidth)
+        // // val baseHeight = origHeight * (bmHeight / origHeight)
+        // //
+        // // Timber.d("Values: $bmWidth, $bmHeight, $origWidth, $origHeight")
+        // // Timber.d("Ratios: ${bmWidth / origWidth}, ${bmHeight / origHeight}")
+        // // Timber.d( "Results: $baseWidth, $baseHeight")
+        // //
+        // val cX = imageView.imageMatrix.values()[Matrix.MTRANS_X]
+        // val cY = imageView.imageMatrix.values()[Matrix.MTRANS_Y]
+        // val oX = (imageView.startValues!![Matrix.MTRANS_X])
+        // val oY = (imageView.startValues!![Matrix.MTRANS_Y])
+        // //
+        // val dX = ((oX - cX) / scale).toInt() //+ (cropBox.left.toInt() * scale).toInt()
+        // val dY = ((oY - cY) / scale).toInt()
+        // // Timber.d("Offsets: $dX, $dY")
+        // //
+        // // val newWidth = floor(baseWidth).toInt()
+        // // val newHeight = floor(baseHeight).toInt()
+        // //
+        // val matrix = Matrix()
+        // val baseScale = imageView.startValues!![Matrix.MSCALE_X]
+        // val normalizeMultiplier = (1f / baseScale)
+        // val newScale = scale * normalizeMultiplier
+        // matrix.postTranslate(dX.toFloat(), dY.toFloat())
+        // matrix.postScale(newScale, newScale)
         //
-        // val ratio = bmWidth / origWidth
         //
-        // val baseWidth = origWidth * (bmWidth / origWidth)
-        // val baseHeight = origHeight * (bmHeight / origHeight)
         //
-        // Timber.d("Values: $bmWidth, $bmHeight, $origWidth, $origHeight")
-        // Timber.d("Ratios: ${bmWidth / origWidth}, ${bmHeight / origHeight}")
-        // Timber.d( "Results: $baseWidth, $baseHeight")
         //
-        // val cX = imageView.imageMatrix.values()[Matrix.MTRANS_X].toInt()
-        // val cY = imageView.imageMatrix.values()[Matrix.MTRANS_Y].toInt()
-        // val oX = (imageView.startValues!![Matrix.MTRANS_X]).toInt()
-        // val oY = (imageView.startValues!![Matrix.MTRANS_Y]).toInt()
-        //
-        // val dX = (oX - cX)// / scale).toInt() //+ (cropBox.left.toInt() * scale).toInt()
-        // val dY = (oY - cY)// / scale).toInt()
-        // Timber.d("Offsets: $dX, $dY")
-        //
-        // val newWidth = floor(baseWidth).toInt()
-        // val newHeight = floor(baseHeight).toInt()
+        // val newWidth = floor(bmWidth / newScale).toInt()
+        // val newHeight = floor(bmHeight / newScale).toInt()
         //
         // val resizedBitmap = Bitmap.createBitmap(
         //     bitmap, dX, dY,
-        //     bmWidth, bmHeight, imageView.imageMatrix, true
+        //     newWidth, newHeight, matrix, true
         // )
-        //
-        //
-        // saveBitmap(context, resizedBitmap, Bitmap.CompressFormat.PNG, "image/png", "test43")
+
+        // val rect = Rect(0, 0, bmWidth, bmHeight)
+        // imageView.imageMatrix.mapRect(rect.toRectF())
+        val normalizedScaled = scale / startScale
+//        Timber.d("$bmWidth, $startWidth, ${cropBox.width()}, $widthRatio")
+//        Timber.d("$startScale, $scale, ${normalizedScaled}")
+//
+//        Timber.d("${round(cropBox.width() * widthRatio).toInt() / normalizedScaled.roundToInt()}")
+
+        val matrix = Matrix()
+        matrix.postScale(normalizedScaled, normalizedScaled)
+
+        val leftSide = if (curLeft >= 0) imageView.left + curLeft.toInt() else imageView.left
+        val topSide = if (curTop >= 0) imageView.top + curTop.toInt() else imageView.top
+
+        val leftOffset = max(0, cropBox.left - leftSide) // - startLeft.toInt() // does not account for initial offset.
+        val topOffset = max(0, cropBox.top - topSide) // - startTop.toInt()
+
+        var normalizedWidthOffset = 0
+        if (leftOffset > 0) {
+            val relativeWidthOffset = (imageView.width - 2 * leftSide) / leftOffset
+            normalizedWidthOffset = relativeWidthOffset * bmWidth
+        }
+
+        // TODO: left outside view + view width + right outside view = current total "view" width -> calculate percentage of the view visible in the view
+        Timber.d("Normalized scale: $startScale, ${imageView.width} ${imageView.imageMatrix.values()[Matrix.MTRANS_X]}")
+        val offset = abs(imageView.imageMatrix.values()[Matrix.MTRANS_X]) / normalizedScaled
+
+        Timber.d("Scale: ${startScale * bitmap.width}")
+
+        val transX = imageView.imageMatrix.values()[Matrix.MTRANS_X]
+        val transY = imageView.imageMatrix.values()[Matrix.MTRANS_Y]
+
+//        vvar boxBoundsWidth = imageView.width
+//
+//                if (transX > 0) {
+//                    boxBoundsWidth = (bitmap.width * scale).toInt()
+//                }
+//
+//        var boxBoundsHeight = imageView.height
+//        if (transY > 0) {
+//            boxBoundsHeight = (bitmap.height * scale).toInt()
+//        }
+
+        val relativeMaxWidth = startScale * bitmap.width * normalizedScaled
+        val relativeWidth = imageView.width / relativeMaxWidth
+        val relativeOffsetX = abs(transX) / relativeMaxWidth
+        var offX = relativeOffsetX * bitmap.width
+        var newWidth = (relativeWidth * bitmap.width).toInt()
+
+        val relativeMaxHeight = startScale * bitmap.height * normalizedScaled
+        val relativeHeight = imageView.height / relativeMaxHeight
+        val relativeOffsetY = abs(transY) / relativeMaxHeight
+        var offY = relativeOffsetY * bitmap.height
+        var newHeight = (relativeHeight * bitmap.height).toInt()
+
+        val maxBoxWidth = min(startScale * bitmap.width * normalizedScaled, imageView.width.toFloat())
+        val boxWidthRatio = min(cropBox.width() / maxBoxWidth, 1f)
+
+        val maxBoxHeight = min(startScale * bitmap.height * normalizedScaled, imageView.height.toFloat())
+        val boxHeightRatio = min(cropBox.height() / maxBoxHeight, 1f)
+
+//        // Calculate cropbox width an height offset
+//        Timber.d("${cropHandler.originalBounds.toRect().left}, ${cropBox.left}")
+//        // TODO: UPDATE bounds on center/adjust
+//        val originalWidth = cropHandler.originalBounds.toRect().width()
+//        val currentWidth = cropHandler.originalBounds.right - cropBox.left
+//        val boxWidthRatio = currentWidth / originalWidth.toFloat()
+//        val xOffset = (1f - boxWidthRatio) * bitmap.width
+//
+//        val originalHeight = cropHandler.originalBounds.toRect().height()
+//        val currentHeight = cropHandler.originalBounds.bottom - cropBox.top
+//        val boxHeightRatio = currentHeight / originalHeight.toFloat()
+//        val yOffset = (1f - boxHeightRatio) * bitmap.height
+// //        Timber.d("${currentHeight}, $originalHeight, $boxHeightRatio, ${yOffset}")
+
+//        var newWidth = (bitmap.width / normalizedScaled).toInt()
+//        var newHeight = (bitmap.height / normalizedScaled).toInt()
+
+        if (transX >= 0) {
+            offX = 0f
+        }
+
+        if (scale * bitmap.width <= imageView.width) {
+            newWidth = bitmap.width
+        }
+
+        if (transY >= 0) {
+            offY = 0f
+        }
+
+        if (scale * bitmap.height <= imageView.height) {
+            newHeight = bitmap.height
+        }
+
+        newWidth = (newWidth * boxWidthRatio).toInt()
+        newHeight = (newHeight * boxHeightRatio).toInt()
+
+        val relativeX = max(0f, transX)
+        val relativeY = max(0f, transY)
+        val diffX = max(0f, cropBox.left - (imageView.left + relativeX))
+        val diffY = max(0f, cropBox.top - (imageView.top + relativeY))
+
+        offX += (diffX / relativeMaxWidth) * bitmap.width
+        offY += (diffY / relativeMaxHeight) * bitmap.height
+
+        var result = Bitmap.createBitmap(
+            bitmap,
+            offX.toInt(),
+            offY.toInt(),
+            newWidth,
+            newHeight,
+//            (xOffset.toInt()),/// normalizedScaled).toInt(), // left / normalizedScaled.roundToInt(),
+//            (yOffset.toInt()),// / normalizedScaled).toInt(),// top / normalizedScaled.roundToInt(),
+//            (((cropBox.width() / cropHandler.originalBounds.width()) * bitmap.width) / normalizedScaled).toInt(),
+//                (((cropBox.height() / cropHandler.originalBounds.height()) * bitmap.height) / normalizedScaled).toInt(),
+//            round(cropBox.width() * widthRatio).toInt() / normalizedScaled.roundToInt(),
+//            round(cropBox.height() * heightRatio).toInt() / normalizedScaled.roundToInt(),
+            matrix,
+            true
+        )
+
+        saveBitmap(context, result, Bitmap.CompressFormat.JPEG, "image/jpeg", UUID.randomUUID().toString())
     }
 
     @Throws(IOException::class)
