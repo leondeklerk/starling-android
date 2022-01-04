@@ -25,18 +25,14 @@ class CropHandlerView(context: Context, attributeSet: AttributeSet?) : View(
     context,
     attributeSet
 ) {
-
-    val cropBox: RectF
-        get() = borderBox?.getRect() ?: RectF()
-
-    var originalBounds = RectF()
-
     private var borderBox: Box? = null
     private val handleBounds = px(16f)
     private var moveHandler: CropMoveHandler? = null
 
     var boundsHitHandler: ((delta: PointF, types: Pair<HandlerType, HandlerType>) -> Unit)? = null
     var zoomHandler: ((center: PointF, out: Boolean) -> Unit)? = null
+    val cropBox: RectF
+        get() = borderBox?.getRect() ?: RectF()
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
@@ -64,8 +60,6 @@ class CropHandlerView(context: Context, attributeSet: AttributeSet?) : View(
         moveHandler = CropMoveHandler(
             rect, borderBox!!, handleBounds, px(64f), px(56f), px(8f)
         )
-
-        originalBounds = rect
 
         // Set up listeners
         moveHandler?.onBoundsHitListener = { delta, types ->

@@ -18,7 +18,7 @@ import java.lang.Float.max
 import kotlin.math.min
 
 class CropMoveHandler(
-    var bounds: RectF,
+    private var bounds: RectF,
     private val borderBox: Box,
     private val handlerBounds: Float,
     private val minDimens: Float,
@@ -29,11 +29,6 @@ class CropMoveHandler(
     var onZoomListener: ((center: PointF, zoomOut: Boolean) -> Unit)? = null
     var onBoundsHitListener: ((delta: PointF, types: Pair<HandlerType, HandlerType>) -> Unit)? = null
     var zoomLevel = 1f
-
-    companion object {
-        const val X_TYPE = "x"
-        const val Y_TYPE = "y"
-    }
 
     private var zoomOutHandler = Handler(Looper.getMainLooper())
     private val zoomOutRunnable = Runnable {
@@ -50,6 +45,11 @@ class CropMoveHandler(
 
     private var translateX = 0f
     private var translateY = 0f
+
+    companion object {
+        const val X_TYPE = "x"
+        const val Y_TYPE = "y"
+    }
 
     /**
      * Starts a moving interaction.
@@ -106,9 +106,11 @@ class CropMoveHandler(
      * Resets the current movement details.
      */
     fun endMove() {
+        // Stop zoom out handling
         zoomOutHandler.removeCallbacksAndMessages(null)
         zoomOutRunning = false
 
+        // Reset the box properties and direction
         boxMoveStart = PointF()
         borderBoxStart = borderBox.copy()
         curDirectionX = NONE
@@ -120,6 +122,9 @@ class CropMoveHandler(
         }
     }
 
+    /**
+     * Cancels all movement
+     */
     fun cancel() {
         zoomOutHandler.removeCallbacksAndMessages(null)
         zoomOutRunning = false
@@ -130,10 +135,16 @@ class CropMoveHandler(
         curDirectionY = NONE
     }
 
+    /**
+     * Update the bounds to reflect image changes.
+     */
     fun updateBounds(newBounds: RectF) {
         bounds = newBounds
     }
 
+    /**
+     * Scales the box to a quarter of its size (half width, half height
+     */
     fun scaleBox(): RectF {
         val diffHor = (borderBox.right.x - borderBox.left.x) * (2f - 1f)
         val diffVert = (borderBox.bottom.y - borderBox.top.y) * (2f - 1f)
@@ -146,22 +157,30 @@ class CropMoveHandler(
         return RectF(left, top, right, bottom)
     }
 
+    /**
+     * Updates the border to ensure that it fits within the current bounds.
+     * @return A rectF containing the new updated borders
+     */
     fun updateBorder(): RectF {
         val imgWidth = bounds.right - bounds.left
         val imgHeight = bounds.bottom - bounds.top
         val sizeTo = borderBox.getRect()
 
+        // If the current border fits in the bounds, just translate the border
         if (borderBox.width.toInt() <= imgWidth.toInt()) {
             if (borderBox.left.x < bounds.left) {
+                // If the border is out of bounds on the left, translate to the right
                 val diff = bounds.left - borderBox.left.x
                 sizeTo.left += diff
                 sizeTo.right += diff
             } else if (borderBox.right.x > bounds.right) {
+                // If oob on the right translate to the left.
                 val diff = bounds.right - borderBox.right.x
                 sizeTo.right += diff
                 sizeTo.left += diff
             }
         } else {
+            // If border is > bounds, restrict on the left and/or right
             if (borderBox.left.x < bounds.left) {
                 sizeTo.left = bounds.left
             }
@@ -171,21 +190,26 @@ class CropMoveHandler(
             }
         }
 
+        // If smaller than bounds, translate up/down
         if (borderBox.height.toInt() <= imgHeight.toInt()) {
+            // Translate down
             if (borderBox.top.y < bounds.top) {
                 val diff = bounds.top - borderBox.top.y
                 sizeTo.top += diff
                 sizeTo.bottom += diff
             } else if (borderBox.bottom.y > bounds.bottom) {
+                // Translate box up
                 val diff = bounds.bottom - borderBox.bottom.y
                 sizeTo.top += diff
                 sizeTo.bottom += diff
             }
         } else {
+            // Restrict on the bottom
             if (borderBox.bottom.y > bounds.bottom) {
                 sizeTo.bottom = bounds.bottom
             }
 
+            // Restrict on the top
             if (borderBox.top.y < bounds.top) {
                 sizeTo.top = bounds.top
             }
@@ -194,13 +218,21 @@ class CropMoveHandler(
         return sizeTo
     }
 
+    /**
+     * Checks if the current zoom level is not one,
+     * will invoke the zoomlistener and if applicable start a new zoom check runnable.
+     */
     private fun checkZoomOut() {
         onZoomListener?.invoke(borderBox.center, true)
         if (zoomLevel != 1f) {
+            // Start a new runnable to check zoom out (to prevent needing to move if holding on an edge)
             zoomOutHandler.postDelayed(zoomOutRunnable, 1000)
         }
     }
 
+    /**
+     * Check if the box is small enough to automatically zoom in.
+     */
     private fun checkZoomIn() {
         onZoomListener?.let {
             val boxWidth = borderBox.width
@@ -209,10 +241,12 @@ class CropMoveHandler(
             val boundsWidth = bounds.width()
             val boundsHeight = bounds.height()
 
+            // Check if width and height are smaller than half
             val xSmall = boxWidth <= (boundsWidth / 2)
             val ySmall = boxHeight <= (boundsHeight / 2)
 
             if (xSmall && ySmall) {
+                // Call the listener
                 it(borderBox.center, false)
             }
         }
@@ -310,6 +344,7 @@ class CropMoveHandler(
             }
         }
 
+        // If we hit a bound, we can zoom out
         if (hitBounds && movingHandler != BOX && movingHandler != NONE) {
             if (!zoomOutRunning) {
                 zoomOutRunning = true

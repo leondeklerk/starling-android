@@ -32,22 +32,28 @@ data class Box(
             return PointF(centX, centY)
         }
 
-    fun getLines(): List<Line> {
-        return listOf(top, right, bottom, left)
-    }
-
-    fun getPoints(): List<PointF> {
-        return listOf(leftTop, rightTop, rightBottom, leftBottom)
-    }
-
+    /**
+     * Returns the rectangle representation of the box
+     * @return RectF containing the box.
+     */
     fun getRect(): RectF {
         return RectF(left.x, top.y, right.x, bottom.y)
     }
 
+    /**
+     * Check if a specific point is within the box.
+     * @param x: the x coordinate of the point
+     * @param y the y coordinate of the point
+     * @return if the point is within the box or not
+     */
     fun isWithin(x: Float, y: Float): Boolean {
         return (x >= leftTop.x && x <= rightBottom.x) && (y >= leftTop.y && y <= rightBottom.y)
     }
 
+    /**
+     * Copy a border box into a new instance
+     * @return a new box instance
+     */
     fun copy(): Box {
         val json = Gson().toJson(this)
         return Gson().fromJson(json, Box::class.java)
