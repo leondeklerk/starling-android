@@ -41,7 +41,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
 ) {
     // Matrix variables
     private val m = Matrix()
-    var startMatrix = Matrix()
+    private var startMatrix = Matrix()
     private val matrixValues = FloatArray(9)
     var startValues: FloatArray? = null
 
@@ -61,6 +61,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     private var scaleDetector: ScaleGestureDetector? = null
     private var gestureDetector: GestureDetector? = null
     private var doubleTap = false
+    private var firstSingleMove = true
 
     var allowTranslation = false
 
@@ -228,8 +229,14 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         if (!allowStartMove) {
             center()
         } else {
-            if (box.contains(scaleDetector!!.focusX, scaleDetector!!.focusY)) {
-                // Otherwise we have a one touch dragging movement
+            // If this is the first move, we have to check if its within bounds
+            if (firstSingleMove) {
+                if (box.contains(scaleDetector!!.focusX, scaleDetector!!.focusY)) {
+                    firstSingleMove = false
+                    handleTouchTranslate()
+                }
+            } else {
+                // Otherwise just handle movement
                 handleTouchTranslate()
             }
         }
@@ -258,6 +265,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         scaleBy = 1f
         center()
         allowStartMove = true
+        firstSingleMove = true
     }
 
     /**
@@ -611,7 +619,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * It will either center exactly at the center if the image is smaller than the view.
      * Or it will make sure the edges of the image are always at the edge of the view.
      */
-    fun center(
+    private fun center(
         values: FloatArray = matrixValues,
         box: RectF = bounds,
         animate: Boolean = true

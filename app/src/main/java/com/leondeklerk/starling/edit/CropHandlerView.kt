@@ -130,7 +130,7 @@ class CropHandlerView(context: Context, attributeSet: AttributeSet?) : View(
     /**
      * Executes on movement.
      * Responsible for translating the box/edges/corners.
-     * @param point the coordinates of the movemtns.
+     * @param point the coordinates of the movements.
      */
     fun onMove(point: PointF) {
         val changed = moveHandler?.onMove(point.x, point.y) ?: false
