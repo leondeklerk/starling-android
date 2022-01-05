@@ -159,68 +159,25 @@ class CropMoveHandler(
 
     /**
      * Updates the border to ensure that it fits within the current bounds.
-     * @return A rectF containing the new updated borders
+     * @return A rectF containing the updated borders
      */
     fun updateBorder(): RectF {
         val imgWidth = bounds.right - bounds.left
         val imgHeight = bounds.bottom - bounds.top
-        val sizeTo = borderBox.getRect()
 
-        // If the current border fits in the bounds, just translate the border
-        if (borderBox.width.toInt() <= imgWidth.toInt()) {
-            if (borderBox.left.x < bounds.left) {
-                // If the border is out of bounds on the left, translate to the right
-                val diff = bounds.left - borderBox.left.x
-                sizeTo.left += diff
-                sizeTo.right += diff
-            } else if (borderBox.right.x > bounds.right) {
-                // If oob on the right translate to the left.
-                val diff = bounds.right - borderBox.right.x
-                sizeTo.right += diff
-                sizeTo.left += diff
-            }
-        } else {
-            // If border is > bounds, restrict on the left and/or right
-            if (borderBox.left.x < bounds.left) {
-                sizeTo.left = bounds.left
-            }
+        val widthPair = Pair(borderBox.width, imgWidth)
+        val heightPair = Pair(borderBox.height, imgHeight)
 
-            if (borderBox.right.x > bounds.right) {
-                sizeTo.right = bounds.right
-            }
-        }
+        // Get the updated sides
+        val (left, right) = getUpdatedSide(widthPair, Pair(borderBox.left.x, borderBox.right.x), Pair(bounds.left, bounds.right))
+        val (top, bottom) = getUpdatedSide(heightPair, Pair(borderBox.top.y, borderBox.bottom.y), Pair(bounds.top, bounds.bottom))
 
-        // If smaller than bounds, translate up/down
-        if (borderBox.height.toInt() <= imgHeight.toInt()) {
-            // Translate down
-            if (borderBox.top.y < bounds.top) {
-                val diff = bounds.top - borderBox.top.y
-                sizeTo.top += diff
-                sizeTo.bottom += diff
-            } else if (borderBox.bottom.y > bounds.bottom) {
-                // Translate box up
-                val diff = bounds.bottom - borderBox.bottom.y
-                sizeTo.top += diff
-                sizeTo.bottom += diff
-            }
-        } else {
-            // Restrict on the bottom
-            if (borderBox.bottom.y > bounds.bottom) {
-                sizeTo.bottom = bounds.bottom
-            }
-
-            // Restrict on the top
-            if (borderBox.top.y < bounds.top) {
-                sizeTo.top = bounds.top
-            }
-        }
-
-        return sizeTo
+        return RectF(left, top, right, bottom)
     }
 
     /**
      * Checks if the current zoom level is not one,
-     * will invoke the zoomlistener and if applicable start a new zoom check runnable.
+     * will invoke the zoom listener and if applicable start a new zoom check runnable.
      */
     private fun checkZoomOut() {
         onZoomListener?.invoke(borderBox.center, true)
@@ -522,6 +479,51 @@ class CropMoveHandler(
             val types = Pair(curDirectionX, curDirectionY)
             onBoundsHitListener?.invoke(delta, types)
         }
+    }
+
+    /**
+     * Update the sides on one axis of a box to the bounds.
+     * Will translate the whole box on the axis if the box fits within the image.
+     * Will restrict a side to a bound if the image does not fit the image (anymore).
+     * @param props: the box and image axis properties (width/height)
+     * @param sides: the box sides (l/r, t/b)
+     * @param bounds: the relevant sides of the bounds (left/right, top/bottom)
+     * @return A pair containing the updated sides.
+     */
+    private fun getUpdatedSide(
+        props: Pair<Float, Float>,
+        sides: Pair<Float, Float>,
+        bounds: Pair<Float, Float>
+    ): Pair<Float, Float> {
+        val (boxProp, imgProp) = props
+
+        var (sideA, sideB) = sides
+
+        // Check if this axis fits the image
+        if (boxProp.toInt() <= imgProp.toInt()) {
+            var diff = 0f
+            // Check which side is out of bounds and calculate the translation
+            if (sides.first < bounds.first) {
+                diff = bounds.first - sides.first
+            } else if (sides.second > bounds.second) {
+                diff = bounds.second - sides.second
+            }
+
+            // Apply translation
+            sideA += diff
+            sideB += diff
+        } else {
+            // If the box does not fit, restrict the out of bound(s) side(s)
+            if (sides.first < bounds.first) {
+                sideA = bounds.first
+            }
+
+            if (sides.second > bounds.second) {
+                sideB = bounds.second
+            }
+        }
+
+        return Pair(sideA, sideB)
     }
 
     /**
