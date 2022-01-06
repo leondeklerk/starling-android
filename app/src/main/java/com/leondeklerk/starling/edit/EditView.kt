@@ -15,6 +15,7 @@ import android.provider.MediaStore
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.toRect
@@ -28,6 +29,10 @@ import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Class that takes in a image and provides edit options.
@@ -238,46 +243,53 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             true
         )
 
-        saveBitmap(context, result, Bitmap.CompressFormat.JPEG, "image/jpeg", UUID.randomUUID().toString())
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val uri = saveBitmap(context, result, Bitmap.CompressFormat.JPEG, "image/jpeg", UUID.randomUUID().toString())
+            } catch (e: IOException) {
+                Toast.makeText(context, "Error $e", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
-    @Throws(IOException::class)
-    fun saveBitmap(
+    private suspend fun saveBitmap(
         context: Context,
         bitmap: Bitmap,
         format: Bitmap.CompressFormat,
         mimeType: String,
         displayName: String
-    ): Uri {
+    ): Uri? {
 
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM)
-        }
-
-        val resolver = context.contentResolver
         var uri: Uri? = null
 
-        try {
-            uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                ?: throw IOException("Failed to create new MediaStore record.")
-
-            resolver.openOutputStream(uri)?.use {
-                if (!bitmap.compress(format, 95, it))
-                    throw IOException("Failed to save bitmap.")
-            } ?: throw IOException("Failed to open output stream.")
-
-            return uri
-        } catch (e: IOException) {
-
-            uri?.let { orphanUri ->
-                // Don't leave an orphan entry in the MediaStore
-                resolver.delete(orphanUri, null, null)
+        withContext(Dispatchers.IO) {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM)
             }
 
-            throw e
+            val resolver = context.contentResolver
+
+            try {
+                uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: throw IOException("Failed to create new MediaStore record.")
+
+                resolver.openOutputStream(uri!!)?.use {
+                    if (!bitmap.compress(format, 100, it))
+                        throw IOException("Failed to save bitmap.")
+                } ?: throw IOException("Failed to open output stream.")
+            } catch (e: IOException) {
+
+                uri?.let { orphanUri ->
+                    // Don't leave an orphan entry in the MediaStore
+                    resolver.delete(orphanUri, null, null)
+                }
+
+                throw e
+            }
         }
+        return uri
     }
 
     /**
