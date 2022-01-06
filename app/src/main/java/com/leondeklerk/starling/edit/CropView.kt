@@ -21,7 +21,7 @@ import com.leondeklerk.starling.extensions.drawLine
  * Uses a [CropMoveHandler] to handle box movements.
  * Intended to be used with an [EditView]
  */
-class CropHandlerView(context: Context, attributeSet: AttributeSet?) : View(
+class CropView(context: Context, attributeSet: AttributeSet?) : View(
     context,
     attributeSet
 ) {

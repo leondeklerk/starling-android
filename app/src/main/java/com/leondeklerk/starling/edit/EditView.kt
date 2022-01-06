@@ -32,7 +32,7 @@ import kotlin.math.min
 /**
  * Class that takes in a image and provides edit options.
  * Provides scaling, translating and cropping.
- * Makes use of a [CropHandlerView] to handle all selection box rendering and movement..
+ * Makes use of a [CropView] to handle all selection box rendering and movement..
  * Makes use of a [InteractiveImageView] for scaling and translating the image itself.
  */
 class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout(
@@ -62,7 +62,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
     var binding: ImageEditLayoutBinding = ImageEditLayoutBinding.inflate(LayoutInflater.from(context), this, true)
     var imageView: InteractiveImageView = binding.interactiveImageView
-    private var cropHandler: CropHandlerView = binding.cropHandler
+    private var cropHandler: CropView = binding.cropHandler
 
     init {
         setupImageView()

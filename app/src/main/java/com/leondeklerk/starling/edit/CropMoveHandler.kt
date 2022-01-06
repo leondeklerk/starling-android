@@ -19,6 +19,15 @@ import kotlin.math.min
 
 typealias PairF = Pair<Float, Float>
 
+/**
+ * The CropMoveHandler is responsible for starting, handling and stopping movement of the CropBox.
+ * @param bounds: The bounds of the image
+ * @param borderBox: the box drawn over the image
+ * @param handlerBounds: the pixel radius around a handler that counts as touching the handler
+ * @param minDimens: the minimum distance edges need to have
+ * @param threshold: the threshold after which a auto movement will start
+ * @param baseTranslate: the base translation which the box will auto translate.
+ */
 class CropMoveHandler(
     private var bounds: RectF,
     private val borderBox: Box,
@@ -53,6 +62,11 @@ class CropMoveHandler(
         const val Y_TYPE = "y"
     }
 
+    /**
+     * Axis data contains the data of the axis.
+     * @param sides: the axis coordinate value (x for left/right, y for top/bottom) for the sides
+     * @param bounds: the axis coordinate value for the bounds.
+     */
     data class AxisData(val sides: PairF, val bounds: PairF)
 
     /**
