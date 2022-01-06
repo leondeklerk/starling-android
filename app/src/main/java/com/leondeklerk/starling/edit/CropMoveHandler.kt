@@ -17,6 +17,8 @@ import com.leondeklerk.starling.edit.HandlerType.TOP
 import java.lang.Float.max
 import kotlin.math.min
 
+typealias PairF = Pair<Float, Float>
+
 class CropMoveHandler(
     private var bounds: RectF,
     private val borderBox: Box,
@@ -50,6 +52,8 @@ class CropMoveHandler(
         const val X_TYPE = "x"
         const val Y_TYPE = "y"
     }
+
+    data class AxisData(val sides: PairF, val bounds: PairF)
 
     /**
      * Starts a moving interaction.
@@ -169,8 +173,8 @@ class CropMoveHandler(
         val heightPair = Pair(borderBox.height, imgHeight)
 
         // Get the updated sides
-        val (left, right) = getUpdatedSide(widthPair, Pair(borderBox.left.x, borderBox.right.x), Pair(bounds.left, bounds.right))
-        val (top, bottom) = getUpdatedSide(heightPair, Pair(borderBox.top.y, borderBox.bottom.y), Pair(bounds.top, bounds.bottom))
+        val (left, right) = getUpdatedSide(widthPair, AxisData(Pair(borderBox.left.x, borderBox.right.x), Pair(bounds.left, bounds.right)))
+        val (top, bottom) = getUpdatedSide(heightPair, AxisData(Pair(borderBox.top.y, borderBox.bottom.y), Pair(bounds.top, bounds.bottom)))
 
         return RectF(left, top, right, bottom)
     }
@@ -272,7 +276,7 @@ class CropMoveHandler(
      * @param y the y value of the point to test
      * @return a pair containing the capped values.
      */
-    private fun withinBounds(x: Float, y: Float): Pair<Float, Float> {
+    private fun withinBounds(x: Float, y: Float): PairF {
         var boundedX = x
         var boundedY = y
         var hitBounds = false
@@ -374,106 +378,58 @@ class CropMoveHandler(
      * Calculates movements for the whole borderBox. Will move both right and left by the difference between
      * the box location at the start of the movement and the touchX (capped at the bounds).
      * Does the same for the top, bottom according to the touch y.
+     * Additionally calculates the direction and translation when the box is at the bounds,
+     * in order to invoke the auto movement of the image itself.
      *
      * @param moveX The new x point to calculate the distance from
      * @param moveY the y touch coordinate
      */
     private fun handleBoxMove(moveX: Float, moveY: Float) {
-        var dX = moveX - boxMoveStart.x
-        var dY = moveY - boxMoveStart.y
+        var restrictedX = moveX - boxMoveStart.x
+        var restrictedY = moveY - boxMoveStart.y
 
-        val bX = dX
-        val bY = dY
+        // Set the deltas to the (currently) unrestricted values
+        val deltaX = restrictedX
+        val deltaY = restrictedY
 
-        val zoomMultiplier = max(1f, zoomLevel / 2f)
+        val startAxisX = AxisData(Pair(borderBoxStart.left.x, borderBoxStart.right.x), Pair(bounds.left, bounds.right))
+        val startAxisY = AxisData(Pair(borderBoxStart.top.y, borderBoxStart.bottom.y), Pair(bounds.top, bounds.bottom))
 
-        // If the move is to the left
-        if (dX < 0) {
-            // If the move is beyond the bounds
-            if (borderBoxStart.left.x + dX <= bounds.left) {
-                // Set the dX to the max value it could have
-                dX = bounds.left - borderBoxStart.left.x
-            }
-        } else {
-            // If the right move is beyond the bounds
-            if (borderBoxStart.right.x + dX >= bounds.right) {
-                // Cap at the right bound
-                dX = bounds.right - borderBoxStart.right.x
-            }
-        }
+        // Calculated the restricted values
+        restrictedX = capDelta(restrictedX, startAxisX)
+        restrictedY = capDelta(restrictedY, startAxisY)
 
-        // If the move is to the top
-        if (dY < 0) {
-            // If beyond the top
-            if (borderBoxStart.top.y + dY <= bounds.top) {
-                // Cap at top
-                dY = bounds.top - borderBoxStart.top.y
-            }
-        } else {
-            // If beyond bottom
-            if (borderBoxStart.bottom.y + dY >= bounds.bottom) {
-                // cap at bottom
-                dY = bounds.bottom - borderBoxStart.bottom.y
-            }
-        }
+        // Move the box itself
+        borderBox.left.x = borderBoxStart.left.x + restrictedX
+        borderBox.right.x = borderBoxStart.right.x + restrictedX
 
-        borderBox.left.x = borderBoxStart.left.x + dX
-        borderBox.right.x = borderBoxStart.right.x + dX
+        borderBox.top.y = borderBoxStart.top.y + restrictedY
+        borderBox.bottom.y = borderBoxStart.bottom.y + restrictedY
 
-        borderBox.top.y = borderBoxStart.top.y + dY
-        borderBox.bottom.y = borderBoxStart.bottom.y + dY
+        val axisX = AxisData(Pair(borderBox.left.x, borderBox.right.x), Pair(bounds.left, bounds.right))
+        val axisY = AxisData(Pair(borderBox.top.y, borderBox.bottom.y), Pair(bounds.top, bounds.bottom))
 
-        var xChanged = false
-        var yChanged = false
+        // Update the auto translation and direction on the X axis
+        val xChanged = updateAutoTranslationAxis(
+            curDirectionX,
+            translateX,
+            deltaX,
+            axisX,
+            Pair(LEFT, RIGHT),
+            X_TYPE
+        )
 
-        if (curDirectionX == NONE) {
-            if (bX <= -threshold && borderBox.left.x == bounds.left) {
-                curDirectionX = LEFT
-                translateX = baseTranslate * zoomMultiplier
-                xChanged = true
-            } else if (bX >= threshold && borderBox.right.x == bounds.right) {
-                curDirectionX = RIGHT
-                translateX = -baseTranslate * zoomMultiplier
-                xChanged = true
-            }
-        } else {
-            if (curDirectionX == LEFT) {
-                if (bX > -threshold || borderBox.left.x != bounds.left) {
-                    curDirectionX = NONE
-                    xChanged = true
-                }
-            } else if (curDirectionX == RIGHT) {
-                if (bX < threshold || borderBox.right.x != bounds.right) {
-                    curDirectionX = NONE
-                    xChanged = true
-                }
-            }
-        }
+        // Update the auto translation and direction on the Y axis
+        val yChanged = updateAutoTranslationAxis(
+            curDirectionY,
+            translateY,
+            deltaY,
+            axisY,
+            Pair(TOP, BOTTOM),
+            Y_TYPE
+        )
 
-        if (curDirectionY == NONE) {
-            if (bY <= -threshold && borderBox.top.y == bounds.top) {
-                curDirectionY = TOP
-                translateY = baseTranslate * zoomMultiplier
-                yChanged = true
-            } else if (bY >= threshold && borderBox.bottom.y == bounds.bottom) {
-                curDirectionY = BOTTOM
-                translateY = -baseTranslate * zoomMultiplier
-                yChanged = true
-            }
-        } else {
-            if (curDirectionY == TOP) {
-                if (bY > -threshold || borderBox.top.y != bounds.top) {
-                    curDirectionY = NONE
-                    yChanged = true
-                }
-            } else if (curDirectionY == BOTTOM) {
-                if (bY < threshold || borderBox.bottom.y != bounds.bottom) {
-                    curDirectionY = NONE
-                    yChanged = true
-                }
-            }
-        }
-
+        // If there was a change, call the listener
         if (xChanged || yChanged) {
             val delta = PointF(translateX, translateY)
             val types = Pair(curDirectionX, curDirectionY)
@@ -486,16 +442,13 @@ class CropMoveHandler(
      * Will translate the whole box on the axis if the box fits within the image.
      * Will restrict a side to a bound if the image does not fit the image (anymore).
      * @param props: the box and image axis properties (width/height)
-     * @param sides: the box sides (l/r, t/b)
-     * @param bounds: the relevant sides of the bounds (left/right, top/bottom)
+     * @param axisData: the box sides and bounds information for this axis (x/y)
      * @return A pair containing the updated sides.
      */
-    private fun getUpdatedSide(
-        props: Pair<Float, Float>,
-        sides: Pair<Float, Float>,
-        bounds: Pair<Float, Float>
-    ): Pair<Float, Float> {
+    private fun getUpdatedSide(props: PairF, axisData: AxisData): PairF {
         val (boxProp, imgProp) = props
+        val sides = axisData.sides
+        val bounds = axisData.bounds
 
         var (sideA, sideB) = sides
 
@@ -524,6 +477,105 @@ class CropMoveHandler(
         }
 
         return Pair(sideA, sideB)
+    }
+
+    /**
+     * Checks if a delta translation is within bounds.
+     * A minus delta is a movement towards the origin (left, top).
+     * A positive delta is away from the origin (right, bottom).
+     * Checks where the box will end up and restrict to the correct bound.
+     * @param delta: the movement delta
+     * @param axisData: the sides and bounds data of the axis
+     * @return the restricted delta value.
+     */
+    private fun capDelta(delta: Float, axisData: AxisData): Float {
+        val boxSides = axisData.sides
+        val bounds = axisData.bounds
+
+        // Check origin side
+        if (delta < 0) {
+            // Restrict on the inner bound
+            if (boxSides.first + delta <= bounds.first) {
+                return bounds.first - boxSides.first
+            }
+        } else {
+            // Restrict on the outside bound
+            if (boxSides.second + delta >= bounds.second) {
+                return bounds.second - boxSides.second
+            }
+        }
+        return delta
+    }
+
+    /**
+     * Determines the (new) direction the auto translation will go in.
+     * Determines the translation speed based.
+     * Checks which side hits a bound and sets the direction to towards that bound.
+     * @param curDirection: the direction currently moving in
+     * @param curTranslation: the current translation value
+     * @param delta: the current movement delta
+     * @param axisData: the data of the sides and bounds of this axis
+     * @param options: the direction options available for this axis (left/right, top/bottom)
+     * @param axis: string representing the axis currently selected (x/y)
+     * @return if the direction changed or not
+     */
+    private fun updateAutoTranslationAxis(
+        curDirection: HandlerType,
+        curTranslation: Float,
+        delta: Float,
+        axisData: AxisData,
+        options: Pair<HandlerType, HandlerType>,
+        axis: String
+    ): Boolean {
+
+        val sides = axisData.sides
+        val bounds = axisData.bounds
+
+        var newDirection = curDirection
+        var translation = curTranslation
+        var changed = false
+
+        val zoomMultiplier = max(1f, zoomLevel / 2f)
+
+        // If not currently moving, determine a direction
+        if (curDirection == NONE) {
+            // If moving towards the origin (left/top)
+            if (delta <= -threshold && sides.first == bounds.first) {
+                newDirection = options.first
+                translation = baseTranslate * zoomMultiplier
+                changed = true
+            } else if (delta >= threshold && sides.second == bounds.second) {
+                // Moving from the origin (right/bottom)
+                newDirection = options.second
+                translation = -baseTranslate * zoomMultiplier
+                changed = true
+            }
+        } else {
+            if (curDirection == options.first) {
+                // Stop moving if we are no longer within the threshold or at inner the bound (left/top)
+                if (delta > -threshold || sides.first != bounds.first) {
+                    newDirection = NONE
+                    changed = true
+                }
+            } else if (curDirection == options.second) {
+                // Stop moving if we are no longer within the threshold or at outer the bound (right/bottom)
+                if (delta < threshold || sides.second != bounds.second) {
+                    newDirection = NONE
+                    changed = true
+                }
+            }
+        }
+
+        // Update the moving data
+        if (axis == X_TYPE) {
+            curDirectionX = newDirection
+            translateX = translation
+        } else {
+            curDirectionY = newDirection
+            translateY = translation
+        }
+
+        return changed
     }
 
     /**
