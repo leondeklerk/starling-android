@@ -231,7 +231,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         } else {
             // If this is the first move, we have to check if its within bounds
             if (firstSingleMove) {
-                if (box.contains(scaleDetector!!.focusX, scaleDetector!!.focusY)) {
+                if (box.contains(last.x, last.y)) {
                     firstSingleMove = false
                     handleTouchTranslate()
                 }
