@@ -243,9 +243,9 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             true
         )
 
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Main).launch {
             try {
-                val uri = saveBitmap(context, result, Bitmap.CompressFormat.JPEG, "image/jpeg", UUID.randomUUID().toString())
+                saveBitmap(context, result, Bitmap.CompressFormat.JPEG, "image/jpeg", UUID.randomUUID().toString())
             } catch (e: IOException) {
                 Toast.makeText(context, "Error $e", Toast.LENGTH_SHORT).show()
             }
@@ -258,38 +258,35 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         format: Bitmap.CompressFormat,
         mimeType: String,
         displayName: String
-    ): Uri? {
+    ) {
+        val uri: Uri?
 
-        var uri: Uri? = null
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM)
+        }
 
-        withContext(Dispatchers.IO) {
-            val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM)
-            }
+        val resolver = context.contentResolver
 
-            val resolver = context.contentResolver
+        uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: throw IOException("Failed to create new MediaStore record.")
+        try {
+            withContext(Dispatchers.IO) {
 
-            try {
-                uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                    ?: throw IOException("Failed to create new MediaStore record.")
-
-                resolver.openOutputStream(uri!!)?.use {
+                val inputStream = resolver.openOutputStream(uri)
+                inputStream?.use {
                     if (!bitmap.compress(format, 100, it))
                         throw IOException("Failed to save bitmap.")
-                } ?: throw IOException("Failed to open output stream.")
-            } catch (e: IOException) {
-
-                uri?.let { orphanUri ->
-                    // Don't leave an orphan entry in the MediaStore
-                    resolver.delete(orphanUri, null, null)
                 }
-
-                throw e
             }
+        } catch (e: IOException) {
+            uri.let { orphanUri ->
+                // Don't leave an orphan entry in the MediaStore
+                resolver.delete(orphanUri, null, null)
+            }
+            throw e
         }
-        return uri
     }
 
     /**
