@@ -69,6 +69,14 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     var imageView: InteractiveImageView = binding.interactiveImageView
     private var cropHandler: CropView = binding.cropHandler
 
+    /**
+     * Simple data class combining bitmap data.
+     * @param bitmapSize: the bitmap width or height value
+     * @param startScale: the starting scale of the bitmap in an imageView
+     * @param normalizedScale: the current bitmap scale normalized from 1 to max zoom size.
+     */
+    data class BitmapData(val bitmapSize: Int, val startScale: Float, val normalizedScale: Float)
+
     init {
         setupImageView()
 
@@ -174,71 +182,38 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      * Stores the new bitmap image to local storage.
      */
     private fun saveToStorage() {
+        // Get view values
         val bitmap = imageView.drawable.toBitmap()
-
-        val scale = imageView.imageMatrix.values()[Matrix.MSCALE_X]
+        val values = imageView.imageMatrix.values()
         val startScale = imageView.startValues!![Matrix.MSCALE_X]
         val cropBox = cropHandler.cropBox.toRect()
 
-        val normalizedScaled = scale / startScale
+        // Get matrix values
+        val scale = values[Matrix.MSCALE_X]
+        val transX = values[Matrix.MTRANS_X]
+        val transY = values[Matrix.MTRANS_Y]
 
+        // Build new matrix
+        val normalizedScaled = scale / startScale
         val matrix = Matrix()
         matrix.postScale(normalizedScaled, normalizedScaled)
 
-        val transX = imageView.imageMatrix.values()[Matrix.MTRANS_X]
-        val transY = imageView.imageMatrix.values()[Matrix.MTRANS_Y]
+        // Combine standard bitmap data.
+        val bitmapWidthData = BitmapData(bitmap.width, startScale, normalizedScaled)
+        val bitmapHeightData = BitmapData(bitmap.height, startScale, normalizedScaled)
 
-        val relativeMaxWidth = startScale * bitmap.width * normalizedScaled
-        val relativeWidth = imageView.width / relativeMaxWidth
-        val relativeOffsetX = abs(transX) / relativeMaxWidth
-        var offX = relativeOffsetX * bitmap.width
-        var newWidth = (relativeWidth * bitmap.width).toInt()
-
-        val relativeMaxHeight = startScale * bitmap.height * normalizedScaled
-        val relativeHeight = imageView.height / relativeMaxHeight
-        val relativeOffsetY = abs(transY) / relativeMaxHeight
-        var offY = relativeOffsetY * bitmap.height
-        var newHeight = (relativeHeight * bitmap.height).toInt()
-
-        val maxBoxWidth = min(startScale * bitmap.width * normalizedScaled, imageView.width.toFloat())
-        val boxWidthRatio = min(cropBox.width() / maxBoxWidth, 1f)
-
-        val maxBoxHeight = min(startScale * bitmap.height * normalizedScaled, imageView.height.toFloat())
-        val boxHeightRatio = min(cropBox.height() / maxBoxHeight, 1f)
-
-        if (transX >= 0) {
-            offX = 0f
-        }
-
-        if (scale * bitmap.width <= imageView.width) {
-            newWidth = bitmap.width
-        }
-
-        if (transY >= 0) {
-            offY = 0f
-        }
-
-        if (scale * bitmap.height <= imageView.height) {
-            newHeight = bitmap.height
-        }
-
-        newWidth = (newWidth * boxWidthRatio).toInt()
-        newHeight = (newHeight * boxHeightRatio).toInt()
-
-        val relativeX = max(0f, transX)
-        val relativeY = max(0f, transY)
-        val diffX = max(0f, cropBox.left - (imageView.left + relativeX))
-        val diffY = max(0f, cropBox.top - (imageView.top + relativeY))
-
-        offX += (diffX / relativeMaxWidth) * bitmap.width
-        offY += (diffY / relativeMaxHeight) * bitmap.height
+        // Calculate new image data
+        val xOffset = getAxisOffset(bitmapWidthData, transX, cropBox.left, imageView.left)
+        val yOffset = getAxisOffset(bitmapHeightData, transY, cropBox.top, imageView.top)
+        val resultWidth = getAxisSize(bitmapWidthData, imageView.width, cropBox.width(), scale)
+        val resultHeight = getAxisSize(bitmapHeightData, imageView.height, cropBox.height(), scale)
 
         val result = Bitmap.createBitmap(
             bitmap,
-            offX.toInt(),
-            offY.toInt(),
-            newWidth,
-            newHeight,
+            xOffset.toInt(),
+            yOffset.toInt(),
+            resultWidth.toInt(),
+            resultHeight.toInt(),
             matrix,
             true
         )
@@ -273,7 +248,8 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             ?: throw IOException("Failed to create new MediaStore record.")
         try {
             withContext(Dispatchers.IO) {
-
+                // Android studio gives an incorrect blocking call warning
+                @Suppress("BlockingMethodInNonBlockingContext")
                 val inputStream = resolver.openOutputStream(uri)
                 inputStream?.use {
                     if (!bitmap.compress(format, 100, it))
@@ -436,5 +412,64 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
 
         cropHandler.updateBounds(rect)
+    }
+
+    /**
+     * Based on the bitmap, the imageView size, cropBox size and scale,
+     * calculates the size of the result bitmap on an axis (width/height).
+     * @param data: common bitmap data
+     * @param imgSize the width/height of the imageView
+     * @param boxSize: the width/height of the crop box
+     * @param scale: the current image scale in the view
+     * @return the size (width/height) of the cropped image
+     */
+    private fun getAxisSize(data: BitmapData, imgSize: Int, boxSize: Int, scale: Float): Float {
+        // Calculate the maximum size on this scale
+        val maxSize = data.startScale * data.bitmapSize * data.normalizedScale
+        // Get the ratio that is visible
+        val sizeRatio = imgSize / maxSize
+        // Get the maximum size the box can be
+        val maxBoxSize = min(maxSize, imgSize.toFloat())
+        // Get the ratio of the box compared to the maximum box size
+        val boxSizeRatio = min(boxSize / maxBoxSize, 1f)
+        // The result is the size multiplied by both ratios (box and translation)
+        var resultSize = sizeRatio * data.bitmapSize * boxSizeRatio
+
+        // If the image is fully within the image view, only use the crop ratio
+        if (scale * data.bitmapSize <= imgSize) {
+            resultSize = data.bitmapSize * boxSizeRatio
+        }
+        return resultSize
+    }
+
+    /**
+     * Calculates the offset for a specific axis (x/y).
+     * The calculation is based on the current translation of the image in the view and the place of the crop box.
+     * @param data: the bitmap size and scaling data
+     * @param translation: the current image translation on this axis
+     * @param cropSide: the current location of the crop box on this axis (left/top)
+     * @param imageSide: the current location of the imageView on this axis (left/top)
+     * @return the calculated offset of the bitmap (cropped image lef/top)
+     */
+    private fun getAxisOffset(data: BitmapData, translation: Float, cropSide: Int, imageSide: Int): Float {
+        // Calculate the maximum size at this scale in relation to the imageView
+        val maxSize = data.startScale * data.bitmapSize * data.normalizedScale
+        var offset = 0f
+
+        // If the origin of the image is outside the visible imageView
+        if (translation < 0) {
+            // Get the % of the image that is no longer visible at this scale
+            val relativeOffset = abs(translation) / maxSize
+            // Convert this to pixels
+            offset = relativeOffset * data.bitmapSize
+        }
+
+        // Get a possible centering offset within the imageView
+        val cappedTranslation = max(0f, translation)
+        // Get the distance between the image side and the crop box side
+        val difference = max(0f, cropSide - (imageSide + cappedTranslation))
+        // Get the offset as a size percentage and convert this to pixels
+        offset += (difference / maxSize) * data.bitmapSize
+        return offset
     }
 }
