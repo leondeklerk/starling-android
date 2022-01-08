@@ -57,7 +57,7 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/bottom_action_bar"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="128dp"
             android:background="@drawable/image_bottom_bar_gradient"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
