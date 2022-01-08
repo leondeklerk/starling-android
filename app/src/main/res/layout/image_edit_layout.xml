@@ -17,7 +17,7 @@
         app:layout_constraintBottom_toTopOf="@+id/button_cancel"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
-        android:layout_marginTop="64dp" />
+        android:layout_marginTop="48dp" />
 
     <com.leondeklerk.starling.edit.CropView
         android:id="@+id/crop_handler"
@@ -28,23 +28,19 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginBottom="32dp"
-        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="16dp"
         app:layout_constraintEnd_toEndOf="parent"
         android:id="@+id/button_save"
-        android:text="save"
-        app:layout_constraintStart_toEndOf="@+id/button_cancel"
-        app:layout_constraintHorizontal_bias="0.5" />
+        android:text="@string/edit_btn_save_copy" />
 
     <com.google.android.material.button.MaterialButton
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:text="cancel"
-        android:layout_marginBottom="32dp"
+        android:text="@string/edit_btn_cancel"
+        android:layout_marginBottom="16dp"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginStart="32dp"
-        android:id="@+id/button_cancel"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintEnd_toStartOf="@+id/button_save" />
+        android:layout_marginStart="16dp"
+        android:id="@+id/button_cancel" />
 </androidx.constraintlayout.widget.ConstraintLayout>

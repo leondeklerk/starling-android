@@ -42,7 +42,7 @@ class ImageActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Create the viewModel
-        viewModel = ViewModelProvider(this).get(ImageViewModel::class.java)
+        viewModel = ViewModelProvider(this)[ImageViewModel::class.java]
 
         imageItem = ImageActivityArgs.fromBundle(intent.extras!!).imageItem
 
@@ -79,78 +79,76 @@ class ImageActivity : AppCompatActivity() {
         }
 
         // On clicking the image the system ui and the toolbar should disappear for a fullscreen experience.
-        // imageView.setOnClickListener {
-        //     supportActionBar?.hide()
-        //     binding.bottomActionBar.animate().alpha(0f)
-        //         .withEndAction { binding.bottomActionBar.visibility = View.INVISIBLE }
-        //
-        //     // Set the system ui visibility.
-        //     WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-        //         controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
-        //         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
-        //     }
-        // }
+        imageView.onTapListener = {
+            supportActionBar?.hide()
+            binding.bottomActionBar.animate().alpha(0f)
+                .withEndAction { binding.bottomActionBar.visibility = View.INVISIBLE }
+
+            // Set the system ui visibility.
+            WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+                controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+                controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+            }
+        }
 
         // Observer to handle cases where additional permission are needed to delete an item (Q and up)
         viewModel.requiresPermission.observe(
-            this,
-            { intentSender ->
-                intentSender?.let {
-                    permissionResult.launch(IntentSenderRequest.Builder(intentSender).build())
-                }
+            this
+        ) { intentSender ->
+            intentSender?.let {
+                permissionResult.launch(IntentSenderRequest.Builder(intentSender).build())
             }
-        )
+        }
 
         // Observer to check if the current fragment should be closed or not
         viewModel.shouldClose.observe(
-            this,
-            {
-                if (it) {
-                    onBackPressed()
-                }
+            this
+        ) {
+            if (it) {
+                onBackPressed()
             }
-        )
+        }
 
         viewModel.mode.observe(
-            this,
-            {
-                if (it == ImageViewModel.Mode.VIEW) {
-                    binding.editView.visibility = View.INVISIBLE
-                    binding.imageView.visibility = View.VISIBLE
+            this
+        ) {
+            if (it == ImageViewModel.Mode.VIEW) {
+                binding.editView.visibility = View.INVISIBLE
+                binding.imageView.visibility = View.VISIBLE
 
-                    setupInsets()
+                setupInsets()
 
-                    // Set the system ui visibility.
-                    WindowInsetsControllerCompat(window, window.decorView).systemBarsBehavior =
-                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
-                    loadImage(imageView)
-                } else {
-                    imageView.visibility = View.INVISIBLE
-                    supportActionBar?.hide()
-                    binding.bottomActionBar.animate().alpha(0f).withEndAction {
-                        binding.bottomActionBar.visibility = View.INVISIBLE
-                    }
-
-                    // Set the system ui visibility.
-                    WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-                        controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
-                        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
-                    }
-
-                    ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { _, insets ->
-                        // If the status bar and navigation bar reappear, so should the toolbar
-                        if (insets.isVisible(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())) {
-                        }
-
-                        binding.toolbar.setMarginTop(insets.getInsets(WindowInsetsCompat.Type.systemBars()).top)
-                        insets
-                    }
-
-                    binding.editView.visibility = View.VISIBLE
-                    loadImage(binding.editView.binding.interactiveImageView)
+                // Set the system ui visibility.
+                WindowInsetsControllerCompat(window, window.decorView).systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
+                loadImage(imageView)
+            } else {
+                imageView.visibility = View.INVISIBLE
+                supportActionBar?.hide()
+                binding.bottomActionBar.animate().alpha(0f).withEndAction {
+                    binding.bottomActionBar.visibility = View.INVISIBLE
                 }
+
+                // Set the system ui visibility.
+                WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+                    controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
+                }
+
+                ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { _, insets ->
+                    // If the status bar and navigation bar reappear, so should the toolbar
+                    if (insets.isVisible(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())) {
+                        // Do nothing?
+                    }
+
+                    binding.toolbar.setMarginTop(insets.getInsets(WindowInsetsCompat.Type.systemBars()).top)
+                    insets
+                }
+
+                binding.editView.visibility = View.VISIBLE
+                loadImage(binding.editView.imageView)
             }
-        )
+        }
 
         binding.bottomActionItems.mediaActionDelete.setOnClickListener {
             deleteMedia()
@@ -166,6 +164,10 @@ class ImageActivity : AppCompatActivity() {
                 viewModel.switchMode()
             }
             button.visibility = View.VISIBLE
+        }
+
+        binding.editView.onCancel = {
+            viewModel.switchMode()
         }
     }
 

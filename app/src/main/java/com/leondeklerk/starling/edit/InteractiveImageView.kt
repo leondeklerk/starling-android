@@ -81,6 +81,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     var onZoomLevelChangeListener: ((level: Float) -> Unit)? = null
     var onZoomedInListener: (() -> Unit)? = null
     var onMMatrixUpdateListener: ((values: FloatArray) -> Unit)? = null
+    var onTapListener: (() -> Unit)? = null
 
     private val gestureListener: GestureDetector.OnGestureListener = object : SimpleOnGestureListener() {
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
@@ -89,6 +90,11 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
                 doubleTap = true
             }
             return false
+        }
+
+        override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
+            onTapListener?.invoke()
+            return super.onSingleTapConfirmed(e)
         }
     }
 

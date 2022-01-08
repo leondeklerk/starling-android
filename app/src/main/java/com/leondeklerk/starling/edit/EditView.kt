@@ -22,6 +22,7 @@ import androidx.core.graphics.toRect
 import androidx.core.graphics.values
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
+import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ImageEditLayoutBinding
 import com.leondeklerk.starling.edit.Side.NONE
 import java.io.IOException
@@ -65,9 +66,12 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         private const val BOX_DURATION = 100L
     }
 
-    var binding: ImageEditLayoutBinding = ImageEditLayoutBinding.inflate(LayoutInflater.from(context), this, true)
-    var imageView: InteractiveImageView = binding.interactiveImageView
+    private var binding: ImageEditLayoutBinding = ImageEditLayoutBinding.inflate(LayoutInflater.from(context), this, true)
     private var cropHandler: CropView = binding.cropHandler
+
+    var imageView: InteractiveImageView = binding.interactiveImageView
+    var onCancel: (() -> Unit)? = null
+    var onSave: ((data: ImageItem) -> Unit)? = null
 
     /**
      * Simple data class combining bitmap data.
@@ -90,6 +94,10 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         super.onAttachedToWindow()
         binding.buttonSave.setOnClickListener {
             saveToStorage()
+        }
+
+        binding.buttonCancel.setOnClickListener {
+            onEditCancel()
         }
     }
 
@@ -263,6 +271,11 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             }
             throw e
         }
+    }
+
+    private fun onEditCancel() {
+        // Reset all the data, show the popup etc
+        onCancel?.invoke()
     }
 
     /**
