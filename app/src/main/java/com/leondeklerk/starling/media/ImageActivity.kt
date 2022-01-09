@@ -80,15 +80,16 @@ class ImageActivity : AppCompatActivity() {
 
         // On clicking the image the system ui and the toolbar should disappear for a fullscreen experience.
         imageView.onTapListener = {
-            supportActionBar?.hide()
-            binding.bottomActionBar.animate().alpha(0f)
-                .withEndAction { binding.bottomActionBar.visibility = View.INVISIBLE }
-
-            // Set the system ui visibility.
-            WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-                controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
-                controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+            binding.toolbar.animate().alpha(0f).setDuration(150).withEndAction {
+                // Set the system ui visibility.
+                WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+                    controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+                }
+                supportActionBar?.hide()
             }
+
+            binding.bottomActionBar.animate().alpha(0f).withEndAction { binding.bottomActionBar.visibility = View.INVISIBLE }
         }
 
         // Observer to handle cases where additional permission are needed to delete an item (Q and up)
@@ -119,12 +120,16 @@ class ImageActivity : AppCompatActivity() {
                 setupInsets()
 
                 // Set the system ui visibility.
-                WindowInsetsControllerCompat(window, window.decorView).systemBarsBehavior =
-                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
-                loadImage(imageView)
+                WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+                    controller.show(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())
+                }
             } else {
                 imageView.visibility = View.INVISIBLE
-                supportActionBar?.hide()
+                binding.toolbar.animate().alpha(0f).withEndAction {
+                    supportActionBar?.hide()
+                }
+
                 binding.bottomActionBar.animate().alpha(0f).withEndAction {
                     binding.bottomActionBar.visibility = View.INVISIBLE
                 }
@@ -135,13 +140,8 @@ class ImageActivity : AppCompatActivity() {
                     controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
                 }
 
+                // Override the window insets listener
                 ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { _, insets ->
-                    // If the status bar and navigation bar reappear, so should the toolbar
-                    if (insets.isVisible(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())) {
-                        // Do nothing?
-                    }
-
-                    binding.toolbar.setMarginTop(insets.getInsets(WindowInsetsCompat.Type.systemBars()).top)
                     insets
                 }
 
@@ -230,9 +230,11 @@ class ImageActivity : AppCompatActivity() {
             // If the status bar and navigation bar reappear, so should the toolbar
             if (insets.isVisible(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())) {
                 supportActionBar?.show()
-                binding.bottomActionBar.animate().alpha(1f).withEndAction {
-                    binding.bottomActionBar.visibility = View.VISIBLE
-                }
+                binding.toolbar.animate().alpha(1f)
+
+                binding.bottomActionBar.alpha = 0f
+                binding.bottomActionBar.visibility = View.VISIBLE
+                binding.bottomActionBar.animate().alpha(1f)
             }
 
             binding.toolbar.setMarginTop(insets.getInsets(WindowInsetsCompat.Type.systemBars()).top)

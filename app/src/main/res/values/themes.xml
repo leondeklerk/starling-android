@@ -26,6 +26,6 @@
     </style>
 
     <style name="Theme.Starling.FullScreen.Transparent" parent="Theme.Starling.Navigation.Transparent">
-        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@color/status_bar_scrim</item>
     </style>
 </resources>
