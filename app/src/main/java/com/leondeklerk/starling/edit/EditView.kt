@@ -99,6 +99,10 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         binding.buttonCancel.setOnClickListener {
             onEditCancel()
         }
+
+        binding.buttonReset.setOnClickListener {
+            onEditReset()
+        }
     }
 
     override fun onDetachedFromWindow() {
@@ -109,7 +113,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
     override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
         ev?.let {
-            if (ev.y >= binding.buttonSave.top) {
+            if (ev.y >= binding.rotationSlider.top) {
                 return false
             }
         }
@@ -276,6 +280,18 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     private fun onEditCancel() {
         // Reset all the data, show the popup etc
         onCancel?.invoke()
+    }
+
+    /**
+     * On clicking reset button reset the image state and the cropper state.
+     */
+    private fun onEditReset() {
+        imageView.reset()
+
+        // Register the image on reset listener
+        imageView.onResetListener = {
+            cropHandler.reset(BOX_DURATION)
+        }
     }
 
     /**

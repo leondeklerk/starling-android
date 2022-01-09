@@ -73,6 +73,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
 
     // Animation
     private var counter = 0
+    private var resetting = false
 
     // Listeners
     var onMatrixAppliedListener: (() -> Unit)? = null
@@ -82,6 +83,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     var onZoomedInListener: (() -> Unit)? = null
     var onMMatrixUpdateListener: ((values: FloatArray) -> Unit)? = null
     var onTapListener: (() -> Unit)? = null
+    var onResetListener: (() -> Unit)? = null
 
     private val gestureListener: GestureDetector.OnGestureListener = object : SimpleOnGestureListener() {
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
@@ -393,6 +395,17 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
 
             applyMatrixAnimated(zoomMatrix)
         }
+    }
+
+    /**
+     * Resets the image to the original image matrix and informs any listeners.
+     */
+    fun reset() {
+        // Reset touch
+        last = PointF(0f, 0f)
+        onZoomLevelChangeListener?.invoke(1f)
+        resetting = true
+        applyMatrixAnimated(startMatrix)
     }
 
     /**
@@ -726,6 +739,11 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
 
                 if (zoomedOut) {
                     zoomedOut = false
+                }
+
+                if (resetting) {
+                    resetting = false
+                    onResetListener?.invoke()
                 }
             }
         })

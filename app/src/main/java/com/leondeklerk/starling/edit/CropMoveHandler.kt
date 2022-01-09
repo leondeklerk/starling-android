@@ -194,6 +194,14 @@ class CropMoveHandler(
     }
 
     /**
+     * Reset the cropper to its initial state.
+     * @return the bounds of the image
+     */
+    fun reset(): RectF {
+        return bounds
+    }
+
+    /**
      * Checks if the current zoom level is not one,
      * will invoke the zoom listener and if applicable start a new zoom check runnable.
      */

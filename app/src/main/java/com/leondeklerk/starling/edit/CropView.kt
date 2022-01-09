@@ -162,6 +162,15 @@ class CropView(context: Context, attributeSet: AttributeSet?) : View(
     }
 
     /**
+     * Resets the cropView and sets the cropper to the initial bounds.
+     */
+    fun reset(duration: Long) {
+        moveHandler?.let {
+            animateBoxUpdate(it.reset(), duration)
+        }
+    }
+
+    /**
      * Draw the background around the border box.
      * Draws a darkened overlay between the border, and the image bounds.
      * @param canvas the canvas to draw on
