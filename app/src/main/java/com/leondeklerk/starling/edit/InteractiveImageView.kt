@@ -31,12 +31,10 @@ import kotlin.math.round
 import kotlin.math.sin
 
 /**
- * Extended image view that allows scaling and translating.
+ * Extended image view that allows scaling, rotation, and translating.
  * Provides a set of listeners for use with a [CropMoveHandler]
  * in an [EditView].
  * Provides (indirect) support for external zooming and (auto) translating.
- * Will additionally support rotation.
- * Originally based on https://github.com/jsibbold/zoomage
  */
 class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppCompatImageView(
     context,
