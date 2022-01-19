@@ -48,11 +48,11 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     // Scale variables
     private var calculatedMinScale = MIN_SCALE
     private var calculatedMaxScale = MAX_SCALE
-
     // Original start scale
     private var startScale = 1f
     private var scaleBy = 1f
     private var doubleTapScalar = 4f
+    private var startScalar = 1f
 
     // The current scaling applied to the image
     var currentScale = 1f
@@ -109,7 +109,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             // Current scale factor
-            scaleBy = detector.scaleFactor
+            scaleBy = startScalar * detector.scaleFactor / currentScale
 
             // The raw scale
             val projectedScale = scaleBy * currentScale
@@ -122,6 +122,11 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
             }
 
             return false
+        }
+
+        override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
+            startScalar = currentScale
+            return super.onScaleBegin(detector)
         }
 
         override fun onScaleEnd(detector: ScaleGestureDetector) {
