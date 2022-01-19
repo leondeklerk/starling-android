@@ -13,19 +13,22 @@ import android.view.GestureDetector
 import android.view.GestureDetector.SimpleOnGestureListener
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
-import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.graphics.values
 import androidx.core.view.ScaleGestureDetectorCompat
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
+import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.round
+import kotlin.math.sin
 
 /**
  * Extended image view that allows scaling and translating.
@@ -40,20 +43,27 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     attributeSet
 ) {
     // Matrix variables
-    private val m = Matrix()
     private var startMatrix = Matrix()
-    private val matrixValues = FloatArray(9)
-    var startValues: FloatArray? = null
 
     // Scale variables
     private var calculatedMinScale = MIN_SCALE
     private var calculatedMaxScale = MAX_SCALE
+
+    // Original start scale
     private var startScale = 1f
     private var scaleBy = 1f
     private var doubleTapScalar = 4f
 
+    // The current scaling applied to the image
+    var currentScale = 1f
+
+    // The default scale relative to the current rotation.
+    var baseScale = 1f
+
+    // Rotation
+    var rotated = 0f
+
     // Touch variables
-    private val bounds = RectF()
     private var last = PointF(0f, 0f)
     private var allowStartMove = true
     private var previousPointerCount = 1
@@ -62,28 +72,23 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     private var gestureDetector: GestureDetector? = null
     private var doubleTap = false
     private var firstSingleMove = true
-
     var allowTranslation = false
 
     // Zooming
     private var zoomedOut = false
     private var zoomedIn = false
-    private var origScale = 1f
     private var zoomLevel = 1f
 
     // Animation
-    private var counter = 0
     private var resetting = false
 
     // Listeners
-    var onMatrixAppliedListener: (() -> Unit)? = null
-    var onAxisCenteredListener: (() -> Unit)? = null
     var onBitmapSetListener: (() -> Unit)? = null
     var onZoomLevelChangeListener: ((level: Float) -> Unit)? = null
     var onZoomedInListener: (() -> Unit)? = null
-    var onMMatrixUpdateListener: ((values: FloatArray) -> Unit)? = null
     var onTapListener: (() -> Unit)? = null
     var onResetListener: (() -> Unit)? = null
+    var onImageUpdate: (() -> Unit)? = null
 
     private val gestureListener: GestureDetector.OnGestureListener = object : SimpleOnGestureListener() {
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
@@ -104,24 +109,19 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             // Current scale factor
-            scaleBy = startScale * detector.scaleFactor / matrixValues[Matrix.MSCALE_X]
+            scaleBy = detector.scaleFactor
 
             // The raw scale
-            val projectedScale = scaleBy * matrixValues[Matrix.MSCALE_X]
+            val projectedScale = scaleBy * currentScale
 
             // Make the scaling bounded
             if (projectedScale < calculatedMinScale) {
-                scaleBy = calculatedMinScale / matrixValues[Matrix.MSCALE_X]
+                scaleBy = calculatedMinScale / currentScale
             } else if (projectedScale > calculatedMaxScale) {
-                scaleBy = calculatedMaxScale / matrixValues[Matrix.MSCALE_X]
+                scaleBy = calculatedMaxScale / currentScale
             }
 
             return false
-        }
-
-        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
-            startScale = matrixValues[Matrix.MSCALE_X]
-            return true
         }
 
         override fun onScaleEnd(detector: ScaleGestureDetector) {
@@ -154,9 +154,12 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         if (!isClickable && isEnabled) {
             updateDetectors((event))
 
+            // Get the current image bounding box.
+            val boundingBox = getRect(imageMatrix)
+
             // If there is a double tap, we only execute that
             if (doubleTap) {
-                checkDoubleTap(event)
+                checkDoubleTap(event, boundingBox)
                 return true
             }
 
@@ -169,9 +172,9 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
                 MotionEvent.ACTION_MOVE -> {
                     // If there is one finger on the screen, we should drag the image
                     if (event.pointerCount == 1) {
-                        onSinglePointerMove()
+                        onSinglePointerMove(boundingBox)
                     } else {
-                        onMultiPointerMove()
+                        onMultiPointerMove(boundingBox)
                     }
                 }
                 MotionEvent.ACTION_UP -> {
@@ -189,7 +192,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * @param event the new motion event to add to the detectors.
      */
     fun updateDetectors(event: MotionEvent) {
-        prepareData()
+        checkMatrixType()
         scaleDetector!!.onTouchEvent(event)
         gestureDetector!!.onTouchEvent(event)
     }
@@ -197,15 +200,15 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     /**
      * Checks if a double tap action was executed.
      * If so, will call for the double tap to be handled.
-     * Will only handle a double tap within the given bounds.
+     * Will only handle a double tap if the image itself was tapped.
      * @param event the associated last motion event.
-     * @param box option parameters to indicate the bounds to check within, defaults to the image bounds.
+     * @param boundingBox the bounding box of the image.
      * @return if a tap was executed or not.
      */
-    fun checkDoubleTap(event: MotionEvent, box: RectF = bounds): Boolean {
+    fun checkDoubleTap(event: MotionEvent, boundingBox: RectF): Boolean {
         if (doubleTap) {
             // Only double tap within the bounds.
-            if (!box.contains(event.x, event.y)) {
+            if (!boundingBox.contains(event.x, event.y)) {
                 doubleTap = false
                 return false
             }
@@ -229,17 +232,17 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     /**
      * Executes the associated actions for a single pointer move.
      * Will translate the image based on the motion.
-     * Will only translate if the focus point is within the bounds.
-     * @param box optional bounds the touch event needs to be within, default to the image bounds
+     * Will only translate if the start focus point is within the image bounds.
+     * @param boundingBox: the bounding box of the current image.
      */
-    fun onSinglePointerMove(box: RectF = bounds) {
+    fun onSinglePointerMove(boundingBox: RectF) {
         // If we came from scaling, don't move and center
         if (!allowStartMove) {
-            center()
+            center(imageMatrix, true)
         } else {
             // If this is the first move, we have to check if its within bounds
             if (firstSingleMove) {
-                if (box.contains(last.x, last.y)) {
+                if (boundingBox.contains(last.x, last.y)) {
                     firstSingleMove = false
                     handleTouchTranslate()
                 }
@@ -253,12 +256,12 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     /**
      * Executes a multi touch movement.
      * Will scale and translate the image based on the motion.
-     * Only works if the focus is within the bounds.
-     * @param box optional bounds to check for, default to image bounds.
+     * Only works if the focus is within the current image bounds.
+     * @param boundingBox the current image bounding box.
      */
-    fun onMultiPointerMove(box: RectF = bounds) {
+    fun onMultiPointerMove(boundingBox: RectF) {
         // Start a scaling action
-        if (box.contains(scaleDetector!!.focusX, scaleDetector!!.focusY)) {
+        if (boundingBox.contains(scaleDetector!!.focusX, scaleDetector!!.focusY)) {
             allowStartMove = false
             handleTouchScaling()
         }
@@ -271,7 +274,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     fun onActionUp() {
         // End all scaling related movement
         scaleBy = 1f
-        center()
+        center(imageMatrix, true)
         allowStartMove = true
         firstSingleMove = true
     }
@@ -303,15 +306,16 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * @return if the image moved or not
      */
     fun translateImage(direction: Pair<Side, Side>, delta: PointF): Boolean {
-        prepareData()
+        val modifyMatrix = getModifyMatrix()
 
         var moveX = 0f
         var moveY = 0f
 
         // We can only translate if the image is zoomed in.
-        if (matrixValues[Matrix.MSCALE_X] > origScale) {
-            val matrixX = m.values()[Matrix.MTRANS_X]
-            val matrixY = m.values()[Matrix.MTRANS_Y]
+        if (currentScale > baseScale) {
+            val rect = getRect(modifyMatrix)
+            val matrixX = rect.left
+            val matrixY = rect.top
 
             val (dirX, dirY) = direction
 
@@ -333,9 +337,9 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
                 }
             }
 
-            m.postTranslate(moveX, moveY)
-
-            updateImageMatrix()
+            // Create the matrix and apply it
+            modifyMatrix.postTranslate(moveX, moveY)
+            applyMatrix(modifyMatrix, false)
 
             // Indicate if we moved or not
             return moveX != 0f || moveY != 0f
@@ -349,11 +353,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * @param out if zoomed out or not (in)
      */
     fun zoomImage(center: PointF, out: Boolean) {
-        prepareData()
-
-        // Create a new zooming matrix
-        var zoomMatrix = Matrix(m)
-        var zoomValues = zoomMatrix.values()
+        var modifyMatrix = getModifyMatrix()
 
         // Update the zoom level
         updateZoomLevel(out)
@@ -376,36 +376,96 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         if (zoomedIn || zoomedOut) {
             // Update the zoom level and calculate the exact scalar to reach the desired level.
             onZoomLevelChangeListener?.invoke(zoomLevel)
-            val scalar = (zoomLevel * origScale) / zoomValues[Matrix.MSCALE_X]
+            val scalar = (zoomLevel * baseScale) / currentScale
 
             // Set the matrix values
-            zoomMatrix.postScale(scalar, scalar, center.x, center.y)
-            zoomValues = zoomMatrix.values()
+            modifyMatrix.postScale(scalar, scalar, center.x, center.y)
+            currentScale *= scalar
 
             // Make sure the image is still properly centered
-            val translation = center(zoomValues, getRect(zoomValues), false)
-            zoomValues[Matrix.MTRANS_X] = translation.x
-            zoomValues[Matrix.MTRANS_Y] = translation.y
-            zoomMatrix.setValues(zoomValues)
+            val translation = center(modifyMatrix, false)
+            modifyMatrix.postTranslate(translation.x, translation.y)
 
             if (zoomLevel == 1f) {
-                // Reset the zoomMatrix
-                zoomMatrix = startMatrix
+                // Reset the image to the base matrix
+                modifyMatrix = getBaseMatrix()
             }
 
-            applyMatrixAnimated(zoomMatrix)
+            applyMatrix(modifyMatrix, true)
         }
     }
 
     /**
-     * Resets the image to the original image matrix and informs any listeners.
+     * Returns the startMatrix relative to the current rotation.
+     * Applies the current rotation to the startMatrix and makes sure the baseScale it is scaled to the correct baseScale.
+     * @returns the base matrix for this rotation.
+     */
+    private fun getBaseMatrix(): Matrix {
+        val baseMatrix = Matrix(startMatrix)
+        // Scale to the base scale for this rotation
+        val scaleBy = baseScale / startScale
+        baseMatrix.postScale(scaleBy, scaleBy, width / 2f, height / 2f)
+        // Rotate with the current rotation
+        baseMatrix.postRotate(rotated, width / 2f, height / 2f)
+        currentScale = baseScale
+        return baseMatrix
+    }
+
+    /**
+     * Resets the image to the start image matrix and informs any listeners.
      */
     fun reset() {
         // Reset touch
         last = PointF(0f, 0f)
         onZoomLevelChangeListener?.invoke(1f)
         resetting = true
-        applyMatrixAnimated(startMatrix)
+
+        // Restore the original (calculated) values
+        baseScale = startScale
+        currentScale = baseScale
+        calculatedMinScale = MIN_SCALE * baseScale
+        calculatedMaxScale = MAX_SCALE * baseScale
+        rotated = 0f
+
+        applyMatrix(startMatrix, true)
+    }
+
+    /**
+     * Rotate the image 90 degrees.
+     * Automatically updates the scales relative to this rotation.
+     */
+    fun rotateImage() {
+        val modifyMatrix = getModifyMatrix()
+
+        // Cap rotation
+        rotated = (rotated + 90f) % 360F
+
+        modifyMatrix.postRotate(90f, width / 2f, height / 2f)
+        val newWidth = imgWidth()
+        val newHeight = imgHeight()
+
+        // If image is too small we need to enlarge it to the base size
+        if (newWidth < width && newHeight < height) {
+            // Calculate the scaling needed
+            val widthScale = newWidth / width
+            val heightScale = newHeight / height
+            val newScale = max(widthScale, heightScale)
+            val scaleBy = 1f / newScale
+
+            // Apply the scaling tot he current matrix
+            val bounded = getBoundedRect(modifyMatrix)
+            modifyMatrix.postScale(scaleBy, scaleBy, bounded.centerX(), bounded.centerY())
+            currentScale *= scaleBy
+        }
+
+        // Update the calculated scales for the current rotation
+        calculatedMinScale = MIN_SCALE * min(currentScale * (width / imgWidth()), currentScale * (height / imgHeight()))
+        calculatedMaxScale = MAX_SCALE * min(currentScale * (width / imgWidth()), currentScale * (height / imgHeight()))
+        // BaseScale is equal to the minScale since MIN_SCALE == 1
+        baseScale = calculatedMinScale
+
+        applyMatrix(modifyMatrix, false)
+        onImageUpdate?.invoke()
     }
 
     /**
@@ -417,7 +477,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      */
     private fun updateZoomLevel(ceil: Boolean) {
         // Calculate the current scale factor (int value between MIN and MAX scale)
-        val factor = round(matrixValues[Matrix.MSCALE_X] / origScale)
+        val factor = round(currentScale / baseScale)
 
         // Calculate the log value
         val log = log2(factor)
@@ -435,125 +495,150 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
 
     /**
      * Set all the initial values of the edit screen.
-     * Sets the starting matrix values.
+     * Sets the starting matrix values, and the starting scale.
      * Invokes the onBitmapSetListener.
      */
     private fun initializeValues() {
         val values = imageMatrix.values()
-        startValues = values
         startMatrix = Matrix(imageMatrix)
-        origScale = values[Matrix.MSCALE_X]
-        calculatedMinScale = MIN_SCALE * values[Matrix.MSCALE_X]
-        calculatedMaxScale = MAX_SCALE * values[Matrix.MSCALE_X]
-        updateMMatrix()
+
+        // Set the scales
+        startScale = values[Matrix.MSCALE_X]
+        baseScale = startScale
+        currentScale = startScale
+        calculatedMinScale = MIN_SCALE * currentScale
+        calculatedMaxScale = MAX_SCALE * currentScale
 
         onBitmapSetListener?.invoke()
     }
 
     /**
-     * Update the matrix containing the new matrix values.
-     * Also updates the bounds and invokes the onMMatrixUpdateListener.
-     *
+     * Gets the bounding box of an image matrix.
+     * @param reference the reference matrix to calculate the bounding box on.
+     * @returns the bounding box of the matrix.
      */
-    private fun updateMMatrix() {
-        // Update all values
-        m.set(imageMatrix)
-        m.getValues(matrixValues)
-        val rect = getRect(matrixValues)
+    fun getRect(reference: Matrix): RectF {
+        val values = reference.values()
+        val left = when (rotated) {
+            90f -> values[Matrix.MTRANS_X] - imgWidth()
+            180f -> values[Matrix.MTRANS_X] - imgWidth()
+            270f -> values[Matrix.MTRANS_X]
+            else -> values[Matrix.MTRANS_X]
+        }
 
-        // Set the image bounds
-        bounds.set(rect.left, rect.top, rect.right, rect.bottom)
-
-        onMMatrixUpdateListener?.invoke(matrixValues)
-    }
-
-    /**
-     * Get the rectangle based on the values of a matrix value array.
-     * Takes the translation into account.
-     * @param values the values of the matrix
-     * @returns a rectangle representing the matrix borders
-     */
-    private fun getRect(values: FloatArray): RectF {
-        val left = values[Matrix.MTRANS_X]
-        val top = values[Matrix.MTRANS_Y]
-        val right = imgWidth(values) + left
-        val bottom = imgHeight(values) + top
+        val top = when (rotated) {
+            90f -> values[Matrix.MTRANS_Y]
+            180f -> values[Matrix.MTRANS_Y] - imgHeight()
+            270f -> values[Matrix.MTRANS_Y] - imgHeight()
+            else -> values[Matrix.MTRANS_Y]
+        }
+        val right = imgWidth() + left
+        val bottom = imgHeight() + top
         return RectF(left, top, right, bottom)
     }
 
     /**
-     * Getter for the width of the image, scaled to the current scalar
-     * @param values the values array to retrieve the scalar from.
-     * @return the width
+     * Get the boundingBox rectangle restricted to the borders of the view.
+     * @param refMatrix: the reference matrix to retrieve the bounding box for.
+     * @return the bounded bounding box of the matrix.
      */
-    fun imgWidth(values: FloatArray = matrixValues): Float {
-        return drawable.intrinsicWidth * values[Matrix.MSCALE_X]
+    fun getBoundedRect(refMatrix: Matrix): RectF {
+        val rect = getRect(refMatrix)
+        rect.left = max(0f, rect.left)
+        rect.top = max(0f, rect.top)
+        rect.right = min(rect.left + width, rect.right)
+        rect.bottom = min(rect.top + height, rect.bottom)
+        return rect
     }
 
     /**
-     * Getter for the height of the image, scaled to the current scalar
-     * @param values the values array to retrieve the scalar from.
-     * @return the height
+     * Checks if the image was touched.
+     * @return if the current image is changed or not.
      */
-    fun imgHeight(values: FloatArray = matrixValues): Float {
-        return drawable.intrinsicHeight * values[Matrix.MSCALE_Y]
+    fun isTouched(): Boolean {
+        return !imageMatrix.equals(startMatrix)
+    }
+
+    /**
+     * Apply the matrix to the image,
+     * either with an animation or directly.
+     * @param to: the new matrix to apply to the image.
+     * @param animate: indicates if the application should be animated or directly.
+     */
+    private fun applyMatrix(to: Matrix, animate: Boolean) {
+        if (animate) {
+            animateMatrix(to)
+        } else {
+            imageMatrix = to
+        }
+    }
+
+    /**
+     * Getter for the width of the image, scaled to the current scalar, takes rotation into account.
+     * @return the width of the image at this scale.
+     */
+    private fun imgWidth(): Float {
+        val radians = rotated.toDouble() * (PI / 180)
+        return abs(sin(radians) * (drawable.intrinsicHeight * currentScale) + cos(radians) * (drawable.intrinsicWidth * currentScale)).toFloat()
+    }
+
+    /**
+     * Getter for the height of the image, scaled to the current scalar taking rotation into account.
+     * @return the height of the image at this scale.
+     */
+    private fun imgHeight(): Float {
+        val radians = rotated.toDouble() * (PI / 180)
+        return abs(sin(radians) * (drawable.intrinsicWidth * currentScale) + cos(radians) * (drawable.intrinsicHeight * currentScale)).toFloat()
     }
 
     /**
      * Helper function that makes sure that the correct scale type is set.
-     * Additionally makes sure the manipulation matrix m is up to date.
      */
-    private fun prepareData() {
+    private fun checkMatrixType() {
         if (scaleType != ScaleType.MATRIX) {
             super.setScaleType(ScaleType.MATRIX)
         }
+    }
 
-        updateMMatrix()
+    /**
+     * Returns a copy of the current imageMatrix as a modify matrix.
+     * Additionally makes sure the correct scaleType is set.
+     */
+    private fun getModifyMatrix(): Matrix {
+        checkMatrixType()
+        return Matrix(imageMatrix)
     }
 
     /**
      * Handler for a double tap action.
-     * Will scale the image to the double tap scaling value,
-     * and animate the transition.
-     * If already zoomed in, will reset to the starting values.
+     * Will scale the image to the double tap scaling value and animate the transition.
+     * If already zoomed in, will reset to the base matrix for this rotation.
      */
     private fun handleDoubleTap() {
         doubleTap = false
 
         // If we are zoomed in, zoom out
-        if (matrixValues[Matrix.MSCALE_X] != startValues!![Matrix.MSCALE_X]) {
-            applyMatrixAnimated(startMatrix)
+        if (currentScale != baseScale) {
+            val matrix = getBaseMatrix()
+            applyMatrix(matrix, true)
         } else {
-            val zoomMatrix = Matrix(m)
+            val modifyMatrix = getModifyMatrix()
 
             // Scale with an offset based on the margin.
-            zoomMatrix.postScale(
+            modifyMatrix.postScale(
                 doubleTapScalar,
                 doubleTapScalar,
                 -marginLeft + scaleDetector!!.focusX,
                 -marginTop + scaleDetector!!.focusY
             )
-
-            val zoomValues = zoomMatrix.values()
+            currentScale *= doubleTapScalar
 
             // Make sure the image is still properly centered
-            val translation = center(zoomValues, getRect(zoomValues), false)
-            zoomValues[Matrix.MTRANS_X] = translation.x
-            zoomValues[Matrix.MTRANS_Y] = translation.y
+            val translation = center(modifyMatrix, false)
+            modifyMatrix.postTranslate(translation.x, translation.y)
 
-            zoomMatrix.setValues(zoomValues)
-
-            applyMatrixAnimated(zoomMatrix)
+            applyMatrix(modifyMatrix, true)
         }
-    }
-
-    /**
-     * Sets the imageMatrix to the new matrix.
-     * Also updates all related variables.
-     */
-    private fun updateImageMatrix() {
-        imageMatrix = m
-        updateMMatrix()
     }
 
     /**
@@ -563,18 +648,20 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * Optionally directly sets the value of the imageMatrix.
      * @param delaySet indicates if setting the value of the imageMatrix should be handled now (true) or not (false)
      */
-    private fun handleTouchTranslate(delaySet: Boolean = false) {
+    private fun handleTouchTranslate(delaySet: Boolean = false): PointF {
         val focus = PointF(scaleDetector!!.focusX, scaleDetector!!.focusY)
 
         // calculate the distance for translation
         val (dX, dY) = getDistance(focus, last)
-        m.postTranslate(dX, dY)
 
         // If delaySet is set to false, update the image matrix
         if (!delaySet) {
-            updateImageMatrix()
+            val modifyMatrix = getModifyMatrix()
+            modifyMatrix.postTranslate(dX, dY)
+            applyMatrix(modifyMatrix, false)
             last = PointF(scaleDetector!!.focusX, scaleDetector!!.focusY)
         }
+        return PointF(dX, dY)
     }
 
     /**
@@ -583,8 +670,9 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * @return a pair containing the delta x and delta
      */
     private fun getDistance(from: PointF, to: PointF): Pair<Float, Float> {
-        val dX = getAxisDistance(from.x, to.x, Pair(bounds.left, bounds.right), width)
-        val dY = getAxisDistance(from.y, to.y, Pair(bounds.top, bounds.bottom), height)
+        val boundingBox = getRect(imageMatrix)
+        val dX = getAxisDistance(from.x, to.x, Pair(boundingBox.left, boundingBox.right), width)
+        val dY = getAxisDistance(from.y, to.y, Pair(boundingBox.top, boundingBox.bottom), height)
 
         return Pair(dX, dY)
     }
@@ -618,16 +706,18 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * Applies the new matrix (m) to the imageMatrix.
      */
     private fun handleTouchScaling() {
+        val modifyMatrix = getModifyMatrix()
         val focusX = scaleDetector!!.focusX
         val focusY = scaleDetector!!.focusY
 
-        // Scaling can also translate a bit
-        handleTouchTranslate(true)
-
-        m.postScale(scaleBy, scaleBy, focusX, focusY)
+        // Scaling can also translate
+        val translation = handleTouchTranslate(true)
+        modifyMatrix.postTranslate(translation.x, translation.y)
+        modifyMatrix.postScale(scaleBy, scaleBy, focusX, focusY)
+        currentScale *= scaleBy
 
         // Update all values
-        updateImageMatrix()
+        applyMatrix(modifyMatrix, false)
         updateZoomLevel(true)
 
         last = PointF(scaleDetector!!.focusX, scaleDetector!!.focusY)
@@ -637,21 +727,27 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * This will center both axis of the image.
      * It will either center exactly at the center if the image is smaller than the view.
      * Or it will make sure the edges of the image are always at the edge of the view.
+     * Can immediately apply the centering, or not.
+     * @param refMatrix: the reference matrix of the current or projected image.
+     * @param animate: to immediately apply the transformation or not
+     * @return a PointF containing the calculated translation.
      */
     private fun center(
-        values: FloatArray = matrixValues,
-        box: RectF = bounds,
-        animate: Boolean = true
+        refMatrix: Matrix,
+        animate: Boolean
     ): PointF {
-        val x = centerAxis(Pair(imgWidth(values), width), Pair(box.left, box.right)) ?: values[Matrix.MTRANS_X]
-        val y = centerAxis(Pair(imgHeight(values), height), Pair(box.top, box.bottom)) ?: values[Matrix.MTRANS_Y]
+        val boundingBox = getRect(refMatrix)
+        val dX = centerAxis(Pair(imgWidth(), width), Pair(boundingBox.left, boundingBox.right))
+        val dY = centerAxis(Pair(imgHeight(), height), Pair(boundingBox.top, boundingBox.bottom))
 
+        // apply the translation
         if (animate) {
-            animateMatrixAxis(Matrix.MTRANS_X, x)
-            animateMatrixAxis(Matrix.MTRANS_Y, y)
+            val modifyMatrix = getModifyMatrix()
+            modifyMatrix.postTranslate(dX, dY)
+            applyMatrix(modifyMatrix, true)
         }
 
-        return PointF(x, y)
+        return PointF(dX, dY)
     }
 
     /**
@@ -660,7 +756,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * @param imgDimens a pair containing the current image dimension and the view dimension (e.g. imgWidth/Width)
      * @param bounds a pair containing the min and max bounds of an image (top/bottom pair or left/right pair)
      */
-    private fun centerAxis(imgDimens: Pair<Float, Int>, bounds: Pair<Float, Float>): Float? {
+    private fun centerAxis(imgDimens: Pair<Float, Int>, bounds: Pair<Float, Float>): Float {
         val (curDimens, maxDimens) = imgDimens
         val (min, max) = bounds
 
@@ -668,62 +764,65 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         if (curDimens > maxDimens) {
             // The min edge is too much to the inside (left/top)
             if (min > 0f) {
-                return 0f
+                return -min
             } else if (max < maxDimens) {
                 // The max edge is too much to the inside (right/bottom)
-                return min + maxDimens - max
+                return maxDimens - max
             }
         } else {
             // We should only center if the image fits in the bounds but goes beyond a bound.
             if (allowTranslation && min >= 0f && max <= maxDimens) {
-                return null
+                return 0f
             }
             // Then we need to center at exactly half
-            return (maxDimens - curDimens) / 2
+            return (maxDimens / 2) - (min + ((max - min) / 2))
         }
-        return null
+        return 0f
     }
 
     /**
      * Apply the targetMatrix to the imageMatrix, by animating the transformation.
      * Will either call the zoomed in listener on finish or the matrix applied listener.
-     *
-     * @param targetMatrix the target matrix to animate to.
+     * @param to the target matrix to animate to.
      */
-    private fun applyMatrixAnimated(targetMatrix: Matrix) {
+    private fun animateMatrix(to: Matrix) {
         // Set all starting variables
-        val targetValues = targetMatrix.values()
-        val beginMatrix = Matrix(imageMatrix)
-        beginMatrix.getValues(matrixValues)
+        val targetValues = to.values()
+        val from = Matrix(imageMatrix)
+        val fromValues = from.values()
 
-        val xScaleDiff = targetValues[Matrix.MSCALE_X] - matrixValues[Matrix.MSCALE_X]
-        val yScaleDiff = targetValues[Matrix.MSCALE_Y] - matrixValues[Matrix.MSCALE_Y]
-        val xTransDiff = targetValues[Matrix.MTRANS_X] - matrixValues[Matrix.MTRANS_X]
-        val yTransDiff = targetValues[Matrix.MTRANS_Y] - matrixValues[Matrix.MTRANS_Y]
+        val xScaleDiff = targetValues[Matrix.MSCALE_X] - fromValues[Matrix.MSCALE_X]
+        val yScaleDiff = targetValues[Matrix.MSCALE_Y] - fromValues[Matrix.MSCALE_Y]
+        val xSkewDiff = targetValues[Matrix.MSKEW_X] - fromValues[Matrix.MSKEW_X]
+        val ySkewDiff = targetValues[Matrix.MSKEW_Y] - fromValues[Matrix.MSKEW_Y]
+        val xTransDiff = targetValues[Matrix.MTRANS_X] - fromValues[Matrix.MTRANS_X]
+        val yTransDiff = targetValues[Matrix.MTRANS_Y] - fromValues[Matrix.MTRANS_Y]
 
         // set up the animator
         val animator = ValueAnimator.ofFloat(0f, 1f)
         animator.addUpdateListener(object : AnimatorUpdateListener {
-            val activeMatrix = Matrix(imageMatrix)
+            val activeMatrix = Matrix(from)
             val values = FloatArray(9)
 
             // Update the current image matrix
             override fun onAnimationUpdate(animation: ValueAnimator) {
                 val currentValue = animation.animatedValue as Float
-                activeMatrix.set(beginMatrix)
+                activeMatrix.set(from)
                 activeMatrix.getValues(values)
                 values[Matrix.MTRANS_X] = values[Matrix.MTRANS_X] + xTransDiff * currentValue
                 values[Matrix.MTRANS_Y] = values[Matrix.MTRANS_Y] + yTransDiff * currentValue
                 values[Matrix.MSCALE_X] = values[Matrix.MSCALE_X] + xScaleDiff * currentValue
                 values[Matrix.MSCALE_Y] = values[Matrix.MSCALE_Y] + yScaleDiff * currentValue
+                values[Matrix.MSKEW_X] = values[Matrix.MSKEW_X] + xSkewDiff * currentValue
+                values[Matrix.MSKEW_Y] = values[Matrix.MSKEW_Y] + ySkewDiff * currentValue
                 activeMatrix.setValues(values)
                 imageMatrix = activeMatrix
             }
         })
         animator.addListener(object : SimpleAnimatorListener() {
             override fun onAnimationEnd(animation: Animator) {
-                imageMatrix = targetMatrix
-                updateMMatrix()
+                imageMatrix = to
+                onImageUpdate?.invoke()
 
                 if (zoomedIn) {
                     // We can resize the box to be larger
@@ -732,9 +831,6 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
                 } else {
                     // Update the zoomLevel (double tap case mostly)
                     updateZoomLevel(true)
-
-                    // If set call the on applied listener
-                    onMatrixAppliedListener?.invoke()
                 }
 
                 if (zoomedOut) {
@@ -747,46 +843,6 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
                 }
             }
         })
-        animator.duration = MATRIX_DURATION
-        animator.start()
-    }
-
-    /**
-     * Animator responsible for animating a specific translation axis.
-     * Will take the current value of the axis and animate it to the desired value.
-     * Calls the onAxisCenteredListener on finish
-     * @param axis the axis to animate
-     * @param to the result value
-     */
-    private fun animateMatrixAxis(axis: Int, to: Float) {
-        val animator = ValueAnimator.ofFloat(matrixValues[axis], to)
-        animator.interpolator = AccelerateDecelerateInterpolator()
-        animator.addUpdateListener(object : AnimatorUpdateListener {
-            val values = FloatArray(9)
-            var current = Matrix()
-            override fun onAnimationUpdate(animation: ValueAnimator) {
-                current.set(imageMatrix)
-                current.getValues(values)
-                values[axis] = animation.animatedValue as Float
-                current.setValues(values)
-                imageMatrix = current
-            }
-        })
-
-        animator.addListener(object : SimpleAnimatorListener() {
-            override fun onAnimationEnd(animation: Animator) {
-                updateMMatrix()
-
-                counter++
-
-                // If both axis are done animating
-                if (counter == 2) {
-                    counter = 0
-                    onAxisCenteredListener?.invoke()
-                }
-            }
-        })
-
         animator.duration = MATRIX_DURATION
         animator.start()
     }

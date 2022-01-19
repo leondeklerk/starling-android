@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
+    android:background="@color/black"
     android:layout_height="match_parent">
 
     <com.leondeklerk.starling.edit.InteractiveImageView
@@ -26,27 +27,38 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@+id/rotation_slider" />
 
-    <com.google.android.material.slider.Slider
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/rotation_slider"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:valueFrom="-180"
-        android:value="0"
-        android:valueTo="180"
-        android:stepSize="1"
-        app:layout_constraintBottom_toTopOf="@+id/button_cancel"
-    />
-
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        app:icon="@drawable/ic_round_rotate_90_degrees_ccw_24"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        android:scaleX="-1"
+        app:iconTint="@android:color/white"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/button_save"
+        app:layout_constraintStart_toEndOf="@+id/button_reset"
+        app:layout_constraintHorizontal_bias="0.5" />
+    <!--    android:valueFrom="-180"-->
+    <!--    android:value="0"-->
+    <!--    android:valueTo="180"-->
+    <!--    android:stepSize="1"-->
     <com.google.android.material.button.MaterialButton
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginBottom="16dp"
-        app:cornerRadius="16dp"
-        app:layout_constraintStart_toEndOf="@+id/button_cancel"
-        app:layout_constraintEnd_toStartOf="@id/button_save"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
         android:id="@+id/button_reset"
-        android:text="Reset" />
+        app:icon="@drawable/ic_round_undo_24"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconTint="@android:color/white"
+        app:layout_constraintBottom_toTopOf="@+id/button_cancel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintEnd_toStartOf="@+id/rotation_slider"
+        app:layout_constraintHorizontal_chainStyle="packed" />
 
     <com.google.android.material.button.MaterialButton
         android:layout_width="wrap_content"

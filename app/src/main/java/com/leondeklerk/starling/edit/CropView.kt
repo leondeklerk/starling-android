@@ -12,6 +12,7 @@ import android.util.TypedValue
 import android.view.View
 import com.leondeklerk.starling.extensions.drawCircle
 import com.leondeklerk.starling.extensions.drawLine
+import java.lang.Float.min
 
 /**
  * Custom view that draws a resizable grid over an imageView.
@@ -28,6 +29,7 @@ class CropView(context: Context, attributeSet: AttributeSet?) : View(
     private var borderBox: Box? = null
     private val handleBounds = px(16f)
     private var moveHandler: CropMoveHandler? = null
+    private var startRect = RectF()
 
     var boundsHitHandler: ((delta: PointF, types: Pair<HandlerType, HandlerType>) -> Unit)? = null
     var zoomHandler: ((center: PointF, out: Boolean) -> Unit)? = null
@@ -57,8 +59,13 @@ class CropView(context: Context, attributeSet: AttributeSet?) : View(
             PointF(rect.left, rect.bottom)
         )
 
+        startRect = rect
+
+        // Calculate the min dimens (quarter height/width or 64dp).
+        val minDimens = min(min(rect.height(), rect.width()) / 4f, px(64f))
+
         moveHandler = CropMoveHandler(
-            rect, borderBox!!, handleBounds, px(64f), px(56f), px(8f)
+            rect, borderBox!!, handleBounds, minDimens, px(56f), px(8f)
         )
 
         // Set up listeners
@@ -80,18 +87,6 @@ class CropView(context: Context, attributeSet: AttributeSet?) : View(
     fun updateBounds(rect: RectF) {
         // Set the moveHandler bounds (restricted to the view size)
         moveHandler?.updateBounds(rect)
-    }
-
-    /**
-     * Responsible for updating the border of the box, either restricting it if it is to large.
-     * Or moving the whole box so it fits within the image again.
-     * @param duration the length of the resizing/translation animation.
-     */
-    fun onAxisCentered(duration: Long) {
-        moveHandler?.let { moveHandler ->
-            // Update the box based on the updated borders.
-            animateBoxUpdate(moveHandler.updateBorder(), duration)
-        }
     }
 
     /**
@@ -168,6 +163,14 @@ class CropView(context: Context, attributeSet: AttributeSet?) : View(
         moveHandler?.let {
             animateBoxUpdate(it.reset(), duration)
         }
+    }
+
+    /**
+     * Checks if the current crop box was changed from the initial one.
+     * @return if this box was touched or not.
+     */
+    fun isTouched(): Boolean {
+        return startRect != borderBox?.getRect()
     }
 
     /**

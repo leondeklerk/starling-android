@@ -18,5 +18,9 @@
     <string name="media_share_error">Sharing is currently not available</string>
     <string name="media_crop">Crop</string>
     <string name="edit_btn_save_copy">save copy</string>
-    <string name="edit_btn_cancel">cancel</string>
+    <string name="edit_btn_cancel">@android:string/cancel</string>
+    <string name="edit_cancel_warning_content">Are you sure you want to cancel editing? Any unsaved changes will be lost!</string>
+    <string name="edit_cancel_warning_title">Unsaved changes</string>
+    <string name="edit_cancel_warning_btn_cancel">keep editing</string>
+    <string name="edit_cancel_warning_btn_continue">discard</string>
 </resources>

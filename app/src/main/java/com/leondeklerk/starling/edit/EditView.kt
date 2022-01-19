@@ -2,6 +2,7 @@ package com.leondeklerk.starling.edit
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.DialogInterface
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.graphics.PointF
@@ -19,9 +20,11 @@ import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.toRect
-import androidx.core.graphics.values
+import androidx.core.graphics.transform
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ImageEditLayoutBinding
 import com.leondeklerk.starling.edit.Side.NONE
@@ -51,9 +54,6 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     private var trans = PointF()
     private var direction = Pair(NONE, NONE)
     private val boxTransRunnable = Runnable { handleAutoTranslation() }
-
-    // Matrix variables
-    private var matrixValues = FloatArray(9)
 
     // Touch variables
     private var movingBox = false
@@ -103,6 +103,16 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         binding.buttonReset.setOnClickListener {
             onEditReset()
         }
+
+        binding.rotationSlider.setOnClickListener {
+            imageView.rotateImage()
+        }
+
+//        binding.rotationSlider.addOnChangeListener { slider, value, fromUser ->
+//            if (fromUser) {
+//                imageView.rotateImage()
+//            }
+//        }
     }
 
     override fun onDetachedFromWindow() {
@@ -195,15 +205,28 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      */
     private fun saveToStorage() {
         // Get view values
-        val bitmap = imageView.drawable.toBitmap()
-        val values = imageView.imageMatrix.values()
-        val startScale = imageView.startValues!![Matrix.MSCALE_X]
+        var bitmap = imageView.drawable.toBitmap()
+        val startScale = imageView.baseScale
         val cropBox = cropHandler.cropBox.toRect()
 
+        // Convert the reference bitmap to a rotated bitmap.
+        val baseMatrix = Matrix()
+        baseMatrix.postRotate(imageView.rotated, bitmap.width / 2f, bitmap.height / 2f)
+        bitmap = Bitmap.createBitmap(
+            bitmap,
+            0,
+            0,
+            bitmap.width,
+            bitmap.height,
+            baseMatrix,
+            true
+        )
+
         // Get matrix values
-        val scale = values[Matrix.MSCALE_X]
-        val transX = values[Matrix.MTRANS_X]
-        val transY = values[Matrix.MTRANS_Y]
+        val scale = imageView.currentScale
+        val rect = imageView.getRect(imageView.imageMatrix)
+        val transX = rect.left
+        val transY = rect.top
 
         // Build new matrix
         val normalizedScaled = scale / startScale
@@ -239,6 +262,14 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
     }
 
+    /**
+     * Async function that saves the bitmap to the device and creates and entry in the MediaStore.
+     * @param context: current context
+     * @param bitmap: the bitmap to save
+     * @param format: the compression format
+     * @param mimeType: the mimeType of the new image
+     * @param displayName: the new name of the image.
+     */
     private suspend fun saveBitmap(
         context: Context,
         bitmap: Bitmap,
@@ -277,9 +308,25 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
     }
 
+    /**
+     * On edit handler.
+     */
     private fun onEditCancel() {
         // Reset all the data, show the popup etc
-        onCancel?.invoke()
+        if (imageView.isTouched() || cropHandler.isTouched()) {
+            MaterialAlertDialogBuilder(context)
+                .setTitle(context.getString(R.string.edit_cancel_warning_title))
+                .setMessage(context.getString(R.string.edit_cancel_warning_content))
+                .setPositiveButton(context.getString(R.string.edit_cancel_warning_btn_continue)) { _: DialogInterface, _: Int ->
+                    onCancel?.invoke()
+                }
+                .setNegativeButton(context.getString(R.string.edit_cancel_warning_btn_cancel)) { dialog: DialogInterface, _: Int ->
+                    dialog.dismiss()
+                }
+                .show()
+        } else {
+            onCancel?.invoke()
+        }
     }
 
     /**
@@ -303,24 +350,19 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             onBitmapSet()
         }
 
-        imageView.onMMatrixUpdateListener = { values ->
-            onMMatrixUpdate(values)
-        }
-
-        imageView.onMatrixAppliedListener = {
-            cropHandler.onRestrictBorder(BOX_DURATION)
-        }
-
-        imageView.onAxisCenteredListener = {
-            cropHandler.onAxisCentered(BOX_DURATION)
-        }
-
         imageView.onZoomLevelChangeListener = { level ->
             cropHandler.setZoomLevel(level)
         }
+
         imageView.onZoomedInListener = {
             cropHandler.onZoomedIn(BOX_DURATION * 2L)
         }
+
+        imageView.onImageUpdate = {
+            cropHandler.updateBounds(getRect())
+            cropHandler.onRestrictBorder(BOX_DURATION)
+        }
+
         imageView.allowTranslation = true
     }
 
@@ -336,37 +378,23 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
 
         cropHandler.zoomHandler = { center, out ->
+            // Revert the offset application.
+            center.offset(-imageView.marginLeft.toFloat(), -imageView.marginTop.toFloat())
             imageView.zoomImage(center, out)
         }
     }
 
     /**
-     * Get the rectangle based on the values of the image matrix value array.
-     * Takes the translation into account.
-     * @returns a rectangle representing the matrix borders
+     * Get the bounding box of the current image.
+     * This is translated according to the margin of the imageView.
+     * @returns the bounding box of the image relative to the margins.
      */
     private fun getRect(): RectF {
-        val left = imageView.marginLeft + matrixValues[Matrix.MTRANS_X]
-        val top = imageView.marginTop + matrixValues[Matrix.MTRANS_Y]
-        val right = imgWidth() + left
-        val bottom = imgHeight() + top
-        return RectF(left, top, right, bottom)
-    }
-
-    /**
-     * Getter for the current width of the image
-     * @return the width
-     */
-    private fun imgWidth(): Float {
-        return imageView.imgWidth()
-    }
-
-    /**
-     * Getter for the current height of the image
-     * @return the height
-     */
-    private fun imgHeight(): Float {
-        return imageView.imgHeight()
+        val rect = imageView.getBoundedRect(imageView.imageMatrix)
+        val m = Matrix()
+        m.postTranslate(imageView.marginLeft.toFloat(), imageView.marginTop.toFloat())
+        rect.transform(m)
+        return rect
     }
 
     /**
@@ -418,29 +446,6 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         boxTransHandler.removeCallbacksAndMessages(null)
         direction = Pair(NONE, NONE)
         trans = PointF()
-    }
-
-    /**
-     * Handler invoked when the manipulation matrix was updated.
-     * Updates the bounds of the cropHandler and sets the current matrix values.
-     * @param values a float array containing the current image matrix values.
-     */
-    private fun onMMatrixUpdate(values: FloatArray) {
-        matrixValues = values
-        val rect = getRect()
-
-        // Cap at the bounds.
-        if (imgWidth() > imageView.width) {
-            rect.left = imageView.marginLeft.toFloat()
-            rect.right = rect.left + imageView.width.toFloat()
-        }
-
-        if (imgHeight() > imageView.height) {
-            rect.top = imageView.marginTop.toFloat()
-            rect.bottom = rect.top + imageView.height.toFloat()
-        }
-
-        cropHandler.updateBounds(rect)
     }
 
     /**

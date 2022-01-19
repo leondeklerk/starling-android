@@ -15,7 +15,6 @@ import com.leondeklerk.starling.edit.HandlerType.RIGHT_BOTTOM
 import com.leondeklerk.starling.edit.HandlerType.RIGHT_TOP
 import com.leondeklerk.starling.edit.HandlerType.TOP
 import java.lang.Float.max
-import kotlin.math.min
 
 typealias PairF = Pair<Float, Float>
 
@@ -161,16 +160,40 @@ class CropMoveHandler(
     }
 
     /**
-     * Scales the box to a quarter of its size (half width, half height
+     * Scales the box to double the size.
+     * If this scales outside the border, the whole box is translated to fit.
      */
     fun scaleBox(): RectF {
-        val diffHor = (borderBox.right.x - borderBox.left.x) * (2f - 1f)
-        val diffVert = (borderBox.bottom.y - borderBox.top.y) * (2f - 1f)
+        val boxRect = borderBox.getRect()
+        val width = boxRect.width() / 2f
+        val height = boxRect.height() / 2f
+        var left = boxRect.left - width
+        var right = boxRect.right + width
+        var top = boxRect.top - height
+        var bottom = boxRect.bottom + height
 
-        val left = max(borderBox.left.x - diffHor / 2f, bounds.left)
-        val top = max(borderBox.top.y - diffVert / 2f, bounds.top)
-        val right = min(borderBox.right.x + diffHor / 2f, bounds.right)
-        val bottom = min(borderBox.bottom.y + diffVert / 2f, bounds.bottom)
+        // Calculated the X translation if outside the border
+        var dX = 0f
+        if (left < bounds.left) {
+            dX = bounds.left - left
+        } else if (right > bounds.right) {
+            dX = bounds.right - right
+        }
+
+        // Calculated the Y translation if outside the bounds
+        var dY = 0f
+        if (top < bounds.top) {
+            dY = bounds.top - top
+        } else if (bottom > bounds.bottom) {
+            dY = bounds.bottom - bottom
+        }
+
+        // Translate the box to fit it within the bounds
+        left += dX
+        right += dX
+
+        top += dY
+        bottom += dY
 
         return RectF(left, top, right, bottom)
     }
