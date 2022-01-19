@@ -169,6 +169,11 @@ class ImageActivity : AppCompatActivity() {
         binding.editView.onCancel = {
             viewModel.switchMode()
         }
+
+        binding.editView.onSave = { item ->
+            viewModel.switchMode()
+            switchToActivity(item)
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -264,5 +269,16 @@ class ImageActivity : AppCompatActivity() {
                 dialog.dismiss()
             }
             .show()
+    }
+
+    /**
+     * Open another activity with the new image.
+     * @param item: the new ImageItem containing all image data.
+     */
+    private fun switchToActivity(item: ImageItem) {
+        val intent = Intent(this, ImageActivity::class.java).apply {
+            putExtra("imageItem", item)
+        }
+        startActivity(intent)
     }
 }

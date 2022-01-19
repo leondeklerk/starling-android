@@ -15,7 +15,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginBottom="32dp"
-        app:layout_constraintBottom_toTopOf="@+id/rotation_slider"
+        app:layout_constraintBottom_toTopOf="@+id/button_rotate"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
         android:layout_marginTop="48dp" />
@@ -25,10 +25,25 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/rotation_slider" />
+        app:layout_constraintBottom_toTopOf="@+id/button_rotate" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/rotation_slider"
+        android:visibility="gone"
+        android:id="@+id/button_aspect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        app:icon="@drawable/ic_baseline_aspect_ratio_24"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconTint="@android:color/white"
+        app:layout_constraintBottom_toTopOf="@+id/button_cancel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/button_rotate"
+        app:layout_constraintHorizontal_chainStyle="packed" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_rotate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         style="@style/Widget.MaterialComponents.Button.TextButton"
@@ -37,28 +52,34 @@
         app:iconPadding="0dp"
         android:scaleX="-1"
         app:iconTint="@android:color/white"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/button_cancel"
+        app:layout_constraintStart_toEndOf="@id/button_aspect"
+        app:layout_constraintEnd_toStartOf="@+id/button_draw" />
+
+    <com.google.android.material.button.MaterialButton
+        android:visibility="gone"
+        android:id="@+id/button_draw"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        app:icon="@drawable/ic_baseline_draw_24"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:iconTint="@android:color/white"
         app:layout_constraintBottom_toTopOf="@+id/button_save"
-        app:layout_constraintStart_toEndOf="@+id/button_reset"
-        app:layout_constraintHorizontal_bias="0.5" />
-    <!--    android:valueFrom="-180"-->
-    <!--    android:value="0"-->
-    <!--    android:valueTo="180"-->
-    <!--    android:stepSize="1"-->
+        app:layout_constraintStart_toEndOf="@+id/button_rotate"
+        app:layout_constraintEnd_toStartOf="@+id/button_reset" />
+
     <com.google.android.material.button.MaterialButton
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         style="@style/Widget.MaterialComponents.Button.TextButton"
         android:id="@+id/button_reset"
-        app:icon="@drawable/ic_round_undo_24"
-        app:iconGravity="textStart"
-        app:iconPadding="0dp"
-        app:iconTint="@android:color/white"
-        app:layout_constraintBottom_toTopOf="@+id/button_cancel"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintEnd_toStartOf="@+id/rotation_slider"
-        app:layout_constraintHorizontal_chainStyle="packed" />
+        android:text="@string/edit_btn_reset"
+        android:textColor="@color/white"
+        app:layout_constraintBottom_toTopOf="@+id/button_save"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/button_draw" />
 
     <com.google.android.material.button.MaterialButton
         android:layout_width="wrap_content"
@@ -81,4 +102,24 @@
         app:cornerRadius="16dp"
         android:layout_marginStart="16dp"
         android:id="@+id/button_cancel" />
+
+    <View
+        android:id="@+id/saving_overlay"
+        android:visibility="gone"
+        android:elevation="2dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/status_bar_scrim" />
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:elevation="2dp"
+        android:visibility="gone"
+        android:id="@+id/saving_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

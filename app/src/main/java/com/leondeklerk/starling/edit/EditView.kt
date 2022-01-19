@@ -29,12 +29,15 @@ import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ImageEditLayoutBinding
 import com.leondeklerk.starling.edit.Side.NONE
 import java.io.IOException
+import java.lang.Long.parseLong
+import java.util.Date
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -72,6 +75,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     var imageView: InteractiveImageView = binding.interactiveImageView
     var onCancel: (() -> Unit)? = null
     var onSave: ((data: ImageItem) -> Unit)? = null
+    var isSaving = false
 
     /**
      * Simple data class combining bitmap data.
@@ -104,15 +108,9 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             onEditReset()
         }
 
-        binding.rotationSlider.setOnClickListener {
+        binding.buttonRotate.setOnClickListener {
             imageView.rotateImage()
         }
-
-//        binding.rotationSlider.addOnChangeListener { slider, value, fromUser ->
-//            if (fromUser) {
-//                imageView.rotateImage()
-//            }
-//        }
     }
 
     override fun onDetachedFromWindow() {
@@ -122,8 +120,10 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+        if (isSaving) return false
+
         ev?.let {
-            if (ev.y >= binding.rotationSlider.top) {
+            if (ev.y >= binding.buttonRotate.top) {
                 return false
             }
         }
@@ -133,7 +133,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (!isClickable && isEnabled) {
+        if (!isSaving && !isClickable && isEnabled) {
             // get the current state of the image matrix, its values, and the bounds of the drawn bitmap
             imageView.updateDetectors(event)
 
@@ -204,6 +204,11 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      * Stores the new bitmap image to local storage.
      */
     private fun saveToStorage() {
+        // Update saving indicators
+        isSaving = true
+        binding.savingIndicator.visibility = VISIBLE
+        binding.savingOverlay.visibility = VISIBLE
+
         // Get view values
         var bitmap = imageView.drawable.toBitmap()
         val startScale = imageView.baseScale
@@ -253,11 +258,20 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             true
         )
 
+        var item: ImageItem? = null
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                saveBitmap(context, result, Bitmap.CompressFormat.JPEG, "image/jpeg", UUID.randomUUID().toString())
+                item = saveBitmap(context, result, Bitmap.CompressFormat.JPEG, "image/jpeg", UUID.randomUUID().toString())
             } catch (e: IOException) {
                 Toast.makeText(context, "Error $e", Toast.LENGTH_SHORT).show()
+            } finally {
+                // Update the UI
+                binding.savingOverlay.visibility = GONE
+                binding.savingIndicator.visibility = GONE
+                isSaving = false
+                item?.let {
+                    onSave?.invoke(it)
+                }
             }
         }
     }
@@ -276,7 +290,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         format: Bitmap.CompressFormat,
         mimeType: String,
         displayName: String
-    ) {
+    ): ImageItem {
         val uri: Uri?
 
         val values = ContentValues().apply {
@@ -289,6 +303,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
         uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
             ?: throw IOException("Failed to create new MediaStore record.")
+        val dateAdded = Date()
         try {
             withContext(Dispatchers.IO) {
                 // Android studio gives an incorrect blocking call warning
@@ -298,6 +313,8 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
                     if (!bitmap.compress(format, 100, it))
                         throw IOException("Failed to save bitmap.")
                 }
+
+                delay(1200)
             }
         } catch (e: IOException) {
             uri.let { orphanUri ->
@@ -306,6 +323,10 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             }
             throw e
         }
+
+        // Create the image data
+        val id = parseLong(uri.lastPathSegment!!)
+        return ImageItem(id, uri, displayName, dateAdded, bitmap.width, bitmap.height, mimeType)
     }
 
     /**
