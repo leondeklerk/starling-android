@@ -19,10 +19,14 @@
             android:id="@+id/library_grid"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            tools:itemCount="50"
+            tools:listitem="@layout/gallery_image_view"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            tools:spanCount="5"
+            tools:layoutManager="GridLayoutManager" />
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/top_guideline"
@@ -40,7 +44,7 @@
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toTopOf="@+id/top_guideline"
-            tools:visibility="visible">
+            tools:visibility="gone">
 
             <ImageView
                 android:id="@+id/locked"
