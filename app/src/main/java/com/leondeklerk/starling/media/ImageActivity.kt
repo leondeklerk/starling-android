@@ -277,8 +277,10 @@ class ImageActivity : AppCompatActivity() {
      */
     private fun switchToActivity(item: ImageItem) {
         val intent = Intent(this, ImageActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_TASK_ON_HOME
             putExtra("imageItem", item)
         }
         startActivity(intent)
+        finish()
     }
 }

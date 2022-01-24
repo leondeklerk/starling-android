@@ -314,7 +314,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
                         throw IOException("Failed to save bitmap.")
                 }
 
-                delay(1200)
+                delay(800)
             }
         } catch (e: IOException) {
             uri.let { orphanUri ->
