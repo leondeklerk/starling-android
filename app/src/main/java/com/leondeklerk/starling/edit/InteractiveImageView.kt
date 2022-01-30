@@ -32,8 +32,7 @@ import kotlin.math.sin
 
 /**
  * Extended image view that allows scaling, rotation, and translating.
- * Provides a set of listeners for use with a [CropMoveHandler]
- * in an [EditView].
+ * Provides a set of listeners for use with a [CropView] in an [EditView].
  * Provides (indirect) support for external zooming and (auto) translating.
  */
 class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppCompatImageView(
@@ -46,6 +45,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     // Scale variables
     private var calculatedMinScale = MIN_SCALE
     private var calculatedMaxScale = MAX_SCALE
+
     // Original start scale
     private var startScale = 1f
     private var scaleBy = 1f
@@ -87,6 +87,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     var onTapListener: (() -> Unit)? = null
     var onResetListener: (() -> Unit)? = null
     var onImageUpdate: (() -> Unit)? = null
+    var onTouchHandler: ((event: MotionEvent) -> Boolean)? = null
 
     private val gestureListener: GestureDetector.OnGestureListener = object : SimpleOnGestureListener() {
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
@@ -155,6 +156,12 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!isClickable && isEnabled) {
+
+            // If a touch handler is set, override local touch.
+            onTouchHandler?.let { handler ->
+                return handler.invoke(event)
+            }
+
             updateDetectors((event))
 
             // Get the current image bounding box.

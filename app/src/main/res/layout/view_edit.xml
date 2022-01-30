@@ -14,72 +14,56 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginBottom="32dp"
-        app:layout_constraintBottom_toTopOf="@+id/button_rotate"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
-        android:layout_marginTop="48dp" />
+        android:layout_marginTop="48dp"
+        android:layout_marginBottom="64dp"
+        app:layout_constraintBottom_toTopOf="@+id/mode_selector" />
 
     <com.leondeklerk.starling.edit.CropView
-        android:id="@+id/crop_handler"
+        android:id="@+id/cropper"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/button_rotate" />
-
-    <com.google.android.material.button.MaterialButton
-        android:visibility="gone"
-        android:id="@+id/button_aspect"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        app:icon="@drawable/ic_baseline_aspect_ratio_24"
-        app:iconGravity="textStart"
-        app:iconPadding="0dp"
-        app:iconTint="@android:color/white"
-        app:layout_constraintBottom_toTopOf="@+id/button_cancel"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/button_rotate"
-        app:layout_constraintHorizontal_chainStyle="packed" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_rotate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        app:icon="@drawable/ic_round_rotate_90_degrees_ccw_24"
-        app:iconGravity="textStart"
-        app:iconPadding="0dp"
-        android:scaleX="-1"
-        app:iconTint="@android:color/white"
-        app:layout_constraintBottom_toTopOf="@+id/button_cancel"
-        app:layout_constraintStart_toEndOf="@id/button_aspect"
-        app:layout_constraintEnd_toStartOf="@+id/button_draw" />
-
-    <com.google.android.material.button.MaterialButton
-        android:visibility="gone"
-        android:id="@+id/button_draw"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        app:icon="@drawable/ic_baseline_draw_24"
-        app:iconGravity="textStart"
-        app:iconPadding="0dp"
-        app:iconTint="@android:color/white"
-        app:layout_constraintBottom_toTopOf="@+id/button_save"
-        app:layout_constraintStart_toEndOf="@+id/button_rotate"
-        app:layout_constraintEnd_toStartOf="@+id/button_reset" />
-
-    <com.google.android.material.button.MaterialButton
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
-        android:id="@+id/button_reset"
-        android:text="@string/edit_btn_reset"
-        android:textColor="@color/white"
-        app:layout_constraintBottom_toTopOf="@+id/button_save"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/button_draw" />
+        app:layout_constraintBottom_toTopOf="@id/mode_selector" />
+
+    <com.leondeklerk.starling.edit.DrawView
+        android:visibility="gone"
+        android:id="@+id/draw_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/mode_selector" />
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/mode_selector"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:singleLine="true"
+        app:singleSelection="true"
+        app:chipSpacingHorizontal="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/button_cancel">
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/mode_crop"
+            style="@style/Widget.MaterialComponents.Chip.Choice"
+            android:checked="true"
+            android:text="@string/media_crop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/mode_draw"
+            style="@style/Widget.MaterialComponents.Chip.Choice"
+            android:text="Markup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+    </com.google.android.material.chip.ChipGroup>
 
     <com.google.android.material.button.MaterialButton
         android:layout_width="wrap_content"

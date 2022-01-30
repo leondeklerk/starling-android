@@ -16,17 +16,17 @@ import android.provider.MediaStore
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.View
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.graphics.drawable.toBitmap
-import androidx.core.graphics.toRect
 import androidx.core.graphics.transform
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.ImageItem
-import com.leondeklerk.starling.databinding.ImageEditLayoutBinding
+import com.leondeklerk.starling.databinding.ViewEditBinding
 import com.leondeklerk.starling.edit.Side.NONE
 import java.io.IOException
 import java.lang.Long.parseLong
@@ -44,7 +44,7 @@ import kotlinx.coroutines.withContext
 /**
  * Class that takes in a image and provides edit options.
  * Provides scaling, translating and cropping.
- * Makes use of a [CropView] to handle all selection box rendering and movement..
+ * Makes use of a [CropView] to handle all selection box rendering and movement.
  * Makes use of a [InteractiveImageView] for scaling and translating the image itself.
  */
 class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout(
@@ -69,13 +69,14 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         private const val BOX_DURATION = 100L
     }
 
-    private var binding: ImageEditLayoutBinding = ImageEditLayoutBinding.inflate(LayoutInflater.from(context), this, true)
-    private var cropHandler: CropView = binding.cropHandler
+    private var binding: ViewEditBinding = ViewEditBinding.inflate(LayoutInflater.from(context), this, true)
 
     var imageView: InteractiveImageView = binding.interactiveImageView
     var onCancel: (() -> Unit)? = null
     var onSave: ((data: ImageItem) -> Unit)? = null
     var isSaving = false
+
+    var drawMode = false
 
     /**
      * Simple data class combining bitmap data.
@@ -96,6 +97,15 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+
+        binding.cropper.onTouchHandler = { event ->
+            onTouchEvent(event)
+        }
+
+        binding.interactiveImageView.onTouchHandler = { event ->
+            onTouchEvent(event)
+        }
+
         binding.buttonSave.setOnClickListener {
             saveToStorage()
         }
@@ -104,12 +114,28 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             onEditCancel()
         }
 
-        binding.buttonReset.setOnClickListener {
+        binding.cropper.onButtonReset = {
             onEditReset()
         }
 
-        binding.buttonRotate.setOnClickListener {
+        binding.cropper.onButtonRotate = {
             imageView.rotateImage()
+        }
+
+        binding.modeSelector.setOnCheckedChangeListener { group, checkedId ->
+            when (checkedId) {
+                R.id.mode_crop -> {
+                    binding.drawOverlay.visibility = View.GONE
+                    binding.cropper.visibility = View.VISIBLE
+                    binding.drawOverlay.reset()
+                    drawMode = false
+                }
+                R.id.mode_draw -> {
+                    binding.drawOverlay.visibility = View.VISIBLE
+                    binding.cropper.visibility = View.GONE
+                    drawMode = true
+                }
+            }
         }
     }
 
@@ -117,19 +143,6 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         super.onDetachedFromWindow()
         // On detach cancel the handler
         boxTransHandler.removeCallbacksAndMessages(null)
-    }
-
-    override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
-        if (isSaving) return false
-
-        ev?.let {
-            if (ev.y >= binding.buttonRotate.top) {
-                return false
-            }
-        }
-
-        // The edit component should always handle a touch event -- false
-        return true
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -153,12 +166,12 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
                     if (event.pointerCount == 1) {
                         if (!movingBox && !movingOther) {
                             // Check if we can start a move (touching a handler)
-                            movingBox = cropHandler.startMove(PointF(event.x, event.y))
+                            movingBox = binding.cropper.startMove(PointF(event.x, event.y))
                         }
 
                         // If we have a handler movement
                         if (movingBox) {
-                            cropHandler.onMove(PointF(event.x, event.y))
+                            binding.cropper.move(PointF(event.x, event.y))
                         } else {
                             // we are dealing with an outside box movement
                             imageView.onSinglePointerMove(getRect())
@@ -168,7 +181,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
                         // If we have two fingers, it can only be scaling, cancel all other movement
                         if (movingBox) {
                             // Reset everything
-                            cropHandler.cancelMove()
+                            binding.cropper.cancelMove()
                             resetHandler()
                             movingBox = false
                         }
@@ -180,7 +193,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
                 MotionEvent.ACTION_UP -> {
                     // Cancel all box related movement
                     if (movingBox) {
-                        cropHandler.endMove()
+                        binding.cropper.endMove()
                         resetHandler()
                         movingBox = false
                     }
@@ -212,7 +225,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         // Get view values
         var bitmap = imageView.drawable.toBitmap()
         val startScale = imageView.baseScale
-        val cropBox = cropHandler.cropBox.toRect()
+        val cropBox = binding.cropper.getCropperRect()
 
         // Convert the reference bitmap to a rotated bitmap.
         val baseMatrix = Matrix()
@@ -334,7 +347,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      */
     private fun onEditCancel() {
         // Reset all the data, show the popup etc
-        if (imageView.isTouched() || cropHandler.isTouched()) {
+        if (imageView.isTouched() || binding.cropper.isTouched()) {
             MaterialAlertDialogBuilder(context)
                 .setTitle(context.getString(R.string.edit_cancel_warning_title))
                 .setMessage(context.getString(R.string.edit_cancel_warning_content))
@@ -358,7 +371,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
         // Register the image on reset listener
         imageView.onResetListener = {
-            cropHandler.reset(BOX_DURATION)
+            binding.cropper.reset()
         }
     }
 
@@ -372,16 +385,16 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
 
         imageView.onZoomLevelChangeListener = { level ->
-            cropHandler.setZoomLevel(level)
+            binding.cropper.setZoomLevel(level)
         }
 
         imageView.onZoomedInListener = {
-            cropHandler.onZoomedIn(BOX_DURATION * 2L)
+            binding.cropper.onZoomedIn()
         }
 
         imageView.onImageUpdate = {
-            cropHandler.updateBounds(getRect())
-            cropHandler.onRestrictBorder(BOX_DURATION)
+            binding.cropper.updateBounds(getRect())
+            binding.cropper.restrictBorder()
         }
 
         imageView.allowTranslation = true
@@ -392,13 +405,13 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      * Responsible for initializing the cropHandler.
      */
     private fun onBitmapSet() {
-        cropHandler.setInitialValues(getRect())
+        binding.cropper.initialize(getRect())
 
-        cropHandler.boundsHitHandler = { delta, types ->
+        binding.cropper.onBoundsHitHandler = { delta, types ->
             handleSideTranslate(delta, types)
         }
 
-        cropHandler.zoomHandler = { center, out ->
+        binding.cropper.onZoomHandler = { center, out ->
             // Revert the offset application.
             center.offset(-imageView.marginLeft.toFloat(), -imageView.marginTop.toFloat())
             imageView.zoomImage(center, out)
