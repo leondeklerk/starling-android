@@ -44,7 +44,7 @@
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"
             android:theme="@style/Starling.Widget.AppBar"
-            app:elevation="1dp"
+            app:elevation="0dp"
             app:layout_constraintTop_toTopOf="parent">
 
             <androidx.appcompat.widget.Toolbar

@@ -24,4 +24,5 @@
     <string name="edit_cancel_warning_title">Unsaved changes</string>
     <string name="edit_cancel_warning_btn_cancel">keep editing</string>
     <string name="edit_cancel_warning_btn_continue">discard</string>
+    <string name="edit_draw_brush_style">Brush style</string>
 </resources>

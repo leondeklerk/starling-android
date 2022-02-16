@@ -20,6 +20,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.toRect
 import androidx.core.graphics.transform
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
@@ -64,10 +65,6 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
     // Animation
     private var refreshRate = 60f
-
-    companion object {
-        private const val BOX_DURATION = 100L
-    }
 
     private var binding: ViewEditBinding = ViewEditBinding.inflate(LayoutInflater.from(context), this, true)
 
@@ -405,6 +402,8 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      * Responsible for initializing the cropHandler.
      */
     private fun onBitmapSet() {
+        binding.drawOverlay.setBounds(getRect().toRect())
+
         binding.cropper.initialize(getRect())
 
         binding.cropper.onBoundsHitHandler = { delta, types ->

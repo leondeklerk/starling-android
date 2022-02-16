@@ -16,4 +16,8 @@
     <color name="black_transparent">#00000000</color>
     <color name="black_transparent_67">#AA000000</color>
     <color name="black_transparent_53">#88000000</color>
+    <!-- Button colors -->
+    <color name="ripple_gray">#444444</color>
+    <!-- Slider colors-->
+    <color name="slider_inactive_gray">#7D7D7D</color>
 </resources>
