@@ -14,6 +14,7 @@ import android.view.GestureDetector.SimpleOnGestureListener
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import androidx.appcompat.widget.AppCompatImageView
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.values
 import androidx.core.view.ScaleGestureDetectorCompat
 import androidx.core.view.marginLeft
@@ -81,7 +82,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     private var resetting = false
 
     // Listeners
-    var onBitmapSetListener: (() -> Unit)? = null
+    var onBitmapSetListener: ((bitmap: Bitmap) -> Unit)? = null
     var onZoomLevelChangeListener: ((level: Float) -> Unit)? = null
     var onZoomedInListener: (() -> Unit)? = null
     var onTapListener: (() -> Unit)? = null
@@ -519,7 +520,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         calculatedMinScale = MIN_SCALE * currentScale
         calculatedMaxScale = MAX_SCALE * currentScale
 
-        onBitmapSetListener?.invoke()
+        onBitmapSetListener?.invoke(drawable.toBitmap())
     }
 
     /**

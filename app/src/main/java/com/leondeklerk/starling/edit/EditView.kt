@@ -4,7 +4,9 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.DialogInterface
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Matrix
+import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.RectF
 import android.net.Uri
@@ -120,6 +122,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
 
         binding.modeSelector.setOnCheckedChangeListener { group, checkedId ->
+            imageView.reset()
             when (checkedId) {
                 R.id.mode_crop -> {
                     binding.drawOverlay.visibility = View.GONE
@@ -221,54 +224,80 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
         // Get view values
         var bitmap = imageView.drawable.toBitmap()
-        val startScale = imageView.baseScale
-        val cropBox = binding.cropper.getCropperRect()
+        var result: Bitmap
+        if (!drawMode) {
+            val startScale = imageView.baseScale
+            val cropBox = binding.cropper.getCropperRect()
 
-        // Convert the reference bitmap to a rotated bitmap.
-        val baseMatrix = Matrix()
-        baseMatrix.postRotate(imageView.rotated, bitmap.width / 2f, bitmap.height / 2f)
-        bitmap = Bitmap.createBitmap(
-            bitmap,
-            0,
-            0,
-            bitmap.width,
-            bitmap.height,
-            baseMatrix,
-            true
-        )
+            // Convert the reference bitmap to a rotated bitmap.
+            val baseMatrix = Matrix()
+            baseMatrix.postRotate(imageView.rotated, bitmap.width / 2f, bitmap.height / 2f)
+            bitmap = Bitmap.createBitmap(
+                bitmap,
+                0,
+                0,
+                bitmap.width,
+                bitmap.height,
+                baseMatrix,
+                true
+            )
 
-        // Get matrix values
-        val scale = imageView.currentScale
-        val rect = imageView.getRect(imageView.imageMatrix)
-        val transX = rect.left
-        val transY = rect.top
+            // Get matrix values
+            val scale = imageView.currentScale
+            val rect = imageView.getRect(imageView.imageMatrix)
+            val transX = rect.left
+            val transY = rect.top
 
-        // Build new matrix
-        val normalizedScaled = scale / startScale
-        val matrix = Matrix()
-        matrix.postScale(normalizedScaled, normalizedScaled)
+            // Build new matrix
+            val normalizedScaled = scale / startScale
+            val matrix = Matrix()
+            matrix.postScale(normalizedScaled, normalizedScaled)
 
-        // Combine standard bitmap data.
-        val bitmapWidthData = BitmapData(bitmap.width, startScale, normalizedScaled)
-        val bitmapHeightData = BitmapData(bitmap.height, startScale, normalizedScaled)
+            // Combine standard bitmap data.
+            val bitmapWidthData = BitmapData(bitmap.width, startScale, normalizedScaled)
+            val bitmapHeightData = BitmapData(bitmap.height, startScale, normalizedScaled)
 
-        // Calculate new image data
-        val xOffset = getAxisOffset(bitmapWidthData, transX, cropBox.left, imageView.left)
-        val yOffset = getAxisOffset(bitmapHeightData, transY, cropBox.top, imageView.top)
-        val resultWidth = getAxisSize(bitmapWidthData, imageView.width, cropBox.width(), scale)
-        val resultHeight = getAxisSize(bitmapHeightData, imageView.height, cropBox.height(), scale)
+            // Calculate new image data
+            val xOffset = getAxisOffset(bitmapWidthData, transX, cropBox.left, imageView.left)
+            val yOffset = getAxisOffset(bitmapHeightData, transY, cropBox.top, imageView.top)
+            val resultWidth = getAxisSize(bitmapWidthData, imageView.width, cropBox.width(), scale)
+            val resultHeight = getAxisSize(bitmapHeightData, imageView.height, cropBox.height(), scale)
 
-        val result = Bitmap.createBitmap(
-            bitmap,
-            xOffset.toInt(),
-            yOffset.toInt(),
-            resultWidth.toInt(),
-            resultHeight.toInt(),
-            matrix,
-            true
-        )
+            result = Bitmap.createBitmap(
+                bitmap,
+                xOffset.toInt(),
+                yOffset.toInt(),
+                resultWidth.toInt(),
+                resultHeight.toInt(),
+                matrix,
+                false
+            )
+        } else {
+            result = Bitmap.createBitmap(
+                bitmap.width,
+                bitmap.height,
+                bitmap.config
+            )
+//            Timber.d("Save ${bitmap.width}, ${bitmap.height}")
+            var bm2 = binding.drawOverlay.getBitmap()
+//            result = binding.drawOverlay.getBitmap()
+            bm2 = Bitmap.createScaledBitmap(bm2, bitmap.width, bitmap.height, true)
+//            result = Bitmap.createScaledBitmap(bm2, bitmap.width, bitmap.height, false)
+
+//            Timber.d("Save2 ${bm2.width}, ${bm2.height}")
+//            Timber.d("Save3 ${result.width}, ${result.height}")
+            val canvas = Canvas(result)
+            if (android.os.Build.VERSION.SDK_INT >= 11) {
+                setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+            }
+            val p = Paint(Paint.ANTI_ALIAS_FLAG)
+            p.isFilterBitmap = true
+            canvas.drawBitmap(bitmap, Matrix(), p)
+            canvas.drawBitmap(bm2, Matrix(), p)
+        }
 
         var item: ImageItem? = null
+
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 item = saveBitmap(context, result, Bitmap.CompressFormat.JPEG, "image/jpeg", UUID.randomUUID().toString())
@@ -377,8 +406,8 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      * And set the properties of the imageView.
      */
     private fun setupImageView() {
-        imageView.onBitmapSetListener = {
-            onBitmapSet()
+        imageView.onBitmapSetListener = { bitmap ->
+            onBitmapSet(bitmap)
         }
 
         imageView.onZoomLevelChangeListener = { level ->
@@ -401,8 +430,10 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      * Handler invoked when the bitmap is set on the imageView.
      * Responsible for initializing the cropHandler.
      */
-    private fun onBitmapSet() {
+    private fun onBitmapSet(bitmap: Bitmap) {
         binding.drawOverlay.setBounds(getRect().toRect())
+
+        binding.drawOverlay.setSize(bitmap.width, bitmap.height)
 
         binding.cropper.initialize(getRect())
 
@@ -422,11 +453,13 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      * This is translated according to the margin of the imageView.
      * @returns the bounding box of the image relative to the margins.
      */
-    private fun getRect(): RectF {
+    private fun getRect(translate: Boolean = true): RectF {
         val rect = imageView.getBoundedRect(imageView.imageMatrix)
-        val m = Matrix()
-        m.postTranslate(imageView.marginLeft.toFloat(), imageView.marginTop.toFloat())
-        rect.transform(m)
+        if (translate) {
+            val m = Matrix()
+            m.postTranslate(imageView.marginLeft.toFloat(), imageView.marginTop.toFloat())
+            rect.transform(m)
+        }
         return rect
     }
 

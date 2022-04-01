@@ -31,7 +31,8 @@
         app:layout_constraintBottom_toTopOf="@id/mode_divider" />
 
     <com.leondeklerk.starling.edit.DrawView
-        android:visibility="gone"
+        android:visibility="invisible"
+        tools:visibility="invisible"
         android:id="@+id/draw_overlay"
         android:layout_width="match_parent"
         android:layout_height="0dp"

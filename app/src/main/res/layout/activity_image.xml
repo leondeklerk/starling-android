@@ -19,6 +19,7 @@
 
         <com.leondeklerk.starling.edit.EditView
             android:visibility="invisible"
+            tools:visibility="invisible"
             android:id="@+id/editView"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
