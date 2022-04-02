@@ -50,7 +50,7 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
     }
 
     fun setSize(width: Int, height: Int) {
-//        binding.canvas.setSize(width, height)
+        binding.canvas.setSize(width, height)
     }
 
     private fun undo() {

@@ -278,18 +278,9 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
                 bitmap.height,
                 bitmap.config
             )
-//            Timber.d("Save ${bitmap.width}, ${bitmap.height}")
             var bm2 = binding.drawOverlay.getBitmap()
-//            result = binding.drawOverlay.getBitmap()
-            bm2 = Bitmap.createScaledBitmap(bm2, bitmap.width, bitmap.height, true)
-//            result = Bitmap.createScaledBitmap(bm2, bitmap.width, bitmap.height, false)
-
-//            Timber.d("Save2 ${bm2.width}, ${bm2.height}")
-//            Timber.d("Save3 ${result.width}, ${result.height}")
             val canvas = Canvas(result)
-            if (android.os.Build.VERSION.SDK_INT >= 11) {
-                setLayerType(View.LAYER_TYPE_SOFTWARE, null)
-            }
+
             val p = Paint(Paint.ANTI_ALIAS_FLAG)
             p.isFilterBitmap = true
             canvas.drawBitmap(bitmap, Matrix(), p)

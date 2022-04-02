@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
@@ -18,6 +19,7 @@ import android.view.ScaleGestureDetector
 import android.view.View
 import com.leondeklerk.starling.extensions.dpToPixels
 import com.leondeklerk.starling.extensions.enlargeBy
+import timber.log.Timber
 
 class PaintView(context: Context, attributeSet: AttributeSet?) : View(
     context,
@@ -43,8 +45,8 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
     private var scalingActive = false
     private var scalingPoint = PointF()
     private var bitmap: Bitmap? = null
-    private var canvas: Canvas? = null
-    private val bitmapPaint: Paint
+//    private var canvas: Canvas? = null
+//    private val bitmapPaint: Paint
 
     // Scale listener responsible for handling scaling gestures (pinch)
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -103,33 +105,39 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
     init {
         setLayerType(LAYER_TYPE_HARDWARE, null)
         scaleDetector = ScaleGestureDetector(context, scaleListener)
-        bitmapPaint = Paint(Paint.DITHER_FLAG)
-        bitmapPaint.isAntiAlias = true
-        bitmapPaint.isFilterBitmap = true
+//        bitmapPaint = Paint(Paint.DITHER_FLAG)
+//        bitmapPaint.isAntiAlias = true
+//        bitmapPaint.isFilterBitmap = true
     }
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        canvas = Canvas(bitmap!!)
-    }
+//    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+//        super.onSizeChanged(w, h, oldw, oldh)
+//        bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+//        canvas = Canvas(bitmap!!)
+//    }
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-
-        bitmap?.let {
-            canvas?.drawBitmap(it, 0f, 0f, bitmapPaint)
+        canvas?.let {
+            drawOnCanvas(canvas)
         }
     }
 
-    fun draw() {
-        canvas?.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-
+    fun drawOnCanvas(canvas: Canvas, scalePath: Boolean = false) {
         var index = 0
         while (index < drawUpTo) {
             val path = pathList[index]
             val paint = getBrush(brushList[index])
+            bitmap?.let {
+                if (scalePath) {
+                    val scale = it.width.toFloat() / width.toFloat()
+                    val m = Matrix()
+                    m.setScale(scale, scale)
+                    path.transform(m)
+                }
+            }
             canvas?.drawPath(path, paint)
+
             index++
         }
         canvas?.save()
@@ -146,7 +154,6 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
             canvas?.drawPoint(it.center.x, it.center.y, brush)
             canvas?.drawRect(rectangle, brush)
         }
-        invalidate()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -182,7 +189,7 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
                             obj.layout = layout
                             obj.height = layout.height
                             obj.width = layout.width
-                            draw()
+                            invalidate()
                         }
                     }
                 }
@@ -254,13 +261,13 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
             }
         }
 
-        draw()
+        invalidate()
         return true
     }
 
     fun setSize(bmWidth: Int, bmHeight: Int) {
-//        Timber.d("$bmWidth, $bmHeight")
-//        bitmap = Bitmap.createBitmap(bmWidth, bmHeight, Bitmap.Config.ARGB_8888)
+        Timber.d("Size set")
+        bitmap = Bitmap.createBitmap(bmWidth, bmHeight, Bitmap.Config.ARGB_8888)
 //        canvas = Canvas(bitmap!!)
     }
 
@@ -271,12 +278,12 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
 
     fun undo() {
         drawUpTo = Integer.max(0, drawUpTo - 1)
-        draw()
+        invalidate()
     }
 
     fun redo() {
         drawUpTo = Integer.min(pathList.size, drawUpTo + 1)
-        draw()
+        invalidate()
     }
 
     fun reset() {
@@ -284,7 +291,7 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
         pathList.clear()
         brushList.clear()
         textList.clear()
-        draw()
+        invalidate()
     }
 
     fun addText() {
@@ -296,11 +303,15 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
         val oX = cX - layoutWidth / 2f
         val oY = cY - layoutHeight / 2f
         textList.add(TextObject(layout, PointF(oX, oY), layoutWidth, layoutHeight, "test text", 1f, resources.displayMetrics.density))
-        draw()
+        invalidate()
     }
 
     fun getBitmap(): Bitmap {
-        return bitmap ?: Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        bitmap?.let {
+            drawOnCanvas(Canvas(it), true)
+            return it
+        }
+        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     }
 
     private fun getPaint(): TextPaint {
@@ -320,11 +331,10 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
     }
 
     private fun getBrush(style: BrushStyle): Paint {
-        val paint = Paint()
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG or Paint.FILTER_BITMAP_FLAG)
         paint.color = Color.HSVToColor(floatArrayOf(style.hue, style.saturation, style.value))
         paint.strokeWidth = dpToPixels(style.size)
         paint.style = Paint.Style.STROKE
-        paint.isDither = true
 
         if (style.type == BrushType.PENCIL) {
             paint.strokeCap = Paint.Cap.ROUND
@@ -337,7 +347,7 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
         if (style.type == BrushType.ERASER) {
             paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
         } else {
-            paint.xfermode = null
+            paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
         }
 
         paint.alpha = (style.alpha * 255).toInt()
