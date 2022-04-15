@@ -25,4 +25,6 @@
     <string name="edit_cancel_warning_btn_cancel">keep editing</string>
     <string name="edit_cancel_warning_btn_continue">discard</string>
     <string name="edit_draw_brush_style">Brush style</string>
+    <string name="edit_draw_text_style">Text style</string>
+    <string name="draw_text_add">Enter text to draw on the image</string>
 </resources>

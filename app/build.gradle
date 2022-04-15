@@ -4,6 +4,13 @@ plugins {
     id 'androidx.navigation.safeargs.kotlin'
     id 'kotlin-parcelize'
     id 'kotlin-kapt'
+    id 'idea'
+}
+
+idea {
+    module {
+        downloadJavadoc = true
+    }
 }
 
 android {

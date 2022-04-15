@@ -16,14 +16,17 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
 ) {
     private var binding: ViewDrawBinding = ViewDrawBinding.inflate(LayoutInflater.from(context), this, true)
     private val styleModal = BrushStyleModal()
+    private val textStyleModal = TextStyleModal()
 
     private var touchOffset = 0f
 
     init {
-        binding.canvas.setBrush(styleModal.getBrushStyle())
+        binding.canvas.setBrushStyle(styleModal.getBrushStyle())
+        binding.canvas.setTextStyle(styleModal.getTextStyle())
 
-        styleModal.onCloseListener = { style ->
-            binding.canvas.setBrush(style)
+        styleModal.onCloseListener = { brush, text ->
+            binding.canvas.setBrushStyle(brush)
+            binding.canvas.setTextStyle(text)
         }
 
         binding.buttonUndo.setOnClickListener {
@@ -46,11 +49,15 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
             styleModal.show((context as AppCompatActivity).supportFragmentManager, BrushStyleModal.TAG)
         }
 
+        binding.buttonText.setOnLongClickListener {
+            true
+        }
+
         touchOffset = dpToPixels(16f)
     }
 
-    fun setSize(width: Int, height: Int) {
-        binding.canvas.setSize(width, height)
+    fun setBitmap(src: Bitmap) {
+        binding.canvas.setBitmap(src)
     }
 
     private fun undo() {

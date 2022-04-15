@@ -4,7 +4,6 @@ import android.content.DialogInterface
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,21 +14,15 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.databinding.ModalDrawStyleBinding
 
-class BrushStyleModal : BottomSheetDialogFragment() {
+class TextStyleModal : BottomSheetDialogFragment() {
 
     private lateinit var binding: ModalDrawStyleBinding
-    private var brushHue: Float = 0f
-    private var brushSaturation: Float = 1f
-    private var brushValue: Float = 1f
-    private var brushType = BrushType.PENCIL
-    private var brushSize = 8f
-    private var alpha = 1f
     private var textSize = 24f
     private var textHue: Float = 0f
     private var textSaturation: Float = 0f
     private var textValue = 1f
 
-    var onCloseListener: ((brush: BrushStyle, text: TextStyle) -> Unit)? = null
+    var onCloseListener: ((text: TextStyle) -> Unit)? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -50,58 +43,7 @@ class BrushStyleModal : BottomSheetDialogFragment() {
             }
         }
 
-        setupBrushViews()
         setupTextViews()
-    }
-
-    private fun setupBrushViews() {
-        binding.sliderHue.trackGradient = getGradient(GradientType.HUE, 360f, 1f)
-        binding.sliderSaturation.trackGradient = getGradient(GradientType.SATURATION, brushHue, 1f)
-        binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, brushHue, brushSaturation)
-        setBrushPreview()
-
-        binding.sliderHue.addOnChangeListener { _, sliderValue, _ ->
-            brushHue = sliderValue
-            binding.sliderSaturation.trackGradient = getGradient(GradientType.SATURATION, brushHue, 1f)
-            binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, brushHue, brushSaturation)
-            setBrushPreview()
-        }
-
-        binding.sliderSaturation.addOnChangeListener { _, sliderValue, _ ->
-            brushSaturation = sliderValue
-            binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, brushHue, brushSaturation)
-            setBrushPreview()
-        }
-
-        binding.sliderValue.addOnChangeListener { _, sliderValue, _ ->
-            brushValue = sliderValue
-            setBrushPreview()
-        }
-
-        binding.sliderSize.addOnChangeListener { _, value, _ ->
-            brushSize = value
-            setBrushPreview()
-        }
-
-        binding.brushType.addOnButtonCheckedListener { _, checkedId, _ ->
-            when (checkedId) {
-                R.id.button_pencil -> {
-                    brushType = BrushType.PENCIL
-                    alpha = 1f
-                    enableBrushSliders(true)
-                }
-                R.id.button_marker -> {
-                    brushType = BrushType.MARKER
-                    alpha = 0.3f
-                    enableBrushSliders(true)
-                }
-                R.id.button_eraser -> {
-                    brushType = BrushType.ERASER
-                    alpha = 0f
-                    enableBrushSliders(false)
-                }
-            }
-        }
     }
 
     private fun setupTextViews() {
@@ -142,23 +84,13 @@ class BrushStyleModal : BottomSheetDialogFragment() {
 
     override fun onCancel(dialog: DialogInterface) {
         super.onCancel(dialog)
-        onCloseListener?.invoke(getBrushStyle(), getTextStyle())
-    }
-
-    private fun setBrushPreview() {
-        val color = Color.HSVToColor(floatArrayOf(brushHue, brushSaturation, brushValue))
-        binding.sizeColorPreview.color = color
-        binding.sizeColorPreview.radius = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, brushSize, resources.displayMetrics)
+        onCloseListener?.invoke(getTextStyle())
     }
 
     private fun setTextPreview() {
         val color = Color.HSVToColor(floatArrayOf(textHue, textSaturation, textValue))
         binding.textSizeColorPreview.setTextColor(color)
         binding.textSizeColorPreview.textSize = textSize
-    }
-
-    fun getBrushStyle(): BrushStyle {
-        return BrushStyle(brushType, brushHue, brushSaturation, brushValue, brushSize, alpha)
     }
 
     fun getTextStyle(): TextStyle {
@@ -184,6 +116,6 @@ class BrushStyleModal : BottomSheetDialogFragment() {
     }
 
     companion object {
-        const val TAG = "StyleDialog"
+        const val TAG = "TextStyleDialog"
     }
 }

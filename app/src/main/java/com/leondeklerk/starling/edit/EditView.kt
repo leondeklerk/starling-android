@@ -424,7 +424,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     private fun onBitmapSet(bitmap: Bitmap) {
         binding.drawOverlay.setBounds(getRect().toRect())
 
-        binding.drawOverlay.setSize(bitmap.width, bitmap.height)
+        binding.drawOverlay.setBitmap(bitmap)
 
         binding.cropper.initialize(getRect())
 
