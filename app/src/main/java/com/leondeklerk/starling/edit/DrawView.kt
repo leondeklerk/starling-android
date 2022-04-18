@@ -15,18 +15,21 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
     attributeSet
 ) {
     private var binding: ViewDrawBinding = ViewDrawBinding.inflate(LayoutInflater.from(context), this, true)
-    private val styleModal = BrushStyleModal()
+    private val brushStyleModal = BrushStyleModal()
     private val textStyleModal = TextStyleModal()
 
     private var touchOffset = 0f
 
     init {
-        binding.canvas.setBrushStyle(styleModal.getBrushStyle())
-        binding.canvas.setTextStyle(styleModal.getTextStyle())
+        binding.canvas.setBrushStyle(brushStyleModal.getStyle())
+        binding.canvas.setTextStyle(textStyleModal.getStyle())
 
-        styleModal.onCloseListener = { brush, text ->
-            binding.canvas.setBrushStyle(brush)
-            binding.canvas.setTextStyle(text)
+        brushStyleModal.onCloseListener = { style ->
+            binding.canvas.setBrushStyle(style)
+        }
+
+        textStyleModal.onCloseListener = { style ->
+            binding.canvas.setTextStyle(style)
         }
 
         binding.buttonUndo.setOnClickListener {
@@ -46,10 +49,11 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
         }
 
         binding.buttonStyle.setOnClickListener {
-            styleModal.show((context as AppCompatActivity).supportFragmentManager, BrushStyleModal.TAG)
+            brushStyleModal.show((context as AppCompatActivity).supportFragmentManager, BrushStyleModal.TAG)
         }
 
         binding.buttonText.setOnLongClickListener {
+            textStyleModal.show((context as AppCompatActivity).supportFragmentManager, TextStyleModal.TAG)
             true
         }
 

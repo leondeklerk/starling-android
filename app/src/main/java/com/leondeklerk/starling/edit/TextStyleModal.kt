@@ -11,16 +11,15 @@ import android.widget.FrameLayout
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.leondeklerk.starling.R
-import com.leondeklerk.starling.databinding.ModalDrawStyleBinding
+import com.leondeklerk.starling.databinding.ModalTextStyleBinding
 
 class TextStyleModal : BottomSheetDialogFragment() {
 
-    private lateinit var binding: ModalDrawStyleBinding
-    private var textSize = 24f
-    private var textHue: Float = 0f
-    private var textSaturation: Float = 0f
-    private var textValue = 1f
+    private lateinit var binding: ModalTextStyleBinding
+    private var size = 24f
+    private var hue: Float = 0f
+    private var saturation: Float = 0f
+    private var value = 1f
 
     var onCloseListener: ((text: TextStyle) -> Unit)? = null
 
@@ -29,7 +28,7 @@ class TextStyleModal : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = ModalDrawStyleBinding.inflate(inflater, container, false)
+        binding = ModalTextStyleBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -47,54 +46,48 @@ class TextStyleModal : BottomSheetDialogFragment() {
     }
 
     private fun setupTextViews() {
-        binding.textSliderHue.trackGradient = getGradient(GradientType.HUE, 360f, 1f)
-        binding.textSliderSaturation.trackGradient = getGradient(GradientType.SATURATION, textHue, 1f)
-        binding.textSliderValue.trackGradient = getGradient(GradientType.VALUE, textHue, textSaturation)
-        setTextPreview()
+        binding.sliderHue.trackGradient = getGradient(GradientType.HUE, 360f, 1f)
+        binding.sliderSaturation.trackGradient = getGradient(GradientType.SATURATION, hue, 1f)
+        binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, hue, saturation)
+        setPreview()
 
-        binding.textSliderHue.addOnChangeListener { _, sliderValue, _ ->
-            textHue = sliderValue
-            binding.textSliderSaturation.trackGradient = getGradient(GradientType.SATURATION, textHue, 1f)
-            binding.textSliderValue.trackGradient = getGradient(GradientType.VALUE, textHue, textSaturation)
-            setTextPreview()
+        binding.sliderHue.addOnChangeListener { _, sliderValue, _ ->
+            hue = sliderValue
+            binding.sliderSaturation.trackGradient = getGradient(GradientType.SATURATION, hue, 1f)
+            binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, hue, saturation)
+            setPreview()
         }
 
-        binding.textSliderSaturation.addOnChangeListener { _, sliderValue, _ ->
-            textSaturation = sliderValue
-            binding.textSliderValue.trackGradient = getGradient(GradientType.VALUE, textHue, textSaturation)
-            setTextPreview()
+        binding.sliderSaturation.addOnChangeListener { _, sliderValue, _ ->
+            saturation = sliderValue
+            binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, hue, saturation)
+            setPreview()
         }
 
-        binding.textSliderValue.addOnChangeListener { _, sliderValue, _ ->
-            textValue = sliderValue
-            setTextPreview()
+        binding.sliderValue.addOnChangeListener { _, sliderValue, _ ->
+            value = sliderValue
+            setPreview()
         }
 
-        binding.textSliderSize.addOnChangeListener { _, value, _ ->
-            textSize = value
-            setTextPreview()
+        binding.sliderSize.addOnChangeListener { _, value, _ ->
+            size = value
+            setPreview()
         }
-    }
-
-    private fun enableBrushSliders(enabled: Boolean) {
-        binding.sliderHue.isEnabled = enabled
-        binding.sliderSaturation.isEnabled = enabled
-        binding.sliderValue.isEnabled = enabled
     }
 
     override fun onCancel(dialog: DialogInterface) {
         super.onCancel(dialog)
-        onCloseListener?.invoke(getTextStyle())
+        onCloseListener?.invoke(getStyle())
     }
 
-    private fun setTextPreview() {
-        val color = Color.HSVToColor(floatArrayOf(textHue, textSaturation, textValue))
-        binding.textSizeColorPreview.setTextColor(color)
-        binding.textSizeColorPreview.textSize = textSize
+    private fun setPreview() {
+        val color = Color.HSVToColor(floatArrayOf(hue, saturation, value))
+        binding.sizeColorPreview.setTextColor(color)
+        binding.sizeColorPreview.textSize = size
     }
 
-    fun getTextStyle(): TextStyle {
-        return TextStyle(textHue, textSaturation, textValue, textSize)
+    fun getStyle(): TextStyle {
+        return TextStyle(hue, saturation, value, size)
     }
 
     private fun getGradient(type: GradientType, hue: Float, saturation: Float): GradientDrawable {

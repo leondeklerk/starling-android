@@ -13,30 +13,26 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.leondeklerk.starling.R
-import com.leondeklerk.starling.databinding.ModalDrawStyleBinding
+import com.leondeklerk.starling.databinding.ModalBrushStyleBinding
 
 class BrushStyleModal : BottomSheetDialogFragment() {
 
-    private lateinit var binding: ModalDrawStyleBinding
-    private var brushHue: Float = 0f
-    private var brushSaturation: Float = 1f
-    private var brushValue: Float = 1f
-    private var brushType = BrushType.PENCIL
-    private var brushSize = 8f
+    private lateinit var binding: ModalBrushStyleBinding
+    private var hue: Float = 0f
+    private var saturation: Float = 1f
+    private var value: Float = 1f
+    private var type = BrushType.PENCIL
+    private var size = 8f
     private var alpha = 1f
-    private var textSize = 24f
-    private var textHue: Float = 0f
-    private var textSaturation: Float = 0f
-    private var textValue = 1f
 
-    var onCloseListener: ((brush: BrushStyle, text: TextStyle) -> Unit)? = null
+    var onCloseListener: ((brush: BrushStyle) -> Unit)? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = ModalDrawStyleBinding.inflate(inflater, container, false)
+        binding = ModalBrushStyleBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -50,91 +46,60 @@ class BrushStyleModal : BottomSheetDialogFragment() {
             }
         }
 
-        setupBrushViews()
-        setupTextViews()
+        setup()
     }
 
-    private fun setupBrushViews() {
+    private fun setup() {
         binding.sliderHue.trackGradient = getGradient(GradientType.HUE, 360f, 1f)
-        binding.sliderSaturation.trackGradient = getGradient(GradientType.SATURATION, brushHue, 1f)
-        binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, brushHue, brushSaturation)
-        setBrushPreview()
+        binding.sliderSaturation.trackGradient = getGradient(GradientType.SATURATION, hue, 1f)
+        binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, hue, saturation)
+        setPreview()
 
         binding.sliderHue.addOnChangeListener { _, sliderValue, _ ->
-            brushHue = sliderValue
-            binding.sliderSaturation.trackGradient = getGradient(GradientType.SATURATION, brushHue, 1f)
-            binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, brushHue, brushSaturation)
-            setBrushPreview()
+            hue = sliderValue
+            binding.sliderSaturation.trackGradient = getGradient(GradientType.SATURATION, hue, 1f)
+            binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, hue, saturation)
+            setPreview()
         }
 
         binding.sliderSaturation.addOnChangeListener { _, sliderValue, _ ->
-            brushSaturation = sliderValue
-            binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, brushHue, brushSaturation)
-            setBrushPreview()
+            saturation = sliderValue
+            binding.sliderValue.trackGradient = getGradient(GradientType.VALUE, hue, saturation)
+            setPreview()
         }
 
         binding.sliderValue.addOnChangeListener { _, sliderValue, _ ->
-            brushValue = sliderValue
-            setBrushPreview()
+            value = sliderValue
+            setPreview()
         }
 
         binding.sliderSize.addOnChangeListener { _, value, _ ->
-            brushSize = value
-            setBrushPreview()
+            size = value
+            setPreview()
         }
 
         binding.brushType.addOnButtonCheckedListener { _, checkedId, _ ->
             when (checkedId) {
                 R.id.button_pencil -> {
-                    brushType = BrushType.PENCIL
+                    type = BrushType.PENCIL
                     alpha = 1f
-                    enableBrushSliders(true)
+                    enableSliders(true)
                 }
                 R.id.button_marker -> {
-                    brushType = BrushType.MARKER
+                    type = BrushType.MARKER
                     alpha = 0.3f
-                    enableBrushSliders(true)
+                    enableSliders(true)
                 }
                 R.id.button_eraser -> {
-                    brushType = BrushType.ERASER
+                    type = BrushType.ERASER
                     alpha = 0f
-                    enableBrushSliders(false)
+                    enableSliders(false)
                 }
             }
         }
     }
 
-    private fun setupTextViews() {
-        binding.textSliderHue.trackGradient = getGradient(GradientType.HUE, 360f, 1f)
-        binding.textSliderSaturation.trackGradient = getGradient(GradientType.SATURATION, textHue, 1f)
-        binding.textSliderValue.trackGradient = getGradient(GradientType.VALUE, textHue, textSaturation)
-        setTextPreview()
-
-        binding.textSliderHue.addOnChangeListener { _, sliderValue, _ ->
-            textHue = sliderValue
-            binding.textSliderSaturation.trackGradient = getGradient(GradientType.SATURATION, textHue, 1f)
-            binding.textSliderValue.trackGradient = getGradient(GradientType.VALUE, textHue, textSaturation)
-            setTextPreview()
-        }
-
-        binding.textSliderSaturation.addOnChangeListener { _, sliderValue, _ ->
-            textSaturation = sliderValue
-            binding.textSliderValue.trackGradient = getGradient(GradientType.VALUE, textHue, textSaturation)
-            setTextPreview()
-        }
-
-        binding.textSliderValue.addOnChangeListener { _, sliderValue, _ ->
-            textValue = sliderValue
-            setTextPreview()
-        }
-
-        binding.textSliderSize.addOnChangeListener { _, value, _ ->
-            textSize = value
-            setTextPreview()
-        }
-    }
-
-    private fun enableBrushSliders(enabled: Boolean) {
+    private fun enableSliders(enabled: Boolean) {
         binding.sliderHue.isEnabled = enabled
         binding.sliderSaturation.isEnabled = enabled
         binding.sliderValue.isEnabled = enabled
@@ -142,27 +107,17 @@ class BrushStyleModal : BottomSheetDialogFragment() {
 
     override fun onCancel(dialog: DialogInterface) {
         super.onCancel(dialog)
-        onCloseListener?.invoke(getBrushStyle(), getTextStyle())
+        onCloseListener?.invoke(getStyle())
     }
 
-    private fun setBrushPreview() {
-        val color = Color.HSVToColor(floatArrayOf(brushHue, brushSaturation, brushValue))
+    private fun setPreview() {
+        val color = Color.HSVToColor(floatArrayOf(hue, saturation, value))
         binding.sizeColorPreview.color = color
-        binding.sizeColorPreview.radius = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, brushSize, resources.displayMetrics)
+        binding.sizeColorPreview.radius = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, size, resources.displayMetrics)
     }
 
-    private fun setTextPreview() {
-        val color = Color.HSVToColor(floatArrayOf(textHue, textSaturation, textValue))
-        binding.textSizeColorPreview.setTextColor(color)
-        binding.textSizeColorPreview.textSize = textSize
-    }
-
-    fun getBrushStyle(): BrushStyle {
-        return BrushStyle(brushType, brushHue, brushSaturation, brushValue, brushSize, alpha)
-    }
-
-    fun getTextStyle(): TextStyle {
-        return TextStyle(textHue, textSaturation, textValue, textSize)
+    fun getStyle(): BrushStyle {
+        return BrushStyle(type, hue, saturation, value, size, alpha)
     }
 
     private fun getGradient(type: GradientType, hue: Float, saturation: Float): GradientDrawable {
@@ -184,6 +139,6 @@ class BrushStyleModal : BottomSheetDialogFragment() {
     }
 
     companion object {
-        const val TAG = "StyleDialog"
+        const val TAG = "BrushStyleDialog"
     }
 }
