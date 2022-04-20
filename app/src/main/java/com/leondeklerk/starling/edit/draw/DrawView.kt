@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.edit
+package com.leondeklerk.starling.edit.draw
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -8,8 +8,11 @@ import android.view.LayoutInflater
 import android.widget.RelativeLayout
 import androidx.appcompat.app.AppCompatActivity
 import com.leondeklerk.starling.databinding.ViewDrawBinding
-import com.leondeklerk.starling.extensions.dpToPixels
 
+/**
+ * An edit overlay view containing buttons for selecting different drawing options,
+ * and a [PaintView] canvas for drawing.
+ */
 class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
     context,
     attributeSet
@@ -18,12 +21,12 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
     private val brushStyleModal = BrushStyleModal()
     private val textStyleModal = TextStyleModal()
 
-    private var touchOffset = 0f
-
     init {
+        // Set the starting brush and text styles
         binding.canvas.setBrushStyle(brushStyleModal.getStyle())
         binding.canvas.setTextStyle(textStyleModal.getStyle())
 
+        // Register the modal close listeners
         brushStyleModal.onCloseListener = { style ->
             binding.canvas.setBrushStyle(style)
         }
@@ -32,8 +35,9 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
             binding.canvas.setTextStyle(style)
         }
 
+        // Register the button listeners
         binding.buttonUndo.setOnClickListener {
-            undo()
+            binding.canvas.undo()
         }
 
         binding.buttonClear.setOnClickListener {
@@ -41,38 +45,38 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
         }
 
         binding.buttonRedo.setOnClickListener {
-            redo()
+            binding.canvas.redo()
         }
 
         binding.buttonText.setOnClickListener {
-            binding.canvas.addText()
+            binding.canvas.showTextModal()
         }
 
         binding.buttonStyle.setOnClickListener {
             brushStyleModal.show((context as AppCompatActivity).supportFragmentManager, BrushStyleModal.TAG)
         }
 
+        // Register the long click listener for text style
         binding.buttonText.setOnLongClickListener {
             textStyleModal.show((context as AppCompatActivity).supportFragmentManager, TextStyleModal.TAG)
             true
         }
-
-        touchOffset = dpToPixels(16f)
     }
 
+    /**
+     * Receives the bitmap source and propagates it to the canvas.
+     * @param src: the bitmap to draw on
+     */
     fun setBitmap(src: Bitmap) {
         binding.canvas.setBitmap(src)
     }
 
-    private fun undo() {
-        binding.canvas.undo()
-    }
-
-    private fun redo() {
-        binding.canvas.redo()
-    }
-
+    /**
+     * Updates the bounds of the canvas based on the received image bounds.
+     * @param newBounds the bounds of the underlying imageView.
+     */
     fun setBounds(newBounds: Rect) {
+        // Create new margin layout parameters
         newBounds.let { rect ->
             val params = binding.canvas.layoutParams as MarginLayoutParams
 
@@ -87,10 +91,18 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
         }
     }
 
+    /**
+     * Retrieve the bitmap result from the canvas
+     * @return the drawing result
+     */
     fun getBitmap(): Bitmap {
         return binding.canvas.getBitmap()
     }
 
+    /**
+     * Reset this overlay.
+     * Propagates the call to the internal canvas.
+     */
     fun reset() {
         binding.canvas.reset()
     }

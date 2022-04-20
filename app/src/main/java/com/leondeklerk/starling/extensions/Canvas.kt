@@ -3,7 +3,7 @@ package com.leondeklerk.starling.extensions
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.PointF
-import com.leondeklerk.starling.edit.Line
+import com.leondeklerk.starling.edit.crop.Line
 
 /**
  * Helper function that will draw a line based on a Line class.

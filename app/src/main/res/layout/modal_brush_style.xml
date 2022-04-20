@@ -87,7 +87,7 @@
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintBottom_toTopOf="@+id/slider_hue" />
 
-    <com.leondeklerk.starling.edit.GradientSlider
+    <com.leondeklerk.starling.views.GradientSlider
         android:id="@+id/slider_hue"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -102,7 +102,7 @@
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintBottom_toTopOf="@+id/slider_saturation" />
 
-    <com.leondeklerk.starling.edit.GradientSlider
+    <com.leondeklerk.starling.views.GradientSlider
         android:id="@+id/slider_saturation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -117,7 +117,7 @@
         tools:trackGradient="@drawable/tools_gradient_saturation"
         android:layout_marginEnd="16dp" />
 
-    <com.leondeklerk.starling.edit.GradientSlider
+    <com.leondeklerk.starling.views.GradientSlider
         android:id="@+id/slider_value"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -161,7 +161,7 @@
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintBottom_toBottomOf="parent" />
 
-    <com.leondeklerk.starling.edit.ColorDotView
+    <com.leondeklerk.starling.views.ColorDotView
         android:id="@+id/size_color_preview"
         android:layout_width="48dp"
         android:layout_height="48dp"

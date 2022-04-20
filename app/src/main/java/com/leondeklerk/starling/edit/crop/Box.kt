@@ -1,9 +1,17 @@
-package com.leondeklerk.starling.edit
+package com.leondeklerk.starling.edit.crop
 
 import android.graphics.PointF
 import android.graphics.RectF
 import com.google.gson.Gson
 
+/**
+ * Data class representing a box.
+ * Each box consists of 4 corners ([PointF]) and for sides ([Line].
+ * @param leftTop: the left top corner (origin)
+ * @param rightTop the right top corner of the box
+ * @param rightBottom the right bottom corner (largest x/y values)
+ * @param leftBottom the left bottom corner
+ */
 data class Box(
     val leftTop: PointF,
     val rightTop: PointF,

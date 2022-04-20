@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.edit
+package com.leondeklerk.starling.edit.crop
 
 import android.content.Context
 import android.graphics.PointF
@@ -95,7 +95,7 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
     /**
      * Checks if a new move can be started.
-     * @param location: the current pointerlocation.
+     * @param location: the current pointer location.
      * @return if movement was started or not.
      */
     fun startMove(location: PointF): Boolean {

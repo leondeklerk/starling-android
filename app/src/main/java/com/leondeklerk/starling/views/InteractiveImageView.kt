@@ -1,8 +1,9 @@
-package com.leondeklerk.starling.edit
+package com.leondeklerk.starling.views
 
 import android.animation.Animator
 import android.animation.ValueAnimator
 import android.animation.ValueAnimator.AnimatorUpdateListener
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -19,6 +20,7 @@ import androidx.core.graphics.values
 import androidx.core.view.ScaleGestureDetectorCompat
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
+import com.leondeklerk.starling.edit.crop.Side
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -33,7 +35,7 @@ import kotlin.math.sin
 
 /**
  * Extended image view that allows scaling, rotation, and translating.
- * Provides a set of listeners for use with a [CropView] in an [EditView].
+ * Provides a set of listeners which can be used to create composite screens
  * Provides (indirect) support for external zooming and (auto) translating.
  */
 class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppCompatImageView(
@@ -155,6 +157,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!isClickable && isEnabled) {
 
@@ -505,7 +508,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     }
 
     /**
-     * Set all the initial values of the edit screen.
+     * Set all the initial values of the image.
      * Sets the starting matrix values, and the starting scale.
      * Invokes the onBitmapSetListener.
      */

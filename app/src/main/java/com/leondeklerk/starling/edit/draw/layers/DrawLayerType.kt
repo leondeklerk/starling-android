@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.edit
+package com.leondeklerk.starling.edit.draw.layers
 
 /**
  * Different types of available draw layers.

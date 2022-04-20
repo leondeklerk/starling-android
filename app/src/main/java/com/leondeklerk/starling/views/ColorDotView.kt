@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.edit
+package com.leondeklerk.starling.views
 
 import android.content.Context
 import android.graphics.Canvas
@@ -30,13 +30,13 @@ class ColorDotView(context: Context, attrs: AttributeSet?) : View(context, attrs
         color = Color.BLUE
     }
 
-    private var cx: Float = 0F
-    private var cy: Float = 0F
+    private var cx: Float = 0f
+    private var cy: Float = 0f
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        cx = w / 2F
-        cy = h / 2F
+        cx = w / 2f
+        cy = h / 2f
     }
 
     override fun onDraw(canvas: Canvas) {

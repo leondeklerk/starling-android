@@ -1,5 +1,6 @@
 package com.leondeklerk.starling.edit
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.DialogInterface
@@ -30,7 +31,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ViewEditBinding
-import com.leondeklerk.starling.edit.Side.NONE
+import com.leondeklerk.starling.edit.crop.CropView
+import com.leondeklerk.starling.edit.crop.HandlerType
+import com.leondeklerk.starling.edit.crop.Side.NONE
+import com.leondeklerk.starling.edit.draw.DrawView
+import com.leondeklerk.starling.views.InteractiveImageView
 import java.io.IOException
 import java.lang.Long.parseLong
 import java.util.Date
@@ -48,6 +53,7 @@ import kotlinx.coroutines.withContext
  * Class that takes in a image and provides edit options.
  * Provides scaling, translating and cropping.
  * Makes use of a [CropView] to handle all selection box rendering and movement.
+ * Uses a [DrawView] in order to draw on the image.
  * Makes use of a [InteractiveImageView] for scaling and translating the image itself.
  */
 class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout(
@@ -65,6 +71,10 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     private var movingBox = false
     private var movingOther = false
 
+    // State variables
+    private var isSaving = false
+    private var drawMode = false
+
     // Animation
     private var refreshRate = 60f
 
@@ -73,9 +83,6 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     var imageView: InteractiveImageView = binding.interactiveImageView
     var onCancel: (() -> Unit)? = null
     var onSave: ((data: ImageItem) -> Unit)? = null
-    var isSaving = false
-
-    var drawMode = false
 
     /**
      * Simple data class combining bitmap data.
@@ -121,7 +128,8 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
             imageView.rotateImage()
         }
 
-        binding.modeSelector.setOnCheckedChangeListener { group, checkedId ->
+        // TODO: improve switching?
+        binding.modeSelector.setOnCheckedChangeListener { _, checkedId ->
             imageView.reset()
             when (checkedId) {
                 R.id.mode_crop -> {
@@ -145,6 +153,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         boxTransHandler.removeCallbacksAndMessages(null)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!isSaving && !isClickable && isEnabled) {
             // get the current state of the image matrix, its values, and the bounds of the drawn bitmap
@@ -224,7 +233,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
         // Get view values
         var bitmap = imageView.drawable.toBitmap()
-        var result: Bitmap
+        val result: Bitmap
         if (!drawMode) {
             val startScale = imageView.baseScale
             val cropBox = binding.cropper.getCropperRect()
@@ -278,7 +287,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
                 bitmap.height,
                 bitmap.config
             )
-            var bm2 = binding.drawOverlay.getBitmap()
+            val bm2 = binding.drawOverlay.getBitmap()
             val canvas = Canvas(result)
 
             val p = Paint(Paint.ANTI_ALIAS_FLAG)

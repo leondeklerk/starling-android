@@ -1,19 +1,19 @@
-package com.leondeklerk.starling.edit
+package com.leondeklerk.starling.edit.crop
 
 import android.graphics.PointF
 import android.graphics.RectF
 import android.os.Handler
 import android.os.Looper
-import com.leondeklerk.starling.edit.HandlerType.BOTTOM
-import com.leondeklerk.starling.edit.HandlerType.BOX
-import com.leondeklerk.starling.edit.HandlerType.LEFT
-import com.leondeklerk.starling.edit.HandlerType.LEFT_BOTTOM
-import com.leondeklerk.starling.edit.HandlerType.LEFT_TOP
-import com.leondeklerk.starling.edit.HandlerType.NONE
-import com.leondeklerk.starling.edit.HandlerType.RIGHT
-import com.leondeklerk.starling.edit.HandlerType.RIGHT_BOTTOM
-import com.leondeklerk.starling.edit.HandlerType.RIGHT_TOP
-import com.leondeklerk.starling.edit.HandlerType.TOP
+import com.leondeklerk.starling.edit.crop.HandlerType.BOTTOM
+import com.leondeklerk.starling.edit.crop.HandlerType.BOX
+import com.leondeklerk.starling.edit.crop.HandlerType.LEFT
+import com.leondeklerk.starling.edit.crop.HandlerType.LEFT_BOTTOM
+import com.leondeklerk.starling.edit.crop.HandlerType.LEFT_TOP
+import com.leondeklerk.starling.edit.crop.HandlerType.NONE
+import com.leondeklerk.starling.edit.crop.HandlerType.RIGHT
+import com.leondeklerk.starling.edit.crop.HandlerType.RIGHT_BOTTOM
+import com.leondeklerk.starling.edit.crop.HandlerType.RIGHT_TOP
+import com.leondeklerk.starling.edit.crop.HandlerType.TOP
 import java.lang.Float.max
 
 typealias PairF = Pair<Float, Float>

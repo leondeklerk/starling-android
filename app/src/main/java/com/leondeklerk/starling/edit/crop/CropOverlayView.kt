@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.edit
+package com.leondeklerk.starling.edit.crop
 
 import android.animation.ValueAnimator
 import android.content.Context

@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.edit
+package com.leondeklerk.starling.views
 
 import android.content.Context
 import android.graphics.Canvas
@@ -103,7 +103,12 @@ class GradientSlider(context: Context, attributeSet: AttributeSet?) : Slider(con
         gradient?.setBounds(0, 0, trackWidth + trackHeight, trackHeight)
     }
 
+    /**
+     * Get a gradient that represents the disables state
+     * @return a drawable containing a grayed out track.
+     */
     private fun getDisabledGradient(): GradientDrawable {
+        // Create just a gray gradient.
         val disabledGray = resources.getColor(R.color.slider_inactive_gray, context.theme)
         val gradient = GradientDrawable(
             GradientDrawable.Orientation.LEFT_RIGHT,
