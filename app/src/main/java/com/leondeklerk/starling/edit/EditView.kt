@@ -33,9 +33,10 @@ import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ViewEditBinding
 import com.leondeklerk.starling.edit.crop.CropView
 import com.leondeklerk.starling.edit.crop.HandlerType
-import com.leondeklerk.starling.edit.crop.Side.NONE
 import com.leondeklerk.starling.edit.draw.DrawView
 import com.leondeklerk.starling.views.InteractiveImageView
+import com.leondeklerk.starling.views.enums.Side
+import com.leondeklerk.starling.views.enums.Side.NONE
 import java.io.IOException
 import java.lang.Long.parseLong
 import java.util.Date
@@ -236,7 +237,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         val result: Bitmap
         if (!drawMode) {
             val startScale = imageView.baseScale
-            val cropBox = binding.cropper.getCropperRect()
+            val cropBox = binding.cropper.outline
 
             // Convert the reference bitmap to a rotated bitmap.
             val baseMatrix = Matrix()
@@ -397,7 +398,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
         // Register the image on reset listener
         imageView.onResetListener = {
-            binding.cropper.reset()
+            binding.cropper.reset(getRect())
         }
     }
 
@@ -411,7 +412,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
 
         imageView.onZoomLevelChangeListener = { level ->
-            binding.cropper.setZoomLevel(level)
+            binding.cropper.zoomLevel = level
         }
 
         imageView.onZoomedInListener = {
@@ -476,8 +477,8 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         val (newX, newY) = (types)
 
         // Parse HandlerTypes to Sides
-        val directionX = newX.parseToSide(newX)
-        val directionY = newY.parseToSide(newY)
+        val directionX = handlerToSide(newX)
+        val directionY = handlerToSide(newY)
 
         // If the direction changed
         if (curX != directionX || curY != directionY) {
@@ -571,5 +572,15 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         // Get the offset as a size percentage and convert this to pixels
         offset += (difference / maxSize) * data.bitmapSize
         return offset
+    }
+
+    private fun handlerToSide(type: HandlerType): Side {
+        return when (type) {
+            HandlerType.LEFT -> Side.LEFT
+            HandlerType.TOP -> Side.TOP
+            HandlerType.RIGHT -> Side.RIGHT
+            HandlerType.BOTTOM -> Side.BOTTOM
+            else -> NONE
+        }
     }
 }

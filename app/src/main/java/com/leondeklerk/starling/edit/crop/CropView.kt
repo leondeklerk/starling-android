@@ -2,14 +2,14 @@ package com.leondeklerk.starling.edit.crop
 
 import android.content.Context
 import android.graphics.PointF
-import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.graphics.toRect
 import com.leondeklerk.starling.databinding.ViewCropBinding
+import com.leondeklerk.starling.edit.draw.AspectRatioModal
 
 /**
  * A wrapper View that defines and handles all controls related to cropping an image.
@@ -25,6 +25,8 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     private var binding: ViewCropBinding = ViewCropBinding.inflate(LayoutInflater.from(context), this, true)
     private var overlay = binding.overlay
     private var moving = false
+    private val aspectRatioModal = AspectRatioModal()
+    private var aspectRatio: AspectRatio = aspectRatioModal.aspectRatio
 
     var onBoundsHitHandler: ((delta: PointF, types: Pair<HandlerType, HandlerType>) -> Unit)? = null
     var onZoomHandler: ((center: PointF, out: Boolean) -> Unit)? = null
@@ -32,14 +34,28 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     var onButtonRotate: (() -> Unit)? = null
     var onButtonAspect: (() -> Unit)? = null
     var onTouchHandler: ((event: MotionEvent) -> Boolean)? = null
+    var zoomLevel
+        get() = overlay.zoomLevel
+        set(value) {
+            overlay.zoomLevel = value
+        }
+
+    val outline
+        get() = overlay.outline
 
     companion object {
         private const val BOX_DURATION = 100L
     }
 
     init {
+        aspectRatioModal.onCloseListener = {
+            aspectRatio = it
+            overlay.updateRatio(aspectRatio, BOX_DURATION)
+        }
+
         binding.buttonAspect.setOnClickListener {
             onButtonAspect?.invoke()
+            aspectRatioModal.show((context as AppCompatActivity).supportFragmentManager, AspectRatioModal.TAG)
         }
 
         binding.buttonRotate.setOnClickListener {
@@ -125,14 +141,6 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     }
 
     /**
-     * Retrieves the current rectangle of the crop box.
-     * @return the rectangle containing the box.
-     */
-    fun getCropperRect(): Rect {
-        return overlay.cropBox.toRect()
-    }
-
-    /**
      * Checks if the current overlay was changed by the users.
      * @return if the overlay is changed or not.
      */
@@ -142,18 +150,11 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
     /**
      * Resets the overlay to its initial position.
-     * Takes [BOX_DURATION] to animate.
+     * Takes [BOX_DURATION]
+     * @param bounds: the bounds of the reset image.
      */
-    fun reset() {
-        overlay.reset(BOX_DURATION)
-    }
-
-    /**
-     * Updates the zoom level of the overlay.
-     * @param level: the new zom level of the image.
-     */
-    fun setZoomLevel(level: Float) {
-        overlay.setZoomLevel(level)
+    fun reset(bounds: RectF) {
+        overlay.reset(bounds, BOX_DURATION)
     }
 
     /**
@@ -185,6 +186,6 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      * @param bounds: the bounds of the image to overlay.
      */
     fun initialize(bounds: RectF) {
-        overlay.setInitialValues(bounds)
+        overlay.initialize(bounds, aspectRatio)
     }
 }

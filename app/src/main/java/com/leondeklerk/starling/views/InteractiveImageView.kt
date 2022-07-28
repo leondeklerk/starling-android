@@ -20,7 +20,7 @@ import androidx.core.graphics.values
 import androidx.core.view.ScaleGestureDetectorCompat
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
-import com.leondeklerk.starling.edit.crop.Side
+import com.leondeklerk.starling.views.enums.Side
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil

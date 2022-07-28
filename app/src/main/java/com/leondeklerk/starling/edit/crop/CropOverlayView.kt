@@ -6,13 +6,16 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PointF
+import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
+import androidx.core.animation.doOnEnd
+import androidx.core.graphics.toRect
+import com.leondeklerk.starling.edit.EditView
 import com.leondeklerk.starling.extensions.drawCircle
 import com.leondeklerk.starling.extensions.drawLine
-import java.lang.Float.min
 
 /**
  * Custom view that draws a resizable grid over an imageView.
@@ -26,15 +29,23 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
     context,
     attributeSet
 ) {
-    private var borderBox: Box? = null
-    private val handleBounds = px(16f)
+    private var box: Box? = null
     private var moveHandler: CropMoveHandler? = null
-    private var startRect = RectF()
+    private var startBox: Box? = null
+    private var setOnAnimate = false
+    private var aspectRatio: AspectRatio = AspectRatio.FREE
+    private var bounds = RectF()
 
     var onBoundsHitHandler: ((delta: PointF, types: Pair<HandlerType, HandlerType>) -> Unit)? = null
     var onZoomHandler: ((center: PointF, out: Boolean) -> Unit)? = null
-    val cropBox: RectF
-        get() = borderBox?.getRect() ?: RectF()
+    val outline: Rect
+        get() = box?.rect?.toRect() ?: Rect()
+
+    var zoomLevel: Float
+        get() = moveHandler?.zoomLevel ?: 0f
+        set(value) {
+            moveHandler?.zoomLevel = value
+        }
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
@@ -47,37 +58,47 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
     }
 
     /**
-     * Sets up the border [Box] and the [CropMoveHandler].
-     * Also responsible for registering the listeners,
-     * and initiating the first draw.
+     * Upon updating the aspect ratio,
+     * reinitialize the components.
+     * @param aspectRatio the new aspect ratio
+     * @param duration: the animation duration.
      */
-    fun setInitialValues(rect: RectF) {
-        borderBox = Box(
-            PointF(rect.left, rect.top),
-            PointF(rect.right, rect.top),
-            PointF(rect.right, rect.bottom),
-            PointF(rect.left, rect.bottom)
-        )
+    fun updateRatio(aspectRatio: AspectRatio, duration: Long) {
+        initialize(bounds, aspectRatio, duration, true)
+    }
 
-        startRect = rect
+    /**
+     * Responsible for storing the current aspect ratio and bounds.
+     * Will update the original aspect ratio based on the image bounds.
+     * Creates a new [Box] component and related [CropMoveHandler] component.
+     * If reinitializing, will animate from the previous box to the new value.
+     * @param rect: the image bounds
+     * @param aspectRatio the current aspect ratio
+     * @param duration the duration of animation when resetting
+     * @param animate: indicates if the initialization should be animated or not.
+     */
+    fun initialize(
+        rect: RectF,
+        aspectRatio: AspectRatio,
+        duration: Long = 0L,
+        animate: Boolean = false
+    ) {
+        this.aspectRatio = aspectRatio
+        this.bounds = rect
 
-        // Calculate the min dimens (quarter height/width or 64dp).
-        val minDimens = min(min(rect.height(), rect.width()) / 4f, px(64f))
-
-        moveHandler = CropMoveHandler(
-            rect, borderBox!!, handleBounds, minDimens, px(56f), px(8f)
-        )
-
-        // Set up listeners
-        moveHandler?.onBoundsHitListener = { delta, types ->
-            onBoundsHitHandler?.invoke(delta, types)
+        if (aspectRatio == AspectRatio.ORIGINAL) {
+            this.aspectRatio.xRatio = rect.width().toInt()
+            this.aspectRatio.yRatio = rect.height().toInt()
         }
 
-        moveHandler?.onZoomListener = { center, out ->
-            onZoomHandler?.invoke(center, out)
-        }
+        val targetRect = Box.from(rect, aspectRatio, px(64f)).rect
 
-        invalidate()
+        if (animate) {
+            setOnAnimate = true
+            animateBoxUpdate(targetRect, duration)
+        } else {
+            setupComponents()
+        }
     }
 
     /**
@@ -85,6 +106,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * @param rect: the rectangle containing the current image bounds.
      */
     fun updateBounds(rect: RectF) {
+        bounds = rect
         // Set the moveHandler bounds (restricted to the view size)
         moveHandler?.updateBounds(rect)
     }
@@ -149,20 +171,12 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
     }
 
     /**
-     * Helper function to update the moveHandler zoomLevel.
-     * @param zoomLevel the new zoom level
+     * Resets the cropper by re-initializing the component with an animation.
+     * @param bounds: the new bounds of the reset component.
+     * @param duration: the duration of the animation.
      */
-    fun setZoomLevel(zoomLevel: Float) {
-        moveHandler?.zoomLevel = zoomLevel
-    }
-
-    /**
-     * Resets the cropView and sets the cropper to the initial bounds.
-     */
-    fun reset(duration: Long) {
-        moveHandler?.let {
-            animateBoxUpdate(it.reset(), duration)
-        }
+    fun reset(bounds: RectF, duration: Long) {
+        initialize(bounds, aspectRatio, duration, true)
     }
 
     /**
@@ -170,7 +184,48 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * @return if this box was touched or not.
      */
     fun isTouched(): Boolean {
-        return startRect != borderBox?.getRect()
+        return startBox?.rect != box?.rect
+    }
+
+    /**
+     * Instantiate all related component of the crop overlay.
+     * Creates a new box and handler,
+     * makes sure everything is drawn to the screen.
+     */
+    private fun setupComponents() {
+        createBox()
+        createMoveHandler()
+        invalidate()
+    }
+
+    /**
+     * Creates a new box based on the bounds and ratio,
+     * also creates a initial copy.
+     */
+    private fun createBox() {
+        box = Box.from(bounds, aspectRatio, px(64f))
+        startBox = box!!.copy()
+    }
+
+    /**
+     * Creates the move handler based on the box,
+     * registers the listeners of the handler.
+     */
+    private fun createMoveHandler() {
+        moveHandler = CropMoveHandler(
+            bounds, box!!, px(16f), px(56f), px(8f)
+        )
+
+        moveHandler?.aspectRatio = aspectRatio
+
+        // Set up listeners
+        moveHandler?.onBoundsHitListener = { delta, types ->
+            onBoundsHitHandler?.invoke(delta, types)
+        }
+
+        moveHandler?.onZoomListener = { center, out ->
+            onZoomHandler?.invoke(center, out)
+        }
     }
 
     /**
@@ -179,7 +234,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * @param canvas the canvas to draw on
      */
     private fun drawBackground(canvas: Canvas) {
-        val borderBox = borderBox ?: return
+        val borderBox = box ?: return
 
         // The (simplified) bounds to draw from
         val imageBounds = RectF(
@@ -192,20 +247,20 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
         }
 
         // Create the 4 background sections
-        val leftBackground = RectF(imageBounds.left, imageBounds.top, borderBox.left.x, imageBounds.bottom)
+        val leftBackground = RectF(imageBounds.left, imageBounds.top, borderBox.l, imageBounds.bottom)
 
         val topBackground = RectF(
-            borderBox.left.x,
+            borderBox.l,
             imageBounds.top,
-            borderBox.right.x,
-            borderBox.top.y
+            borderBox.r,
+            borderBox.t
         )
-        val rightBackground = RectF(borderBox.right.x, imageBounds.top, imageBounds.right, imageBounds.bottom)
+        val rightBackground = RectF(borderBox.r, imageBounds.top, imageBounds.right, imageBounds.bottom)
 
         val bottomBackground = RectF(
-            borderBox.left.x,
-            borderBox.bottom.y,
-            borderBox.right.x,
+            borderBox.l,
+            borderBox.b,
+            borderBox.r,
             imageBounds.bottom
         )
 
@@ -223,7 +278,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * @param canvas the canvas to draw on
      */
     private fun drawGuidelines(canvas: Canvas) {
-        val borderBox = borderBox ?: return
+        val borderBox = box ?: return
 
         val paint = Paint().apply {
             this.color = Color.LTGRAY
@@ -237,10 +292,10 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
 
         // Draw the lines
         for (i in 1..3) {
-            val left = borderBox.left.x
-            val right = borderBox.right.x
-            val top = borderBox.top.y
-            val bottom = borderBox.bottom.y
+            val left = borderBox.l
+            val right = borderBox.r
+            val top = borderBox.t
+            val bottom = borderBox.b
 
             val offSetX = spaceX * i
             val offSetY = spaceY * i
@@ -256,7 +311,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * @param canvas the canvas to draw on.
      */
     private fun drawBorder(canvas: Canvas) {
-        val borderBox = borderBox ?: return
+        val borderBox = box ?: return
 
         val white = Paint().apply {
             this.color = Color.WHITE
@@ -300,11 +355,11 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * @param sizeTo the rectangle (box) to animate the borderBox to.
      */
     private fun animateBoxUpdate(sizeTo: RectF, duration: Long) {
-        borderBox?.let {
-            animateBoxSide(Side.LEFT, it.left.x, sizeTo.left, duration)
-            animateBoxSide(Side.TOP, it.top.y, sizeTo.top, duration)
-            animateBoxSide(Side.RIGHT, it.right.x, sizeTo.right, duration)
-            animateBoxSide(Side.BOTTOM, it.bottom.y, sizeTo.bottom, duration)
+        box?.let {
+            animateBoxSide(HandlerType.LEFT, it.l, sizeTo.left, duration)
+            animateBoxSide(HandlerType.TOP, it.t, sizeTo.top, duration)
+            animateBoxSide(HandlerType.RIGHT, it.r, sizeTo.right, duration)
+            animateBoxSide(HandlerType.BOTTOM, it.b, sizeTo.bottom, duration)
         }
     }
 
@@ -314,28 +369,26 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * @param from the original value
      * @param to the new value
      */
-    private fun animateBoxSide(side: Side, from: Float, to: Float, duration: Long) {
+    private fun animateBoxSide(side: HandlerType, from: Float, to: Float, duration: Long) {
         val animator = ValueAnimator.ofFloat(from, to)
 
         animator.addUpdateListener { animation ->
-            borderBox?.let {
+            box?.let {
                 when (side) {
-                    Side.LEFT -> {
-                        it.left.x = animation.animatedValue as Float
-                    }
-                    Side.TOP -> {
-                        it.top.y = animation.animatedValue as Float
-                    }
-                    Side.RIGHT -> {
-                        it.right.x = animation.animatedValue as Float
-                    }
-                    Side.BOTTOM -> {
-                        it.bottom.y = animation.animatedValue as Float
-                    }
-                    Side.NONE -> {
-                    }
+                    HandlerType.LEFT -> it.l = animation.animatedValue as Float
+                    HandlerType.TOP -> it.t = animation.animatedValue as Float
+                    HandlerType.RIGHT -> it.r = animation.animatedValue as Float
+                    HandlerType.BOTTOM -> it.b = animation.animatedValue as Float
+                    else -> {}
                 }
                 invalidate()
+            }
+        }
+
+        animator.doOnEnd {
+            if (setOnAnimate) {
+                setOnAnimate = false
+                setupComponents()
             }
         }
 

@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.edit.crop
+package com.leondeklerk.starling.views.enums
 
 /**
  * Enum class representing the different sides a object can be moving to.

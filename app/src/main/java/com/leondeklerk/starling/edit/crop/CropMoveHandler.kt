@@ -14,24 +14,23 @@ import com.leondeklerk.starling.edit.crop.HandlerType.RIGHT
 import com.leondeklerk.starling.edit.crop.HandlerType.RIGHT_BOTTOM
 import com.leondeklerk.starling.edit.crop.HandlerType.RIGHT_TOP
 import com.leondeklerk.starling.edit.crop.HandlerType.TOP
-import java.lang.Float.max
+import kotlin.math.max
+import kotlin.math.min
 
 typealias PairF = Pair<Float, Float>
 
 /**
  * The CropMoveHandler is responsible for starting, handling and stopping movement of the CropBox.
  * @param bounds: The bounds of the image
- * @param borderBox: the box drawn over the image
+ * @param box: the box drawn over the image
  * @param handlerBounds: the pixel radius around a handler that counts as touching the handler
- * @param minDimens: the minimum distance edges need to have
  * @param threshold: the threshold after which a auto movement will start
  * @param baseTranslate: the base translation which the box will auto translate.
  */
 class CropMoveHandler(
-    private var bounds: RectF,
-    private val borderBox: Box,
+    var bounds: RectF,
+    private val box: Box,
     private val handlerBounds: Float,
-    private val minDimens: Float,
     private val threshold: Float,
     private val baseTranslate: Float
 ) {
@@ -39,6 +38,7 @@ class CropMoveHandler(
     var onZoomListener: ((center: PointF, zoomOut: Boolean) -> Unit)? = null
     var onBoundsHitListener: ((delta: PointF, types: Pair<HandlerType, HandlerType>) -> Unit)? = null
     var zoomLevel = 1f
+    var aspectRatio: AspectRatio = AspectRatio.FREE
 
     private var zoomOutHandler = Handler(Looper.getMainLooper())
     private val zoomOutRunnable = Runnable {
@@ -46,7 +46,10 @@ class CropMoveHandler(
     }
     private var zoomOutRunning = false
 
+    private var initialMove = false
     private var moving = false
+    private var pointerX = 0f
+    private var pointerY = 0f
     private var movingHandler = NONE
     private var boxMoveStart = PointF()
     private lateinit var borderBoxStart: Box
@@ -72,44 +75,60 @@ class CropMoveHandler(
      * Starts a moving interaction.
      * Checks if and which handler is touched, based on location and handlerBounds.
      * Sets the type of handler that was activated (if so).
+     * Stores the initial pointer value as the value of the handler.
      * @param x: The X of the touch event
      * @param y The y coordinate of the touch event.
      * @return if a handler was activated or not.
      */
     fun startMove(x: Float, y: Float): Boolean {
+        initialMove = true
         moving = true
         movingHandler = when {
-            borderBox.leftTop.near(x, y, handlerBounds) -> {
+            box.leftTop.near(x, y, handlerBounds) -> {
+                pointerX = box.l
+                pointerY = box.t
                 LEFT_TOP
             }
-            borderBox.rightTop.near(x, y, handlerBounds) -> {
+            box.rightTop.near(x, y, handlerBounds) -> {
+                pointerX = box.r
+                pointerY = box.t
                 RIGHT_TOP
             }
-            borderBox.rightBottom.near(x, y, handlerBounds) -> {
+            box.rightBottom.near(x, y, handlerBounds) -> {
+                pointerX = box.r
+                pointerY = box.b
                 RIGHT_BOTTOM
             }
-            borderBox.leftBottom.near(x, y, handlerBounds) -> {
+            box.leftBottom.near(x, y, handlerBounds) -> {
+                pointerX = box.l
+                pointerY = box.b
                 LEFT_BOTTOM
             }
-            borderBox.top.near(x, y, handlerBounds) -> {
+            box.top.near(x, y, handlerBounds) -> {
+                pointerY = box.t
                 TOP
             }
-            borderBox.right.near(x, y, handlerBounds) -> {
+            box.right.near(x, y, handlerBounds) -> {
+                pointerX = box.r
                 RIGHT
             }
-            borderBox.bottom.near(x, y, handlerBounds) -> {
+            box.bottom.near(x, y, handlerBounds) -> {
+                pointerY = box.b
                 BOTTOM
             }
-            borderBox.left.near(x, y, handlerBounds) -> {
+            box.left.near(x, y, handlerBounds) -> {
+                pointerX = box.l
                 LEFT
             }
-            borderBox.isWithin(x, y) -> {
+            box.isWithin(x, y) -> {
+                initialMove = false
                 boxMoveStart.x = x
                 boxMoveStart.y = y
-                borderBoxStart = borderBox.copy()
+                borderBoxStart = box.copy()
                 BOX
             }
             else -> {
+                initialMove = false
                 moving = false
                 NONE
             }
@@ -129,7 +148,7 @@ class CropMoveHandler(
 
         // Reset the box properties and direction
         boxMoveStart = PointF()
-        borderBoxStart = borderBox.copy()
+        borderBoxStart = box.copy()
         curDirectionX = NONE
         curDirectionY = NONE
 
@@ -160,60 +179,64 @@ class CropMoveHandler(
     }
 
     /**
-     * Scales the box to double the size.
+     * Scales the box 75% of the screen width.
+     * The height is automatically adjusted based on the aspect ratio.
+     * If the height will not fit, the width is adjusted to a lower value.
      * If this scales outside the border, the whole box is translated to fit.
+     * Free aspect ratio equates to 75% height and width
+     * @return the new rectangle representing the updated box.
      */
     fun scaleBox(): RectF {
-        val boxRect = borderBox.getRect()
-        val width = boxRect.width() / 2f
-        val height = boxRect.height() / 2f
-        var left = boxRect.left - width
-        var right = boxRect.right + width
-        var top = boxRect.top - height
-        var bottom = boxRect.bottom + height
+        // Start with a 75% and height based on the aspect ratio.
+        var projectedWidth = bounds.width() * 0.75f
+        var projectedHeight = aspectRatio.ratio(projectedWidth)
 
-        // Calculated the X translation if outside the border
-        var dX = 0f
-        if (left < bounds.left) {
-            dX = bounds.left - left
-        } else if (right > bounds.right) {
-            dX = bounds.right - right
+        // If the height does not fit, set it to the max value and calculate the corresponding width.
+        if (projectedHeight > bounds.height()) {
+            val diff = bounds.height() - projectedHeight
+            projectedHeight = bounds.height()
+            projectedWidth += aspectRatio.ratioInverted(diff)
         }
 
-        // Calculated the Y translation if outside the bounds
-        var dY = 0f
-        if (top < bounds.top) {
-            dY = bounds.top - top
-        } else if (bottom > bounds.bottom) {
-            dY = bounds.bottom - bottom
+        // For free just use 75% for both.
+        if (aspectRatio == AspectRatio.FREE) {
+            projectedWidth = bounds.width() * 0.75f
+            projectedHeight = bounds.height() * 0.75f
         }
 
-        // Translate the box to fit it within the bounds
-        left += dX
-        right += dX
-
-        top += dY
-        bottom += dY
-
-        return RectF(left, top, right, bottom)
+        // Resize and translate the box.
+        val result = box.copy().growTo(projectedWidth, projectedHeight)
+        return result.move(
+            getAxisDiff(LEFT, RIGHT, result),
+            getAxisDiff(TOP, BOTTOM, result)
+        ).rect
     }
 
     /**
      * Updates the border to ensure that it fits within the current bounds.
-     * @return A rectF containing the updated borders
+     * First makes sure that the box fits within the bounds,
+     * then translates it to make sure it is placed within the bounds.
+     * @return A rectangle representing the updated borders
      */
     fun updateBorder(): RectF {
-        val imgWidth = bounds.right - bounds.left
-        val imgHeight = bounds.bottom - bounds.top
+        // If the box fits, just translate it.
+        if (box.width <= bounds.width() && box.height <= bounds.height()) {
+            return box.copy().move(
+                getAxisDiff(LEFT, RIGHT),
+                getAxisDiff(TOP, BOTTOM)
+            ).rect
+        }
 
-        val widthPair = Pair(borderBox.width, imgWidth)
-        val heightPair = Pair(borderBox.height, imgHeight)
+        // First shrink the box with respect to the ratio
+        val wDiff = box.width - bounds.width()
+        val hDiff = aspectRatio.ratioInverted(box.height - bounds.height())
+        val diff = max(wDiff, hDiff)
+        val result = box.copy().shrink(diff / 2f, aspectRatio.ratio(diff) / 2f)
 
-        // Get the updated sides
-        val (left, right) = getUpdatedSide(widthPair, AxisData(Pair(borderBox.left.x, borderBox.right.x), Pair(bounds.left, bounds.right)))
-        val (top, bottom) = getUpdatedSide(heightPair, AxisData(Pair(borderBox.top.y, borderBox.bottom.y), Pair(bounds.top, bounds.bottom)))
-
-        return RectF(left, top, right, bottom)
+        return result.move(
+            getAxisDiff(LEFT, RIGHT, result),
+            getAxisDiff(TOP, BOTTOM, result)
+        ).rect
     }
 
     /**
@@ -225,42 +248,9 @@ class CropMoveHandler(
     }
 
     /**
-     * Checks if the current zoom level is not one,
-     * will invoke the zoom listener and if applicable start a new zoom check runnable.
-     */
-    private fun checkZoomOut() {
-        onZoomListener?.invoke(borderBox.center, true)
-        if (zoomLevel != 1f) {
-            // Start a new runnable to check zoom out (to prevent needing to move if holding on an edge)
-            zoomOutHandler.postDelayed(zoomOutRunnable, 1000)
-        }
-    }
-
-    /**
-     * Check if the box is small enough to automatically zoom in.
-     */
-    private fun checkZoomIn() {
-        onZoomListener?.let {
-            val boxWidth = borderBox.width
-            val boxHeight = borderBox.height
-
-            val boundsWidth = bounds.width()
-            val boundsHeight = bounds.height()
-
-            // Check if width and height are smaller than half
-            val xSmall = boxWidth <= (boundsWidth / 2)
-            val ySmall = boxHeight <= (boundsHeight / 2)
-
-            if (xSmall && ySmall) {
-                // Call the listener
-                it(borderBox.center, false)
-            }
-        }
-    }
-
-    /**
      * Handles the touch movements.
      * Checks the type of handler that was activated and executes its specific movements.
+     * Also responsible for handling the automatic zoom out.
      *
      * @param x the x of the touch
      * @param y the y of the touch event
@@ -269,38 +259,149 @@ class CropMoveHandler(
     fun onMove(x: Float, y: Float): Boolean {
         if (!moving) return false
 
-        val (boundX, boundY) = withinBounds(x, y)
+        // Check if we are hitting a bound, handle auto zooming out
+        if (zoomLevel != 1f && movingHandler != BOX && movingHandler != NONE && !((x > bounds.left && x < bounds.right) && (y > bounds.top && y < bounds.bottom))) {
+            if (!zoomOutRunning) {
+                zoomOutRunning = true
+                zoomOutHandler.postDelayed(zoomOutRunnable, 500)
+            }
+        } else {
+            zoomOutRunning = false
+            zoomOutHandler.removeCallbacksAndMessages(null)
+        }
 
-        // Line handlers can use the min and max edge functions
+        val isFree = aspectRatio == AspectRatio.FREE
+
+        // The first move should use the current values of the box instead of the touch coordinates due to the handler bounds.
+        if (initialMove) {
+            initialMove = false
+        } else {
+            pointerX = x
+            pointerY = y
+        }
+
+        // For each handler get the delta of the main handler,
+        // Then based on the aspect ratio calculate the max possible delta in relation to the two dependent handlers.
         when (movingHandler) {
+            LEFT -> {
+                var delta = deltaMainHandler(pointerX, LEFT)
+
+                if (!isFree) {
+                    delta = deltaDependentHandler(delta, TOP, false)
+                    delta = deltaDependentHandler(delta, BOTTOM, true)
+
+                    box.t += aspectRatio.ratio(delta) / 2f
+                    box.b -= aspectRatio.ratio(delta) / 2f
+                }
+
+                box.l += delta
+            }
             TOP -> {
-                handleMaxEdge(borderBox.bottom, borderBox.top, boundY, Y_TYPE)
+                var delta = deltaMainHandler(pointerY, TOP)
+
+                if (!isFree) {
+                    delta = deltaDependentHandler(delta, LEFT, false)
+                    delta = deltaDependentHandler(delta, RIGHT, true)
+
+                    box.l += aspectRatio.ratioInverted(delta) / 2f
+                    box.r -= aspectRatio.ratioInverted(delta) / 2f
+                }
+
+                box.t += delta
             }
             RIGHT -> {
-                handleMinEdge(borderBox.left, borderBox.right, boundX, X_TYPE)
+                var delta = deltaMainHandler(pointerX, RIGHT)
+
+                if (!isFree) {
+                    delta = deltaDependentHandler(delta, TOP, true)
+                    delta = deltaDependentHandler(delta, BOTTOM, false)
+
+                    box.t -= aspectRatio.ratio(delta) / 2f
+                    box.b += aspectRatio.ratio(delta) / 2f
+                }
+
+                box.r += delta
             }
             BOTTOM -> {
-                handleMinEdge(borderBox.top, borderBox.bottom, boundY, Y_TYPE)
-            }
-            LEFT -> {
-                handleMaxEdge(borderBox.right, borderBox.left, boundX, X_TYPE)
+                var delta = deltaMainHandler(pointerY, BOTTOM)
+
+                if (!isFree) {
+                    delta = deltaDependentHandler(delta, LEFT, true)
+                    delta = deltaDependentHandler(delta, RIGHT, false)
+
+                    box.l -= aspectRatio.ratioInverted(delta) / 2f
+                    box.r += aspectRatio.ratioInverted(delta) / 2f
+                }
+
+                box.b += delta
             }
             LEFT_TOP -> {
-                // A corner is just two line movements at the same time
-                handleMaxEdge(borderBox.right, borderBox.left, boundX, X_TYPE)
-                handleMaxEdge(borderBox.bottom, borderBox.top, boundY, Y_TYPE)
+                if (isFree) {
+                    val xDelta = deltaMainHandler(pointerX, LEFT)
+                    val yDelta = deltaMainHandler(pointerY, TOP)
+
+                    box.l += xDelta
+                    box.t += yDelta
+                    return true
+                }
+
+                val diff = min(pointerX - box.l, pointerY - box.t)
+                val xDelta = deltaMainHandler(box.l + diff, LEFT)
+                val yDelta = deltaMainHandler(box.t + aspectRatio.ratio(xDelta), TOP)
+
+                box.l += aspectRatio.ratioInverted(yDelta)
+                box.t += yDelta
             }
             RIGHT_TOP -> {
-                handleMinEdge(borderBox.left, borderBox.right, boundX, X_TYPE)
-                handleMaxEdge(borderBox.bottom, borderBox.top, boundY, Y_TYPE)
+                if (isFree) {
+                    val xDelta = deltaMainHandler(pointerX, RIGHT)
+                    val yDelta = deltaMainHandler(pointerY, TOP)
+
+                    box.r += xDelta
+                    box.t += yDelta
+                    return true
+                }
+
+                val diff = min(pointerX - box.r, pointerY + box.t)
+                val xDelta = deltaMainHandler(box.r + diff, RIGHT)
+                val yDelta = deltaMainHandler(box.t + aspectRatio.ratio(xDelta * -1), TOP)
+
+                box.r += aspectRatio.ratioInverted(yDelta * -1)
+                box.t += yDelta
             }
             RIGHT_BOTTOM -> {
-                handleMinEdge(borderBox.left, borderBox.right, boundX, X_TYPE)
-                handleMinEdge(borderBox.top, borderBox.bottom, boundY, Y_TYPE)
+                if (isFree) {
+                    val xDelta = deltaMainHandler(pointerX, RIGHT)
+                    val yDelta = deltaMainHandler(pointerY, BOTTOM)
+
+                    box.r += xDelta
+                    box.b += yDelta
+                    return true
+                }
+
+                val diff = min(pointerX - box.r, pointerY - box.b)
+                val xDelta = deltaMainHandler(box.r + diff, RIGHT)
+                val yDelta = deltaMainHandler(box.b + aspectRatio.ratio(xDelta), BOTTOM)
+
+                box.r += aspectRatio.ratioInverted(yDelta)
+                box.b += yDelta
             }
             LEFT_BOTTOM -> {
-                handleMaxEdge(borderBox.right, borderBox.left, boundX, X_TYPE)
-                handleMinEdge(borderBox.top, borderBox.bottom, boundY, Y_TYPE)
+                if (isFree) {
+                    val xDelta = deltaMainHandler(pointerX, LEFT)
+                    val yDelta = deltaMainHandler(pointerY, BOTTOM)
+
+                    box.l += xDelta
+                    box.b += yDelta
+                    return true
+                }
+
+                val diff = min(pointerX - box.l, pointerY + box.b)
+                val xDelta = deltaMainHandler(box.l + diff, LEFT)
+                val yDelta = deltaMainHandler(box.b + aspectRatio.ratio(xDelta * -1), BOTTOM)
+
+                box.l += aspectRatio.ratioInverted(yDelta * -1)
+                box.b += yDelta
             }
             BOX -> {
                 handleBoxMove(x, y)
@@ -314,109 +415,181 @@ class CropMoveHandler(
     }
 
     /**
-     * Check if a value is within the bound set on constructing.
-     * If not cap it to the max of the bounds.
-     *
-     * @param x the x value of the point to test
-     * @param y the y value of the point to test
-     * @return a pair containing the capped values.
+     * Calculate the delta value based on the requested value, and the current value retrieved from the handler.
+     * Will first check if the new value is within the inner and outer bound.
+     * If not the value is either restricted to the outer bound or the inner bound.
+     * @param pointerValue: the new value of the handler.
+     * @param type: the handler type to retrieve the handler from.
+     * @return the delta distance this handler can move.
      */
-    private fun withinBounds(x: Float, y: Float): PairF {
-        var boundedX = x
-        var boundedY = y
-        var hitBounds = false
+    private fun deltaMainHandler(pointerValue: Float, type: HandlerType): Float {
+        // Get the required properties from the handler
+        val (_, value, outBound, inBound, _, _, isOuter) = getHandler(type)
 
-        // Check the left and right bounds (x)
-        when {
-            x < bounds.left -> {
-                hitBounds = true
-                boundedX = bounds.left
-            }
-            x > bounds.right -> {
-                hitBounds = true
-                boundedX = bounds.right
-            }
-        }
-
-        // check the top and bottom (y) bounds
-        when {
-            y < bounds.top -> {
-                hitBounds = true
-                boundedY = bounds.top
-            }
-            y > bounds.bottom -> {
-                hitBounds = true
-                boundedY = bounds.bottom
-            }
-        }
-
-        // If we hit a bound, we can zoom out
-        if (hitBounds && movingHandler != BOX && movingHandler != NONE) {
-            if (!zoomOutRunning) {
-                zoomOutRunning = true
-                zoomOutHandler.postDelayed(zoomOutRunnable, 500)
-            }
+        // Range is inverted based on the hanlder
+        val range = if (isOuter) {
+            inBound..outBound
         } else {
-            zoomOutRunning = false
-            zoomOutHandler.removeCallbacksAndMessages(null)
+            outBound..inBound
         }
 
-        return Pair(boundedX, boundedY)
-    }
-
-    /**
-     * Handles the movement of an edge that can have a maximum value.
-     * Calculates the difference and checks if the new value is within the bounds.
-     * A max edge is for example the top edge (max value is bottom edge - minDimens).
-     * Sets the value (by type) to the calculated max.
-     *
-     * @param maxEdge the line that is the maximum value
-     * @param moveEdge the edge that is moved by the user interaction
-     * @param moveTo the touch value
-     * @param type indicates if this is an X or Y movement
-     * @return if the max edge was hit or not
-     */
-    private fun handleMaxEdge(maxEdge: Line, moveEdge: Line, moveTo: Float, type: String): Boolean {
-        val maxEdgeVal = maxEdge.getByType(type)
-
-        // The distance between the lines must always be equal or larger than the minDimens
-        val diff = maxEdgeVal - moveTo
-
-        // If the distance between the lines is larger than the max distance just set it
-        return if (diff >= minDimens) {
-            moveEdge.setByType(moveTo, type)
-            false
+        return if (pointerValue in range) {
+            pointerValue - value
         } else {
-            // Otherwise set it to the max allowed value
-            moveEdge.setByType(maxEdgeVal - minDimens, type)
-            true
+            // Check the outer bound
+            if ((isOuter && pointerValue > outBound) || (!isOuter && pointerValue < outBound)) {
+                outBound - value
+            } else {
+                inBound - value
+            }
         }
     }
 
     /**
-     * Handles the movement of an edge that can have a minimum value.
-     * Calculates the difference and checks if the new value is within the bounds.
-     * A min edge is for example the right edge (min value is left edge + minDimens).
-     * Sets the value (by type) to the calculated min.
-     *
-     * @param minEdge the line that is the minimum value
-     * @param moveEdge the edge that is moved by the user interaction
-     * @param moveTo the touch value
-     * @param type indicates if this is an X or Y movement
-     * @return if the min edge was hit or not
+     * Update the given delta based on the restrictions of the dependent handler.
+     * Will either further restrict or keep the current delta,
+     * based on the outer and center bound of the handler.
+     * Center bound is used as there is a second dependent handler also moving towards the center.
+     * Accounts for the aspect ratio, as dependent handlers can only move according to the ratio of the main.
+     * @param delta: the current maximum delta
+     * @param type: the handler type of the dependent handler.
+     * @param invert: indicates if the movement should be inverted or not (e.g left inwards is a + value, while right inwards is a - value)
+     * @return the updated delta value.
      */
-    private fun handleMinEdge(minEdge: Line, moveEdge: Line, moveTo: Float, type: String): Boolean {
-        val minEdgeVal = minEdge.getByType(type)
+    private fun deltaDependentHandler(delta: Float, type: HandlerType, invert: Boolean): Float {
+        // Get the required handler properties for a dependent handler
+        val (_, value, outBound, _, centerBound, isHorizontal, isOuter) = getHandler(type)
 
-        // if the new value is still larger than the minimum height
-        return if (moveTo >= minEdgeVal + minDimens) {
-            moveEdge.setByType(moveTo, type)
-            false
+        // Apply the ratio compared to the main handler
+        var diff = if (isHorizontal) {
+            aspectRatio.ratio(delta) / 2f
         } else {
-            // Otherwise it is the minimum line + the min value (minDimens)
-            moveEdge.setByType(minEdgeVal + minDimens, type)
-            true
+            aspectRatio.ratioInverted(delta) / 2f
         }
+
+        // Account for sides moving mirrored.
+        val projected = if (invert) {
+            value - diff
+        } else {
+            value + diff
+        }
+
+        val startDiff = diff
+
+        // Constraints: centerBound >= outerHandler <= outerBound
+        if (isOuter) {
+            if (projected > outBound) {
+                diff = outBound - value
+            } else if (projected < centerBound) {
+                diff = centerBound - value
+            }
+            // Constraints:  outerBound >= innerHandler <= centerBound
+        } else {
+            if (projected < outBound) {
+                diff = outBound - value
+            } else if (projected > centerBound) {
+                diff = centerBound - value
+            }
+        }
+
+        // Make sure to revert any direction as it does not apply to the main handler.
+        if (invert && diff != startDiff) {
+            diff *= -1
+        }
+
+        // Invert the ratio to get the delta for the main handler
+        return if (isHorizontal) {
+            aspectRatio.ratioInverted(diff) * 2f
+        } else {
+            aspectRatio.ratio(diff) * 2f
+        }
+    }
+
+    /**
+     * Retrieve all handler data based on the given type and the source box.
+     * @param type: the type of the handler to retrieve
+     * @param src: the source box to retrieve the bound values from.
+     * @return a [CropHandler] containing all data for the current handler.
+     */
+    private fun getHandler(type: HandlerType, src: Box = box): CropHandler {
+        return when (type) {
+            LEFT -> {
+                CropHandler(type, src.l, bounds.left, src.innerBound.right, src.centerBound.left, isHorizontal = false, isOuter = false)
+            }
+            TOP -> {
+                CropHandler(type, src.t, bounds.top, src.innerBound.bottom, src.centerBound.top, isHorizontal = true, isOuter = false)
+            }
+            RIGHT -> {
+                CropHandler(type, src.r, bounds.right, src.innerBound.left, src.centerBound.right, isHorizontal = false, isOuter = true)
+            }
+            BOTTOM -> {
+                CropHandler(type, src.b, bounds.bottom, src.innerBound.top, src.centerBound.bottom, isHorizontal = true, isOuter = true)
+            }
+            else -> {
+                throw UnknownError()
+            }
+        }
+    }
+
+    /**
+     * Checks if the current zoom level is not one,
+     * will invoke the zoom listener and if applicable start a new zoom check runnable.
+     */
+    private fun checkZoomOut() {
+        onZoomListener?.invoke(box.center, true)
+        if (zoomLevel != 1f) {
+            // Start a new runnable to check zoom out (to prevent needing to move if holding on an edge)
+            zoomOutHandler.postDelayed(zoomOutRunnable, 1000)
+        }
+    }
+
+    /**
+     * Check if the box is small enough to automatically zoom in.
+     */
+    private fun checkZoomIn() {
+        onZoomListener?.let {
+            val boxWidth = box.width
+            val boxHeight = box.height
+
+            val boundsWidth = bounds.width()
+            val boundsHeight = bounds.height()
+
+            // Check if width and height are smaller than half
+            val xSmall = boxWidth <= (boundsWidth / 2)
+            val ySmall = boxHeight <= (boundsHeight / 2)
+
+            if (xSmall && ySmall) {
+                // Call the listener
+                it(box.center, false)
+            }
+        }
+    }
+
+    /**
+     * Based on the given handler types and the box,
+     * calculate how much the handlers need to move to fit within the current bounds.
+     * First checks the inner handler, then the outer handler.
+     * Only intended for boxes that fit within the bounds.
+     * @param inHandlerType the inner handler type (left/top) to retrieve the handler
+     * @param outHandlerType the outer handler type (right/bottom) to retrieve the handler
+     * @param source: the source box data, defaults to [box]
+     * @return the delta distance that the box is outside of the bounds.
+     */
+    private fun getAxisDiff(
+        inHandlerType: HandlerType,
+        outHandlerType: HandlerType,
+        source: Box = box
+    ): Float {
+        val i = getHandler(inHandlerType, source)
+        val o = getHandler(outHandlerType, source)
+        var diff = 0f
+
+        if (i.value < i.outBound) {
+            diff = i.outBound - i.value
+        } else if (o.value > o.outBound) {
+            diff = o.outBound - o.value
+        }
+        return diff
     }
 
     /**
@@ -430,6 +603,7 @@ class CropMoveHandler(
      * @param moveY the y touch coordinate
      */
     private fun handleBoxMove(moveX: Float, moveY: Float) {
+        // TODO, improve?
         var restrictedX = moveX - boxMoveStart.x
         var restrictedY = moveY - boxMoveStart.y
 
@@ -437,22 +611,22 @@ class CropMoveHandler(
         val deltaX = restrictedX
         val deltaY = restrictedY
 
-        val startAxisX = AxisData(Pair(borderBoxStart.left.x, borderBoxStart.right.x), Pair(bounds.left, bounds.right))
-        val startAxisY = AxisData(Pair(borderBoxStart.top.y, borderBoxStart.bottom.y), Pair(bounds.top, bounds.bottom))
+        val startAxisX = AxisData(Pair(borderBoxStart.l, borderBoxStart.r), Pair(bounds.left, bounds.right))
+        val startAxisY = AxisData(Pair(borderBoxStart.t, borderBoxStart.b), Pair(bounds.top, bounds.bottom))
 
         // Calculated the restricted values
         restrictedX = capDelta(restrictedX, startAxisX)
         restrictedY = capDelta(restrictedY, startAxisY)
 
         // Move the box itself
-        borderBox.left.x = borderBoxStart.left.x + restrictedX
-        borderBox.right.x = borderBoxStart.right.x + restrictedX
+        box.l = borderBoxStart.l + restrictedX
+        box.r = borderBoxStart.r + restrictedX
 
-        borderBox.top.y = borderBoxStart.top.y + restrictedY
-        borderBox.bottom.y = borderBoxStart.bottom.y + restrictedY
+        box.t = borderBoxStart.t + restrictedY
+        box.b = borderBoxStart.b + restrictedY
 
-        val axisX = AxisData(Pair(borderBox.left.x, borderBox.right.x), Pair(bounds.left, bounds.right))
-        val axisY = AxisData(Pair(borderBox.top.y, borderBox.bottom.y), Pair(bounds.top, bounds.bottom))
+        val axisX = AxisData(Pair(box.l, box.r), Pair(bounds.left, bounds.right))
+        val axisY = AxisData(Pair(box.t, box.b), Pair(bounds.top, bounds.bottom))
 
         // Update the auto translation and direction on the X axis
         val xChanged = updateAutoTranslationAxis(
@@ -480,48 +654,6 @@ class CropMoveHandler(
             val types = Pair(curDirectionX, curDirectionY)
             onBoundsHitListener?.invoke(delta, types)
         }
-    }
-
-    /**
-     * Update the sides on one axis of a box to the bounds.
-     * Will translate the whole box on the axis if the box fits within the image.
-     * Will restrict a side to a bound if the image does not fit the image (anymore).
-     * @param props: the box and image axis properties (width/height)
-     * @param axisData: the box sides and bounds information for this axis (x/y)
-     * @return A pair containing the updated sides.
-     */
-    private fun getUpdatedSide(props: PairF, axisData: AxisData): PairF {
-        val (boxProp, imgProp) = props
-        val sides = axisData.sides
-        val bounds = axisData.bounds
-
-        var (sideA, sideB) = sides
-
-        // Check if this axis fits the image
-        if (boxProp.toInt() <= imgProp.toInt()) {
-            var diff = 0f
-            // Check which side is out of bounds and calculate the translation
-            if (sides.first < bounds.first) {
-                diff = bounds.first - sides.first
-            } else if (sides.second > bounds.second) {
-                diff = bounds.second - sides.second
-            }
-
-            // Apply translation
-            sideA += diff
-            sideB += diff
-        } else {
-            // If the box does not fit, restrict the out of bound(s) side(s)
-            if (sides.first < bounds.first) {
-                sideA = bounds.first
-            }
-
-            if (sides.second > bounds.second) {
-                sideB = bounds.second
-            }
-        }
-
-        return Pair(sideA, sideB)
     }
 
     /**
