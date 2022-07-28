@@ -227,11 +227,26 @@ class CropMoveHandler(
             ).rect
         }
 
-        // First shrink the box with respect to the ratio
-        val wDiff = box.width - bounds.width()
-        val hDiff = aspectRatio.ratioInverted(box.height - bounds.height())
-        val diff = max(wDiff, hDiff)
-        val result = box.copy().shrink(diff / 2f, aspectRatio.ratio(diff) / 2f)
+        var wDiff = 0f
+        var hDiff = 0f
+        val result = box.copy()
+        if (aspectRatio == AspectRatio.FREE) {
+            if (box.width > bounds.width()) {
+                wDiff = box.width - bounds.width()
+            }
+
+            if (box.height > bounds.height()) {
+                hDiff = box.height - bounds.height()
+            }
+
+            result.shrink(wDiff / 2f, hDiff / 2f)
+        } else {
+            // First shrink the box with respect to the ratio
+            wDiff = box.width - bounds.width()
+            hDiff = aspectRatio.ratioInverted(box.height - bounds.height())
+            val diff = max(wDiff, hDiff)
+            result.shrink(diff / 2f, aspectRatio.ratio(diff) / 2f)
+        }
 
         return result.move(
             getAxisDiff(LEFT, RIGHT, result),
