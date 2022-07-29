@@ -106,4 +106,8 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
     fun reset() {
         binding.canvas.reset()
     }
+
+    fun isTouched(): Boolean {
+        return binding.canvas.isTouched()
+    }
 }

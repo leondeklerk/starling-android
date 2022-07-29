@@ -9,7 +9,6 @@ import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.leondeklerk.starling.databinding.ViewCropBinding
-import com.leondeklerk.starling.edit.draw.AspectRatioModal
 
 /**
  * A wrapper View that defines and handles all controls related to cropping an image.
@@ -42,10 +41,6 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
     val outline
         get() = overlay.outline
-
-    companion object {
-        private const val BOX_DURATION = 100L
-    }
 
     init {
         aspectRatioModal.onCloseListener = {
@@ -187,5 +182,9 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      */
     fun initialize(bounds: RectF) {
         overlay.initialize(bounds, aspectRatio)
+    }
+
+    companion object {
+        private const val BOX_DURATION = 100L
     }
 }

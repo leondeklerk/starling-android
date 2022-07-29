@@ -255,14 +255,6 @@ class CropMoveHandler(
     }
 
     /**
-     * Reset the cropper to its initial state.
-     * @return the bounds of the image
-     */
-    fun reset(): RectF {
-        return bounds
-    }
-
-    /**
      * Handles the touch movements.
      * Checks the type of handler that was activated and executes its specific movements.
      * Also responsible for handling the automatic zoom out.
@@ -441,7 +433,7 @@ class CropMoveHandler(
         // Get the required properties from the handler
         val (_, value, outBound, inBound, _, _, isOuter) = getHandler(type)
 
-        // Range is inverted based on the hanlder
+        // Range is inverted based on the handler
         val range = if (isOuter) {
             inBound..outBound
         } else {

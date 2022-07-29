@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.edit.draw
+package com.leondeklerk.starling.edit.crop
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -10,7 +10,6 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.databinding.ModalAspectRatioBinding
-import com.leondeklerk.starling.edit.crop.AspectRatio
 
 /**
  * Modal responsible for selection the correct [AspectRatio].

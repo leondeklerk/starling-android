@@ -52,6 +52,7 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
     private var path = Path()
     private var brush = Paint()
     private var movingText = false
+    private var cancelMove = false
     private var scaleDetector: ScaleGestureDetector
     private var scaling = false
     private var last = PointF()
@@ -139,14 +140,6 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
         }
     }
 
-    companion object {
-        private const val MAX_SCALE = 16f
-        private const val MIN_SCALE = 0.4f
-        private const val ANIMATION_DURATION = 100L
-        private const val ALPHA_MAX = 255
-        private const val ALPHA_MIN = 0
-    }
-
     init {
         // Set up the view and detectors
         setLayerType(LAYER_TYPE_HARDWARE, null)
@@ -175,8 +168,13 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
             return true
         }
 
+        if (cancelMove && event.action != MotionEvent.ACTION_UP) {
+            return true
+        }
+
         // Only allow one pointer at the same time if not scaling
         if (event.pointerCount > 1) {
+            cancelMove = true
             return true
         }
 
@@ -207,6 +205,14 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
         activeLayer = null
 
         drawLayers()
+    }
+
+    /**
+     * Defines if the current view was drawn on or not.
+     * @return if the view was edited or not.
+     */
+    fun isTouched(): Boolean {
+        return !layerList.isEmpty()
     }
 
     /**
@@ -435,6 +441,7 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
         drawing = false
         scalingActive = false
         movingText = false
+        cancelMove = false
     }
 
     /**
@@ -465,8 +472,12 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
                 // Clear the current canvas
                 canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
 
-                // Draw all layers
-                layerList.forEach { layer -> layer.draw(canvas) }
+                val textLayers = layerList.filterIsInstance<TextLayer>()
+                val drawLayers = layerList.filterIsInstance<PaintLayer>()
+
+                drawLayers.forEach { layer -> layer.draw(canvas) }
+                textLayers.forEach { layer -> layer.draw(canvas) }
+
                 invalidate()
             }
         }
@@ -651,15 +662,11 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
         return paint
     }
 
-    /**
-     * Define the different types of actions that can be performed on the layers.
-     * Used for undo and redo operations.
-     */
-    enum class ActionType {
-        ADD,
-        TRANSLATE,
-        SCALE,
-        DELETE,
-        EDIT
+    companion object {
+        private const val MAX_SCALE = 16f
+        private const val MIN_SCALE = 0.4f
+        private const val ANIMATION_DURATION = 100L
+        private const val ALPHA_MAX = 255
+        private const val ALPHA_MIN = 0
     }
 }

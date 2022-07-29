@@ -342,6 +342,8 @@ data class TextLayer(
      */
     private fun getPaint(): TextPaint {
         val textPaint = TextPaint()
+        val shadowColor = Color.parseColor("#20000000")
+        textPaint.setShadowLayer(32f, 0f, 0f, shadowColor)
         textPaint.isAntiAlias = true
         textPaint.isFilterBitmap = true
         textPaint.textSize = textSize * context.resources.displayMetrics.scaledDensity

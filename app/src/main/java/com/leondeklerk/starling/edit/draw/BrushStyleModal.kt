@@ -109,22 +109,24 @@ class BrushStyleModal : BottomSheetDialogFragment() {
         }
 
         // Listener for the brush type buttons, sets type alpha and enables/disables sliders.
-        binding.brushType.addOnButtonCheckedListener { _, checkedId, _ ->
-            when (checkedId) {
-                R.id.button_pencil -> {
-                    type = BrushType.PENCIL
-                    alpha = 1f
-                    enableSliders(true)
-                }
-                R.id.button_marker -> {
-                    type = BrushType.MARKER
-                    alpha = 0.3f
-                    enableSliders(true)
-                }
-                R.id.button_eraser -> {
-                    type = BrushType.ERASER
-                    alpha = 0f
-                    enableSliders(false)
+        binding.brushType.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked && isVisible) {
+                when (checkedId) {
+                    R.id.button_pencil -> {
+                        type = BrushType.PENCIL
+                        alpha = 1f
+                        enableSliders(true)
+                    }
+                    R.id.button_marker -> {
+                        type = BrushType.MARKER
+                        alpha = 0.3f
+                        enableSliders(true)
+                    }
+                    R.id.button_eraser -> {
+                        type = BrushType.ERASER
+                        alpha = 0f
+                        enableSliders(false)
+                    }
                 }
             }
         }
