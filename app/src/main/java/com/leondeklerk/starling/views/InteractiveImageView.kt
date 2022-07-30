@@ -150,6 +150,9 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     }
 
     override fun setImageBitmap(bm: Bitmap?) {
+        // Make sure the initial load is correct
+        scaleType = ScaleType.FIT_CENTER
+
         super.setImageBitmap(bm)
 
         bm?.let {

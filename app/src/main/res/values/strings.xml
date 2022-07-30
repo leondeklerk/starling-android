@@ -35,4 +35,7 @@
     <string name="edit_crop_ar_16_9">16:9</string>
     <string name="edit_crop_ar_21_9">21:9</string>
     <string name="edit_crop_ar_5_4">5:4</string>
+    <!--    Save strings -->
+    <string name="edit_type_save">Save</string>
+    <string name="edit_save_copy">Save as copy</string>
 </resources>

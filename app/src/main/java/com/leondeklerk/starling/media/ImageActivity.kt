@@ -23,10 +23,12 @@ import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
+import com.bumptech.glide.signature.ObjectKey
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ActivityImageBinding
+import com.leondeklerk.starling.media.ImageViewModel.Companion.OPERATION_UPDATE
 
 /**
  * Activity responsible for showing a [ImageItem].
@@ -63,10 +65,9 @@ class ImageActivity : AppCompatActivity() {
         binding.lifecycleOwner = this
 
         val imageView = binding.imageView
-        // binding.editView.visibility = View.VISIBLE
 
         // Create an ActivityResult handler for the permission popups on android Q and up.
-        val permissionResult = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        val deleteResultLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
             if (it.resultCode == Activity.RESULT_OK) {
                 if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
                     // We can now delete the pending image
@@ -74,6 +75,17 @@ class ImageActivity : AppCompatActivity() {
                 } else {
                     // The image is deleted so the fragment can be closed
                     onBackPressed()
+                }
+            }
+        }
+
+        val updateResultLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                    // We can now delete the pending image
+                } else {
+                    viewModel.update(imageItem)
+                    viewModel.switchMode()
                 }
             }
         }
@@ -97,7 +109,7 @@ class ImageActivity : AppCompatActivity() {
             this
         ) { intentSender ->
             intentSender?.let {
-                permissionResult.launch(IntentSenderRequest.Builder(intentSender).build())
+                deleteResultLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
             }
         }
 
@@ -116,6 +128,8 @@ class ImageActivity : AppCompatActivity() {
             if (it == ImageViewModel.Mode.VIEW) {
                 binding.editView.visibility = View.INVISIBLE
                 binding.imageView.visibility = View.VISIBLE
+
+                loadImage(binding.imageView)
 
                 setupInsets()
 
@@ -150,6 +164,13 @@ class ImageActivity : AppCompatActivity() {
             }
         }
 
+        viewModel.savedItem.observe(this) {
+            it?.let {
+                imageItem = it
+                isSaved(it)
+            }
+        }
+
         binding.bottomActionItems.mediaActionDelete.setOnClickListener {
             deleteMedia()
         }
@@ -170,9 +191,17 @@ class ImageActivity : AppCompatActivity() {
             viewModel.switchMode()
         }
 
-        binding.editView.onSave = { item ->
-            viewModel.switchMode()
-            switchToActivity(item)
+        binding.editView.onSave = { result, copy ->
+            viewModel.tryUpdate(result, imageItem, copy)
+        }
+
+        viewModel.pendingIntent.observe(this) {
+            it?.let {
+                val (code, intent) = it
+                when(code) {
+                    OPERATION_UPDATE -> updateResultLauncher.launch(IntentSenderRequest.Builder(intent).build())
+                }
+            }
         }
     }
 
@@ -181,10 +210,25 @@ class ImageActivity : AppCompatActivity() {
         loadImage(binding.imageView)
     }
 
+    override fun onSupportNavigateUp(): Boolean {
+        // navigate back to the previous activity
+        onBackPressed()
+        return true
+    }
+
+    private fun isSaved(item: ImageItem) {
+        binding.editView.isSaved()
+        viewModel.switchMode()
+        if (viewModel.pendingSwitch) {
+            switchToActivity(item)
+        }
+    }
+
     private fun loadImage(imageView: ImageView) {
         // Load image with Glide into the imageView
         Glide.with(imageView.context)
             .asBitmap()
+            .signature(ObjectKey(imageItem.dateModified))
             .load(imageItem.uri)
             .into(object : CustomTarget<Bitmap>() {
                 override fun onResourceReady(bitmap: Bitmap, transition: Transition<in Bitmap>?) {
@@ -194,12 +238,6 @@ class ImageActivity : AppCompatActivity() {
                 override fun onLoadCleared(placeholder: Drawable?) {
                 }
             })
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        // navigate back to the previous activity
-        onBackPressed()
-        return true
     }
 
     /**

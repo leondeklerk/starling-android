@@ -85,7 +85,8 @@ class GalleryViewModel(application: Application) : PermissionViewModel(applicati
             MediaStore.Files.FileColumns.WIDTH,
             MediaStore.Files.FileColumns.DURATION,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
-            MediaStore.Files.FileColumns.MIME_TYPE
+            MediaStore.Files.FileColumns.MIME_TYPE,
+            MediaStore.Files.FileColumns.DATE_MODIFIED
         )
     }
 

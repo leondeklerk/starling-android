@@ -13,10 +13,13 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.signature.ObjectKey
 import com.leondeklerk.starling.data.FolderItem
 import com.leondeklerk.starling.data.HeaderItem
+import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.data.MediaItemTypes
+import com.leondeklerk.starling.data.VideoItem
 import java.util.Date
 
 @BindingAdapter("media_uri")
@@ -30,6 +33,13 @@ fun setMediaUri(view: ImageView, media: MediaItem) {
     } else {
         // Otherwise the media type contains the type
         media.type
+    }
+
+    val key = when(media.type) {
+        MediaItemTypes.IMAGE -> (media as ImageItem).dateModified
+        MediaItemTypes.VIDEO -> (media as VideoItem).dateModified
+        MediaItemTypes.FOLDER -> (media as FolderItem).dateModified
+        else -> Date()
     }
 
     // Load the image based on the media type
@@ -53,6 +63,7 @@ fun setMediaUri(view: ImageView, media: MediaItem) {
             .transform(CenterCrop())
             .placeholder(ColorDrawable(Color.GRAY))
             .thumbnail(0.2f)
+            .signature(ObjectKey(key))
             .into(view)
     }
 }

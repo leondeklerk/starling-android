@@ -1,7 +1,6 @@
 package com.leondeklerk.starling.edit
 
 import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.content.Context
 import android.content.DialogInterface
 import android.graphics.Bitmap
@@ -10,17 +9,14 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.RectF
-import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.toRect
@@ -29,7 +25,6 @@ import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.leondeklerk.starling.R
-import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ViewEditBinding
 import com.leondeklerk.starling.edit.crop.CropView
 import com.leondeklerk.starling.edit.crop.HandlerType
@@ -37,18 +32,9 @@ import com.leondeklerk.starling.edit.draw.DrawView
 import com.leondeklerk.starling.views.InteractiveImageView
 import com.leondeklerk.starling.views.enums.Side
 import com.leondeklerk.starling.views.enums.Side.NONE
-import java.io.IOException
-import java.lang.Long.parseLong
-import java.util.Date
-import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Class that takes in a image and provides edit options.
@@ -74,16 +60,17 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
     // State variables
     private var isSaving = false
-    private var drawMode = false
+    private var mode = EditModes.CROP
 
     // Animation
     private var refreshRate = 60f
 
     private var binding: ViewEditBinding = ViewEditBinding.inflate(LayoutInflater.from(context), this, true)
+    private var saveModal = SaveModal()
 
     var imageView: InteractiveImageView = binding.interactiveImageView
     var onCancel: (() -> Unit)? = null
-    var onSave: ((data: ImageItem) -> Unit)? = null
+    var onSave: ((bitmap: Bitmap, copy: Boolean) -> Unit)? = null
 
     /**
      * Simple data class combining bitmap data.
@@ -114,7 +101,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
 
         binding.buttonSave.setOnClickListener {
-            saveToStorage()
+            saveModal.show((context as AppCompatActivity).supportFragmentManager, SaveModal.TAG)
         }
 
         binding.buttonCancel.setOnClickListener {
@@ -122,29 +109,27 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
 
         binding.cropper.onButtonReset = {
-            onEditReset()
+            imageView.reset()
         }
 
         binding.cropper.onButtonRotate = {
             imageView.rotateImage()
         }
 
-        // TODO: improve switching?
-        binding.modeSelector.setOnCheckedChangeListener { _, checkedId ->
-            imageView.reset()
-            when (checkedId) {
+        binding.modeSelector.setOnCheckedStateChangeListener { _, checkedId ->
+            when (checkedId[0]) {
                 R.id.mode_crop -> {
-                    binding.drawOverlay.visibility = View.GONE
-                    binding.cropper.visibility = View.VISIBLE
-                    binding.drawOverlay.reset()
-                    drawMode = false
+                    mode = EditModes.CROP
                 }
                 R.id.mode_draw -> {
-                    binding.drawOverlay.visibility = View.VISIBLE
-                    binding.cropper.visibility = View.GONE
-                    drawMode = true
+                    mode = EditModes.DRAW
                 }
             }
+            updateEditLayers()
+        }
+
+        saveModal.onCloseListener = {
+            createImage(it == SaveModal.TYPE_COPY)
         }
     }
 
@@ -221,152 +206,177 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     }
 
     /**
-     * Saves an edited image to storage.
-     * First applies translation and zoom from the imageview.
-     * Then applies the crop box to the image.
-     * Stores the new bitmap image to local storage.
+     * Call when the save operation is complete.
+     * Updates the internal state related to saving.
      */
-    private fun saveToStorage() {
-        // Update saving indicators
-        isSaving = true
-        binding.savingIndicator.visibility = VISIBLE
-        binding.savingOverlay.visibility = VISIBLE
+    fun isSaved() {
+        binding.savingOverlay.visibility = GONE
+        binding.savingIndicator.visibility = GONE
+        isSaving = false
+        imageView.reset()
+    }
 
-        // Get view values
-        var bitmap = imageView.drawable.toBitmap()
-        val result: Bitmap
-        if (!drawMode) {
-            val startScale = imageView.baseScale
-            val cropBox = binding.cropper.outline
-
-            // Convert the reference bitmap to a rotated bitmap.
-            val baseMatrix = Matrix()
-            baseMatrix.postRotate(imageView.rotated, bitmap.width / 2f, bitmap.height / 2f)
-            bitmap = Bitmap.createBitmap(
-                bitmap,
-                0,
-                0,
-                bitmap.width,
-                bitmap.height,
-                baseMatrix,
-                true
-            )
-
-            // Get matrix values
-            val scale = imageView.currentScale
-            val rect = imageView.getRect(imageView.imageMatrix)
-            val transX = rect.left
-            val transY = rect.top
-
-            // Build new matrix
-            val normalizedScaled = scale / startScale
-            val matrix = Matrix()
-            matrix.postScale(normalizedScaled, normalizedScaled)
-
-            // Combine standard bitmap data.
-            val bitmapWidthData = BitmapData(bitmap.width, startScale, normalizedScaled)
-            val bitmapHeightData = BitmapData(bitmap.height, startScale, normalizedScaled)
-
-            // Calculate new image data
-            val xOffset = getAxisOffset(bitmapWidthData, transX, cropBox.left, imageView.left)
-            val yOffset = getAxisOffset(bitmapHeightData, transY, cropBox.top, imageView.top)
-            val resultWidth = getAxisSize(bitmapWidthData, imageView.width, cropBox.width(), scale)
-            val resultHeight = getAxisSize(bitmapHeightData, imageView.height, cropBox.height(), scale)
-
-            result = Bitmap.createBitmap(
-                bitmap,
-                xOffset.toInt(),
-                yOffset.toInt(),
-                resultWidth.toInt(),
-                resultHeight.toInt(),
-                matrix,
-                false
-            )
-        } else {
-            result = Bitmap.createBitmap(
-                bitmap.width,
-                bitmap.height,
-                bitmap.config
-            )
-            val bm2 = binding.drawOverlay.getBitmap()
-            val canvas = Canvas(result)
-
-            val p = Paint(Paint.ANTI_ALIAS_FLAG)
-            p.isFilterBitmap = true
-            canvas.drawBitmap(bitmap, Matrix(), p)
-            canvas.drawBitmap(bm2, Matrix(), p)
-        }
-
-        var item: ImageItem? = null
-
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                item = saveBitmap(context, result, Bitmap.CompressFormat.JPEG, "image/jpeg", UUID.randomUUID().toString())
-            } catch (e: IOException) {
-                Toast.makeText(context, "Error $e", Toast.LENGTH_SHORT).show()
-            } finally {
-                // Update the UI
-                binding.savingOverlay.visibility = GONE
-                binding.savingIndicator.visibility = GONE
-                isSaving = false
-                item?.let {
-                    onSave?.invoke(it)
+    /**
+     * Update the state of the view to show the correct editing layer.
+     */
+    private fun updateEditLayers() {
+        when (mode) {
+            EditModes.CROP -> {
+                if (binding.drawOverlay.isTouched()) {
+                    showUnsavedChanges(this::switchToCrop) { binding.modeSelector.check(R.id.mode_draw) }
+                } else {
+                    switchToCrop()
+                }
+            }
+            EditModes.DRAW -> {
+                if (imageView.isTouched() || binding.cropper.isTouched()) {
+                    showUnsavedChanges(this::switchToDraw) { binding.modeSelector.check(R.id.mode_crop) }
+                } else {
+                    switchToDraw()
                 }
             }
         }
     }
 
     /**
-     * Async function that saves the bitmap to the device and creates and entry in the MediaStore.
-     * @param context: current context
-     * @param bitmap: the bitmap to save
-     * @param format: the compression format
-     * @param mimeType: the mimeType of the new image
-     * @param displayName: the new name of the image.
+     * Switch to a crop overlay, reset the state and disable other overlays.
      */
-    private suspend fun saveBitmap(
-        context: Context,
-        bitmap: Bitmap,
-        format: Bitmap.CompressFormat,
-        mimeType: String,
-        displayName: String
-    ): ImageItem {
-        val uri: Uri?
+    private fun switchToCrop() {
+        binding.drawOverlay.reset()
+        binding.drawOverlay.visibility = View.GONE
+        binding.cropper.visibility = View.VISIBLE
+    }
 
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM)
+    /**
+     * Switch to a draw overlay, reset the state and hide other overlays.
+     */
+    private fun switchToDraw() {
+        imageView.reset()
+        binding.drawOverlay.visibility = View.VISIBLE
+        binding.cropper.visibility = View.GONE
+    }
+
+    /**
+     * Shows a modal notifying the user of any unsaved changes.
+     * Invokes the set handler on clicking the buttons.
+     * @param onDiscard the function to call when the discard button is clicked
+     * @param onCancel the function to call when the cancel button is clicked
+     */
+    private fun showUnsavedChanges(onDiscard: (() -> Unit)?, onCancel: (() -> Unit)?) {
+        MaterialAlertDialogBuilder(context)
+            .setTitle(context.getString(R.string.edit_cancel_warning_title))
+            .setMessage(context.getString(R.string.edit_cancel_warning_content))
+            .setPositiveButton(context.getString(R.string.edit_cancel_warning_btn_continue)) { _: DialogInterface, _: Int ->
+                onDiscard?.invoke()
+            }
+            .setNegativeButton(context.getString(R.string.edit_cancel_warning_btn_cancel)) { dialog: DialogInterface, _: Int ->
+                onCancel?.invoke()
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    /**
+     * Creates the resulting bitmap and invoke the onSave listener with the correct saving mode.
+     * Updates the internal saving state of the view.
+     * @param copy indicates if the image needs to be a copy or replace the original
+     */
+    private fun createImage(copy: Boolean) {
+        // Update saving indicators
+        isSaving = true
+        binding.savingIndicator.visibility = VISIBLE
+        binding.savingOverlay.visibility = VISIBLE
+
+        // Get view values
+        val bitmap = imageView.drawable.toBitmap()
+
+        val result = when (mode) {
+            EditModes.CROP -> createCropResult(bitmap)
+            EditModes.DRAW -> createDrawResult(bitmap)
         }
 
-        val resolver = context.contentResolver
+        onSave?.invoke(result, copy)
 
-        uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            ?: throw IOException("Failed to create new MediaStore record.")
-        val dateAdded = Date()
-        try {
-            withContext(Dispatchers.IO) {
-                // Android studio gives an incorrect blocking call warning
-                @Suppress("BlockingMethodInNonBlockingContext")
-                val inputStream = resolver.openOutputStream(uri)
-                inputStream?.use {
-                    if (!bitmap.compress(format, 100, it))
-                        throw IOException("Failed to save bitmap.")
-                }
-
-                delay(800)
-            }
-        } catch (e: IOException) {
-            uri.let { orphanUri ->
-                // Don't leave an orphan entry in the MediaStore
-                resolver.delete(orphanUri, null, null)
-            }
-            throw e
+        if (onSave == null) {
+            isSaved()
         }
+    }
 
-        // Create the image data
-        val id = parseLong(uri.lastPathSegment!!)
-        return ImageItem(id, uri, displayName, dateAdded, bitmap.width, bitmap.height, mimeType)
+    /**
+     * Modifies the source (image) bitmap to fit the set translation, rotation, zoom, and crop box.
+     * Uses information received from the [CropView] layer.
+     * Creates a modified result image based on the new properties.
+     * @param src: the image source bitmap
+     * @return a new bitmap of the modified source
+     */
+    private fun createCropResult(src: Bitmap): Bitmap {
+        val startScale = imageView.baseScale
+        val cropBox = binding.cropper.outline
+
+        // Convert the reference bitmap to a rotated bitmap.
+        val baseMatrix = Matrix()
+        baseMatrix.postRotate(imageView.rotated, src.width / 2f, src.height / 2f)
+        val bitmap = Bitmap.createBitmap(
+            src,
+            0,
+            0,
+            src.width,
+            src.height,
+            baseMatrix,
+            true
+        )
+
+        // Get matrix values
+        val scale = imageView.currentScale
+        val rect = imageView.getRect(imageView.imageMatrix)
+        val transX = rect.left
+        val transY = rect.top
+
+        // Build new matrix
+        val normalizedScaled = scale / startScale
+        val matrix = Matrix()
+        matrix.postScale(normalizedScaled, normalizedScaled)
+
+        // Combine standard bitmap data.
+        val bitmapWidthData = BitmapData(bitmap.width, startScale, normalizedScaled)
+        val bitmapHeightData = BitmapData(bitmap.height, startScale, normalizedScaled)
+
+        // Calculate new image data
+        val xOffset = getAxisOffset(bitmapWidthData, transX, cropBox.left, imageView.left)
+        val yOffset = getAxisOffset(bitmapHeightData, transY, cropBox.top, imageView.top)
+        val resultWidth = getAxisSize(bitmapWidthData, imageView.width, cropBox.width(), scale)
+        val resultHeight = getAxisSize(bitmapHeightData, imageView.height, cropBox.height(), scale)
+
+        return Bitmap.createBitmap(
+            bitmap,
+            xOffset.toInt(),
+            yOffset.toInt(),
+            resultWidth.toInt(),
+            resultHeight.toInt(),
+            matrix,
+            false
+        )
+    }
+
+    /**
+     * Create a bitmap based on an image source and the drawing layers of a [DrawView].
+     * @param src: the image source bitmap
+     * @return a composite bitmap of the source and the drawings.
+     */
+    private fun createDrawResult(src: Bitmap): Bitmap {
+        val result = Bitmap.createBitmap(
+            src.width,
+            src.height,
+            src.config
+        )
+        val drawnBitmap = binding.drawOverlay.getBitmap()
+        val canvas = Canvas(result)
+
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        p.isFilterBitmap = true
+        canvas.drawBitmap(src, Matrix(), p)
+        canvas.drawBitmap(drawnBitmap, Matrix(), p)
+        return result
     }
 
     /**
@@ -374,32 +384,19 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      */
     private fun onEditCancel() {
         // Reset all the data, show the popup etc
-        if (imageView.isTouched() || binding.cropper.isTouched()) {
-            MaterialAlertDialogBuilder(context)
-                .setTitle(context.getString(R.string.edit_cancel_warning_title))
-                .setMessage(context.getString(R.string.edit_cancel_warning_content))
-                .setPositiveButton(context.getString(R.string.edit_cancel_warning_btn_continue)) { _: DialogInterface, _: Int ->
-                    onCancel?.invoke()
-                }
-                .setNegativeButton(context.getString(R.string.edit_cancel_warning_btn_cancel)) { dialog: DialogInterface, _: Int ->
-                    dialog.dismiss()
-                }
-                .show()
+        if (isTouched()) {
+            showUnsavedChanges(onCancel, null)
         } else {
             onCancel?.invoke()
         }
     }
 
     /**
-     * On clicking reset button reset the image state and the cropper state.
+     * Check if the image or layers were altered in any way.
+     * @return true if any is edited or false if not
      */
-    private fun onEditReset() {
-        imageView.reset()
-
-        // Register the image on reset listener
-        imageView.onResetListener = {
-            binding.cropper.reset(getRect())
-        }
+    private fun isTouched(): Boolean {
+        return imageView.isTouched() || binding.cropper.isTouched() || binding.drawOverlay.isTouched()
     }
 
     /**
@@ -422,6 +419,10 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         imageView.onImageUpdate = {
             binding.cropper.updateBounds(getRect())
             binding.cropper.restrictBorder()
+        }
+
+        imageView.onResetListener = {
+            binding.cropper.reset(getRect())
         }
 
         imageView.allowTranslation = true

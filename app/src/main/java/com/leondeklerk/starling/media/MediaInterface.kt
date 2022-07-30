@@ -13,10 +13,10 @@ import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.data.VideoItem
-import java.util.Date
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Date
+import java.util.concurrent.TimeUnit
 
 /**
  * Class responsible for handling the retrieval of media items.
@@ -44,7 +44,7 @@ class MediaInterface {
         selectionArgs: Array<String>,
         sortOrder: String
     ):
-        List<MediaItem> {
+            List<MediaItem> {
         val media = mutableListOf<MediaItem>()
 
         withContext(Dispatchers.IO) {
@@ -65,6 +65,7 @@ class MediaInterface {
                 val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
                 val mediaTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
                 val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+                val modifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
 
                 val baseDate = Calendar.getInstance()
                 baseDate.time = Date(Long.MAX_VALUE)
@@ -72,8 +73,7 @@ class MediaInterface {
                 while (cursor.moveToNext()) {
 
                     val id = cursor.getLong(idColumn)
-                    val date =
-                        Date(TimeUnit.SECONDS.toMillis(cursor.getLong(dateColumn)))
+                    val date = Date(TimeUnit.SECONDS.toMillis(cursor.getLong(dateColumn)))
                     val displayName = cursor.getString(displayNameColumn)
 
                     val width = cursor.getLong(widthColumn)
@@ -90,6 +90,8 @@ class MediaInterface {
 
                     val mimeType = cursor.getString(mimeTypeColumn)
 
+                    val modified = Date(TimeUnit.SECONDS.toMillis(cursor.getLong(modifiedColumn)))
+
                     updateHeaders(media, date, baseDate)
 
                     val mediaItem: MediaItem
@@ -102,7 +104,8 @@ class MediaInterface {
                                 displayName,
                                 date,
                                 duration,
-                                mimeType
+                                mimeType,
+                                modified
                             )
                         }
                         MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> {
@@ -113,7 +116,8 @@ class MediaInterface {
                                 date,
                                 width,
                                 height,
-                                mimeType
+                                mimeType,
+                                modified
                             )
                         }
                         else -> continue
