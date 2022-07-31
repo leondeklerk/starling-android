@@ -198,7 +198,7 @@ class ImageActivity : AppCompatActivity() {
         viewModel.pendingIntent.observe(this) {
             it?.let {
                 val (code, intent) = it
-                when(code) {
+                when (code) {
                     OPERATION_UPDATE -> updateResultLauncher.launch(IntentSenderRequest.Builder(intent).build())
                 }
             }

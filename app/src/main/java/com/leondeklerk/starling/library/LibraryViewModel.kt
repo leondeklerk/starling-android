@@ -15,11 +15,11 @@ import androidx.lifecycle.viewModelScope
 import com.leondeklerk.starling.PermissionViewModel
 import com.leondeklerk.starling.data.FolderItem
 import com.leondeklerk.starling.data.MediaItemTypes
+import java.util.Date
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Date
-import java.util.concurrent.TimeUnit
 
 /**
  * Basic [ViewModel] that handles the data of a [LibraryViewModel].
@@ -142,7 +142,7 @@ class LibraryViewModel(application: Application) : PermissionViewModel(applicati
      */
     private fun createSelection(): String {
         return "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ? OR " +
-                "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
+            "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
     }
 
     /**
@@ -162,7 +162,7 @@ class LibraryViewModel(application: Application) : PermissionViewModel(applicati
      */
     private fun createSortOrder(): String {
         return "${MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME} DESC, ${MediaStore.Files.FileColumns.DATE_ADDED} " +
-                "DESC"
+            "DESC"
     }
 
     private fun ContentResolver.registerObserver(

@@ -35,7 +35,7 @@ fun setMediaUri(view: ImageView, media: MediaItem) {
         media.type
     }
 
-    val key = when(media.type) {
+    val key = when (media.type) {
         MediaItemTypes.IMAGE -> (media as ImageItem).dateModified
         MediaItemTypes.VIDEO -> (media as VideoItem).dateModified
         MediaItemTypes.FOLDER -> (media as FolderItem).dateModified

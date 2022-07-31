@@ -3,9 +3,9 @@ package com.leondeklerk.starling.data
 import android.net.Uri
 import android.os.Parcelable
 import androidx.recyclerview.widget.DiffUtil
-import kotlinx.parcelize.Parcelize
 import java.util.Date
 import java.util.Objects
+import kotlinx.parcelize.Parcelize
 
 @Parcelize
 enum class MediaItemTypes : Parcelable {

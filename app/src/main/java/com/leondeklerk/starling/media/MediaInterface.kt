@@ -16,12 +16,12 @@ import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.data.VideoItem
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.Date
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 /**
  * Class responsible for handling the retrieval of media items.
@@ -49,7 +49,7 @@ class MediaInterface {
         selectionArgs: Array<String>,
         sortOrder: String
     ):
-            List<MediaItem> {
+        List<MediaItem> {
         val media = mutableListOf<MediaItem>()
 
         withContext(Dispatchers.IO) {
@@ -173,7 +173,7 @@ class MediaInterface {
         return MediaStore.createDeleteRequest(contentResolver, listOf(buildUri(media))).intentSender
     }
 
-    fun update(resolver: ContentResolver, imageItem: ImageItem, data: Bitmap): ImageItem? {
+    fun update(resolver: ContentResolver, imageItem: ImageItem, data: Bitmap): ImageItem {
         val contentUri = MediaStore.Images.Media.getContentUri("external")
         val uri = ContentUris.withAppendedId(contentUri, imageItem.id)
 
@@ -206,7 +206,7 @@ class MediaInterface {
         var result: ImageItem? = null
         try {
             val name = Regex("\\.[^.]*\$").replace(imageItem.displayName, "")
-            result = saveBitmap(contentResolver, data, Bitmap.CompressFormat.JPEG, "image/jpeg", "${name}-edit")
+            result = saveBitmap(contentResolver, data, Bitmap.CompressFormat.JPEG, "image/jpeg", "$name-edit")
         } catch (e: IOException) {
             //
         }
