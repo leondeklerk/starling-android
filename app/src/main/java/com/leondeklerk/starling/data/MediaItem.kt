@@ -72,7 +72,8 @@ data class ImageItem(
     val dateAdded: Date,
     val width: Number,
     val height: Number,
-    val mimeType: String
+    val mimeType: String,
+    var dateModified: Date
 ) : MediaItem(id, MediaItemTypes.IMAGE, uri)
 
 /**
@@ -90,7 +91,8 @@ data class VideoItem(
     val displayName: String,
     val dateAdded: Date,
     val duration: Int,
-    val mimeType: String
+    val mimeType: String,
+    val dateModified: Date
 ) : MediaItem(id, MediaItemTypes.VIDEO, uri)
 
 /**
@@ -100,7 +102,8 @@ data class FolderItem(
     override val id: Long,
     override val uri: Uri,
     val name: String,
-    val thumbnailType: MediaItemTypes
+    val thumbnailType: MediaItemTypes,
+    val dateModified: Date
 ) : MediaItem(id, MediaItemTypes.FOLDER, uri) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

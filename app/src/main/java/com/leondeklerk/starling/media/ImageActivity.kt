@@ -3,10 +3,13 @@ package com.leondeklerk.starling.media
 import android.app.Activity
 import android.content.DialogInterface
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,10 +21,14 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
+import com.bumptech.glide.signature.ObjectKey
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.databinding.ActivityImageBinding
+import com.leondeklerk.starling.media.ImageViewModel.Companion.OPERATION_UPDATE
 
 /**
  * Activity responsible for showing a [ImageItem].
@@ -37,7 +44,7 @@ class ImageActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Create the viewModel
-        viewModel = ViewModelProvider(this).get(ImageViewModel::class.java)
+        viewModel = ViewModelProvider(this)[ImageViewModel::class.java]
 
         imageItem = ImageActivityArgs.fromBundle(intent.extras!!).imageItem
 
@@ -60,7 +67,7 @@ class ImageActivity : AppCompatActivity() {
         val imageView = binding.imageView
 
         // Create an ActivityResult handler for the permission popups on android Q and up.
-        val permissionResult = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        val deleteResultLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
             if (it.resultCode == Activity.RESULT_OK) {
                 if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
                     // We can now delete the pending image
@@ -72,37 +79,97 @@ class ImageActivity : AppCompatActivity() {
             }
         }
 
-        // On clicking the image the system ui and the toolbar should disappear for a fullscreen experience.
-        imageView.setOnClickListener {
-            supportActionBar?.hide()
-            binding.bottomActionBar.animate().alpha(0f)
-
-            // Set the system ui visibility.
-            WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-                controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
-                controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+        val updateResultLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                    // We can now delete the pending image
+                } else {
+                    viewModel.update(imageItem)
+                    viewModel.switchMode()
+                }
             }
+        }
+
+        // On clicking the image the system ui and the toolbar should disappear for a fullscreen experience.
+        imageView.onTapListener = {
+            binding.toolbar.animate().alpha(0f).setDuration(150).withEndAction {
+                // Set the system ui visibility.
+                WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+                    controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+                }
+                supportActionBar?.hide()
+            }
+
+            binding.bottomActionBar.animate().alpha(0f).withEndAction { binding.bottomActionBar.visibility = View.INVISIBLE }
         }
 
         // Observer to handle cases where additional permission are needed to delete an item (Q and up)
         viewModel.requiresPermission.observe(
-            this,
-            { intentSender ->
-                intentSender?.let {
-                    permissionResult.launch(IntentSenderRequest.Builder(intentSender).build())
-                }
+            this
+        ) { intentSender ->
+            intentSender?.let {
+                deleteResultLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
             }
-        )
+        }
 
         // Observer to check if the current fragment should be closed or not
         viewModel.shouldClose.observe(
-            this,
-            {
-                if (it) {
-                    onBackPressed()
-                }
+            this
+        ) {
+            if (it) {
+                onBackPressed()
             }
-        )
+        }
+
+        viewModel.mode.observe(
+            this
+        ) {
+            if (it == ImageViewModel.Mode.VIEW) {
+                binding.editView.visibility = View.INVISIBLE
+                binding.imageView.visibility = View.VISIBLE
+
+                loadImage(binding.imageView)
+
+                setupInsets()
+
+                // Set the system ui visibility.
+                WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
+                    controller.show(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())
+                }
+            } else {
+                imageView.visibility = View.INVISIBLE
+                binding.toolbar.animate().alpha(0f).withEndAction {
+                    supportActionBar?.hide()
+                }
+
+                binding.bottomActionBar.animate().alpha(0f).withEndAction {
+                    binding.bottomActionBar.visibility = View.INVISIBLE
+                }
+
+                // Set the system ui visibility.
+                WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+                    controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+                    controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
+                }
+
+                // Override the window insets listener
+                ViewCompat.setOnApplyWindowInsetsListener(binding.toolbar) { _, insets ->
+                    insets
+                }
+
+                binding.editView.visibility = View.VISIBLE
+                loadImage(binding.editView.imageView)
+            }
+        }
+
+        viewModel.savedItem.observe(this) {
+            it?.let {
+                imageItem = it
+                isSaved(it)
+            }
+        }
 
         binding.bottomActionItems.mediaActionDelete.setOnClickListener {
             deleteMedia()
@@ -112,16 +179,65 @@ class ImageActivity : AppCompatActivity() {
             shareMedia()
         }
 
-        // Load image with Glide into the imageView
-        Glide.with(imageView.context)
-            .load(imageItem.uri)
-            .into(imageView)
+        binding.bottomActionItems.mediaActionCrop.let { button ->
+
+            button.setOnClickListener {
+                viewModel.switchMode()
+            }
+            button.visibility = View.VISIBLE
+        }
+
+        binding.editView.onCancel = {
+            viewModel.switchMode()
+        }
+
+        binding.editView.onSave = { result, copy ->
+            viewModel.tryUpdate(result, imageItem, copy)
+        }
+
+        viewModel.pendingIntent.observe(this) {
+            it?.let {
+                val (code, intent) = it
+                when (code) {
+                    OPERATION_UPDATE -> updateResultLauncher.launch(IntentSenderRequest.Builder(intent).build())
+                }
+            }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        loadImage(binding.imageView)
     }
 
     override fun onSupportNavigateUp(): Boolean {
         // navigate back to the previous activity
         onBackPressed()
         return true
+    }
+
+    private fun isSaved(item: ImageItem) {
+        binding.editView.isSaved()
+        viewModel.switchMode()
+        if (viewModel.pendingSwitch) {
+            switchToActivity(item)
+        }
+    }
+
+    private fun loadImage(imageView: ImageView) {
+        // Load image with Glide into the imageView
+        Glide.with(imageView.context)
+            .asBitmap()
+            .signature(ObjectKey(imageItem.dateModified))
+            .load(imageItem.uri)
+            .into(object : CustomTarget<Bitmap>() {
+                override fun onResourceReady(bitmap: Bitmap, transition: Transition<in Bitmap>?) {
+                    imageView.setImageBitmap(bitmap)
+                }
+
+                override fun onLoadCleared(placeholder: Drawable?) {
+                }
+            })
     }
 
     /**
@@ -157,6 +273,10 @@ class ImageActivity : AppCompatActivity() {
             // If the status bar and navigation bar reappear, so should the toolbar
             if (insets.isVisible(WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.statusBars())) {
                 supportActionBar?.show()
+                binding.toolbar.animate().alpha(1f)
+
+                binding.bottomActionBar.alpha = 0f
+                binding.bottomActionBar.visibility = View.VISIBLE
                 binding.bottomActionBar.animate().alpha(1f)
             }
 
@@ -187,5 +307,18 @@ class ImageActivity : AppCompatActivity() {
                 dialog.dismiss()
             }
             .show()
+    }
+
+    /**
+     * Open another activity with the new image.
+     * @param item: the new ImageItem containing all image data.
+     */
+    private fun switchToActivity(item: ImageItem) {
+        val intent = Intent(this, ImageActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_TASK_ON_HOME
+            putExtra("imageItem", item)
+        }
+        startActivity(intent)
+        finish()
     }
 }

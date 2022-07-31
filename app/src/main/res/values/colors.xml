@@ -11,9 +11,13 @@
     <color name="light_blue_900">#FF01579B</color>
     <color name="light_blue_A200">#FF40C4FF</color>
     <color name="light_blue_A400">#FF00B0FF</color>
-    <color name="black_overlay">#66000000</color>
-    <color name="dark_translucent_status">#99000000</color>
-    <color name="light_translucent_status">#99FFFFFF</color>
     <color name="status_bar_scrim">#AA000000</color>
-    <color name="bottom_action_bar">#AAAA0A00</color>
+    <!-- Media view gradient colors   -->
+    <color name="black_transparent">#00000000</color>
+    <color name="black_transparent_67">#AA000000</color>
+    <color name="black_transparent_53">#88000000</color>
+    <!-- Button colors -->
+    <color name="ripple_gray">#444444</color>
+    <!-- Slider colors-->
+    <color name="slider_inactive_gray">#7D7D7D</color>
 </resources>

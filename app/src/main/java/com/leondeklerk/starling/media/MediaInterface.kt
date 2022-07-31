@@ -2,10 +2,13 @@ package com.leondeklerk.starling.media
 
 import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.IntentSender
+import android.graphics.Bitmap
 import android.icu.util.Calendar
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import com.leondeklerk.starling.data.HeaderItem
@@ -13,9 +16,11 @@ import com.leondeklerk.starling.data.ImageItem
 import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.data.MediaItemTypes
 import com.leondeklerk.starling.data.VideoItem
+import java.io.IOException
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
@@ -65,6 +70,7 @@ class MediaInterface {
                 val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
                 val mediaTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
                 val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+                val modifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
 
                 val baseDate = Calendar.getInstance()
                 baseDate.time = Date(Long.MAX_VALUE)
@@ -72,8 +78,7 @@ class MediaInterface {
                 while (cursor.moveToNext()) {
 
                     val id = cursor.getLong(idColumn)
-                    val date =
-                        Date(TimeUnit.SECONDS.toMillis(cursor.getLong(dateColumn)))
+                    val date = Date(TimeUnit.SECONDS.toMillis(cursor.getLong(dateColumn)))
                     val displayName = cursor.getString(displayNameColumn)
 
                     val width = cursor.getLong(widthColumn)
@@ -90,6 +95,8 @@ class MediaInterface {
 
                     val mimeType = cursor.getString(mimeTypeColumn)
 
+                    val modified = Date(TimeUnit.SECONDS.toMillis(cursor.getLong(modifiedColumn)))
+
                     updateHeaders(media, date, baseDate)
 
                     val mediaItem: MediaItem
@@ -102,7 +109,8 @@ class MediaInterface {
                                 displayName,
                                 date,
                                 duration,
-                                mimeType
+                                mimeType,
+                                modified
                             )
                         }
                         MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> {
@@ -113,7 +121,8 @@ class MediaInterface {
                                 date,
                                 width,
                                 height,
-                                mimeType
+                                mimeType,
+                                modified
                             )
                         }
                         else -> continue
@@ -162,6 +171,96 @@ class MediaInterface {
     @RequiresApi(Build.VERSION_CODES.R)
     fun deletePostQ(contentResolver: ContentResolver, media: MediaItem): IntentSender {
         return MediaStore.createDeleteRequest(contentResolver, listOf(buildUri(media))).intentSender
+    }
+
+    fun update(resolver: ContentResolver, imageItem: ImageItem, data: Bitmap): ImageItem {
+        val contentUri = MediaStore.Images.Media.getContentUri("external")
+        val uri = ContentUris.withAppendedId(contentUri, imageItem.id)
+
+        val stream = resolver.openOutputStream(uri, "rwt")
+        stream?.let {
+            if (!data.compress(Bitmap.CompressFormat.JPEG, 100, it)) {
+                throw IOException("Failed to save bitmap.")
+            }
+            it.close()
+        }
+
+        return ImageItem(
+            imageItem.id,
+            imageItem.uri,
+            imageItem.displayName,
+            imageItem.dateAdded,
+            data.width,
+            data.height,
+            "image/jpeg",
+            Date(System.currentTimeMillis())
+        )
+    }
+
+    /**
+     * Create a new image as a copy of an existing image.
+     * @param data the new image data
+     * @param imageItem the data of the original image
+     */
+    suspend fun createCopy(contentResolver: ContentResolver, data: Bitmap, imageItem: ImageItem): ImageItem? {
+        var result: ImageItem? = null
+        try {
+            val name = Regex("\\.[^.]*\$").replace(imageItem.displayName, "")
+            result = saveBitmap(contentResolver, data, Bitmap.CompressFormat.JPEG, "image/jpeg", "$name-edit")
+        } catch (e: IOException) {
+            //
+        }
+        return result
+    }
+
+    /**
+     * Async function that saves the bitmap to the device and creates and entry in the MediaStore.
+     * @param bitmap: the bitmap to save
+     * @param format: the compression format
+     * @param mimeType: the mimeType of the new image
+     * @param displayName: the new name of the image.
+     */
+    private suspend fun saveBitmap(
+        resolver: ContentResolver,
+        bitmap: Bitmap,
+        format: Bitmap.CompressFormat,
+        mimeType: String,
+        displayName: String
+    ): ImageItem {
+        val uri: Uri?
+
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM)
+        }
+
+        uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: throw IOException("Failed to create new MediaStore record.")
+        val dateAdded = Date()
+        try {
+            withContext(Dispatchers.IO) {
+                // Android studio gives an incorrect blocking call warning
+                @Suppress("BlockingMethodInNonBlockingContext")
+                val inputStream = resolver.openOutputStream(uri)
+                inputStream?.use {
+                    if (!bitmap.compress(format, 100, it))
+                        throw IOException("Failed to save bitmap.")
+                }
+
+                delay(800)
+            }
+        } catch (e: IOException) {
+            uri.let { orphanUri ->
+                // Don't leave an orphan entry in the MediaStore
+                resolver.delete(orphanUri, null, null)
+            }
+            throw e
+        }
+
+        // Create the image data
+        val id = java.lang.Long.parseLong(uri.lastPathSegment!!)
+        return ImageItem(id, uri, displayName, dateAdded, bitmap.width, bitmap.height, mimeType, Date(System.currentTimeMillis()))
     }
 
     /**

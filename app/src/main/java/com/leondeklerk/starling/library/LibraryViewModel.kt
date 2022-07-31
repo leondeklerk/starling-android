@@ -15,6 +15,8 @@ import androidx.lifecycle.viewModelScope
 import com.leondeklerk.starling.PermissionViewModel
 import com.leondeklerk.starling.data.FolderItem
 import com.leondeklerk.starling.data.MediaItemTypes
+import java.util.Date
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -89,10 +91,10 @@ class LibraryViewModel(application: Application) : PermissionViewModel(applicati
                 sortOrder
             )?.use { cursor ->
                 val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME)
-                val idColumn =
-                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_ID)
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_ID)
                 val mediaIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
                 val mediaTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+                val modifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
 
                 while (cursor.moveToNext()) {
 
@@ -100,6 +102,7 @@ class LibraryViewModel(application: Application) : PermissionViewModel(applicati
                     val id = cursor.getLong(idColumn)
                     val mediaId = cursor.getLong(mediaIdColumn)
                     val type = cursor.getInt(mediaTypeColumn)
+                    val modified = Date(TimeUnit.SECONDS.toMillis(cursor.getLong(modifiedColumn)))
 
                     val mediaUri = ContentUris.withAppendedId(
                         MediaStore.Files.getContentUri("external"),
@@ -107,13 +110,9 @@ class LibraryViewModel(application: Application) : PermissionViewModel(applicati
                     )
 
                     val folderItem = if (type == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
-                        FolderItem(
-                            id, mediaUri, name, MediaItemTypes.IMAGE
-                        )
+                        FolderItem(id, mediaUri, name, MediaItemTypes.IMAGE, modified)
                     } else {
-                        FolderItem(
-                            id, mediaUri, name, MediaItemTypes.VIDEO
-                        )
+                        FolderItem(id, mediaUri, name, MediaItemTypes.VIDEO, modified)
                     }
 
                     folders += folderItem
