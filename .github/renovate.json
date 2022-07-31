@@ -1,0 +1,57 @@
+{
+  "extends": [
+    "config:base",
+    ":rebaseStalePrs",
+    ":pinVersions"
+  ],
+  "labels": [
+    "renovate"
+  ],
+  "rollbackPrs": true,
+  "dependencyDashboard": true,
+  "assignees": [
+    "developer@leondeklerk.com"
+  ],
+  "configMigration": true,
+  "timezone": "Europe/Amsterdam",
+  "schedule": "on monday",
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": [
+      "security"
+    ],
+    "schedule": "at any time"
+  },
+  "digest": {
+    "enabled": false
+  },
+  "packageRules": [
+    {
+      "matchPackagePatterns": [
+        "*"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "minor dependencies",
+      "groupSlug": "dependencies-minor",
+      "addLabels": [
+        "minor"
+      ]
+    },
+    {
+      "matchPackagePatterns": [
+        "*"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": "major dependencies",
+      "groupSlug": "dependencies-major",
+      "addLabels": [
+        "major"
+      ]
+    }
+  ]
+}
