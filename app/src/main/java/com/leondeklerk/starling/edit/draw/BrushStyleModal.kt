@@ -26,12 +26,12 @@ import com.leondeklerk.starling.views.GradientSlider
 class BrushStyleModal : BottomSheetDialogFragment() {
 
     private lateinit var binding: ModalBrushStyleBinding
-    private var hue: Float = 0f
-    private var saturation: Float = 1f
-    private var value: Float = 1f
+    private var hue: Float = HUE_DEFAULT
+    private var saturation: Float = SATURATION_DEFAULT
+    private var value: Float = VALUE_DEFAULT
     private var type = BrushType.PENCIL
-    private var size = 8f
-    private var alpha = 1f
+    private var size = SIZE_DEFAULT
+    private var alpha = ALPHA_DEFAULT
 
     var onCloseListener: ((brush: BrushStyle) -> Unit)? = null
 
@@ -114,17 +114,17 @@ class BrushStyleModal : BottomSheetDialogFragment() {
                 when (checkedId) {
                     R.id.button_pencil -> {
                         type = BrushType.PENCIL
-                        alpha = 1f
+                        alpha = PENCIL_ALPHA
                         enableSliders(true)
                     }
                     R.id.button_marker -> {
                         type = BrushType.MARKER
-                        alpha = 0.3f
+                        alpha = MARKER_ALPHA
                         enableSliders(true)
                     }
                     R.id.button_eraser -> {
                         type = BrushType.ERASER
-                        alpha = 0f
+                        alpha = ERASER_ALPHA
                         enableSliders(false)
                     }
                 }
@@ -183,5 +183,13 @@ class BrushStyleModal : BottomSheetDialogFragment() {
 
     companion object {
         const val TAG = "BrushStyleModal"
+        private const val HUE_DEFAULT = 0f
+        private const val SATURATION_DEFAULT = 1f
+        private const val VALUE_DEFAULT = 1f
+        private const val SIZE_DEFAULT = 8f
+        private const val ALPHA_DEFAULT = 1f
+        private const val PENCIL_ALPHA = 1f
+        private const val MARKER_ALPHA = 0.3f
+        private const val ERASER_ALPHA = 0f
     }
 }

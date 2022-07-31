@@ -329,7 +329,7 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
 
             // Unset any state for the layer
             if (layer is TextLayer) {
-                layer.setState(false, 0, false)
+                layer.setState(false, ALPHA_INACTIVE, false)
                 activeLayer = null
             }
 
@@ -668,5 +668,6 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
         private const val ANIMATION_DURATION = 100L
         private const val ALPHA_MAX = 255
         private const val ALPHA_MIN = 0
+        private const val ALPHA_INACTIVE = 0
     }
 }

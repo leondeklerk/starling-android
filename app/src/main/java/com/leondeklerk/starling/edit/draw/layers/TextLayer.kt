@@ -87,14 +87,14 @@ data class TextLayer(
     init {
         // Initialize the paint for the border
         borderPaint.style = Paint.Style.STROKE
-        borderPaint.color = Color.LTGRAY
+        borderPaint.color = BORDER_COLOR
         borderPaint.alpha = alpha
         borderPaint.strokeWidth = BORDER_WIDTH * density
 
         // Initialize the delete icon and background
-        deletePaint.color = Color.LTGRAY
+        deletePaint.color = DELETE_COLOR
         deletePaint.alpha = alpha
-        deleteIcon?.setTint(Color.BLACK)
+        deleteIcon?.setTint(DELETE_ICON_TINT)
         deleteIcon?.mutate()
         deleteIcon?.alpha = alpha
     }
@@ -342,8 +342,8 @@ data class TextLayer(
      */
     private fun getPaint(): TextPaint {
         val textPaint = TextPaint()
-        val shadowColor = Color.parseColor("#20000000")
-        textPaint.setShadowLayer(32f, 0f, 0f, shadowColor)
+        val shadowColor = Color.parseColor(TEXT_PAINT_SHADOW_COLOR)
+        textPaint.setShadowLayer(TEXT_PAINT_SHADOW_RADIUS, 0f, 0f, shadowColor)
         textPaint.isAntiAlias = true
         textPaint.isFilterBitmap = true
         textPaint.textSize = textSize * context.resources.displayMetrics.scaledDensity
@@ -353,12 +353,17 @@ data class TextLayer(
     }
 
     companion object {
-        const val ICON_RADIUS = 12
-        const val ICON_SCALE = 0.9f
-        const val BORDER_CORNER_RADIUS = 2
-        const val BORDER_WIDTH = 4
-        const val BOUNDS_OFFSET = 12
-        const val ICON_BOUNDS_OFFSET = 4
+        private const val ICON_RADIUS = 12
+        private const val ICON_SCALE = 0.9f
+        private const val BORDER_CORNER_RADIUS = 2
+        private const val BORDER_WIDTH = 2
+        private const val BOUNDS_OFFSET = 12
+        private const val ICON_BOUNDS_OFFSET = 4
+        private const val TEXT_PAINT_SHADOW_COLOR = "#20000000"
+        private const val TEXT_PAINT_SHADOW_RADIUS = 32f
+        private const val BORDER_COLOR = Color.LTGRAY
+        private const val DELETE_COLOR = Color.LTGRAY
+        private const val DELETE_ICON_TINT = Color.BLACK
     }
 
     interface TextLayerListener {

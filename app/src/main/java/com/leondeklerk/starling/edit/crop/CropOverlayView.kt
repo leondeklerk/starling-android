@@ -42,7 +42,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
         get() = box?.rect?.toRect() ?: Rect()
 
     var zoomLevel: Float
-        get() = moveHandler?.zoomLevel ?: 0f
+        get() = moveHandler?.zoomLevel ?: 1f
         set(value) {
             moveHandler?.zoomLevel = value
         }
@@ -91,7 +91,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
             this.aspectRatio.yRatio = rect.height().toInt()
         }
 
-        val targetRect = Box.from(rect, aspectRatio, px(64f)).rect
+        val targetRect = Box.from(rect, aspectRatio, px(MIN_SIZE_DP)).rect
 
         if (animate) {
             setOnAnimate = true
@@ -203,7 +203,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * also creates a initial copy.
      */
     private fun createBox() {
-        box = Box.from(bounds, aspectRatio, px(64f))
+        box = Box.from(bounds, aspectRatio, px(MIN_SIZE_DP))
         startBox = box!!.copy()
     }
 
@@ -213,7 +213,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      */
     private fun createMoveHandler() {
         moveHandler = CropMoveHandler(
-            bounds, box!!, px(16f), px(56f), px(8f)
+            bounds, box!!, px(HANDLER_BOUNDS_DP), px(THRESHOLD_DP), px(BASE_TRANSLATE_DP)
         )
 
         moveHandler?.aspectRatio = aspectRatio
@@ -242,8 +242,8 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
         )
 
         val paint = Paint().apply {
-            this.color = Color.BLACK
-            this.alpha = 150
+            this.color = BACKGROUND_COLOR
+            this.alpha = BACKGROUND_ALPHA
         }
 
         // Create the 4 background sections
@@ -281,17 +281,17 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
         val borderBox = box ?: return
 
         val paint = Paint().apply {
-            this.color = Color.LTGRAY
+            this.color = GUIDELINES_COLOR
         }
-        paint.strokeWidth = px(1f)
-        paint.alpha = 140
+        paint.strokeWidth = px(GUIDELINES_WIDTH_DP)
+        paint.alpha = GUIDELINES_ALPHA
 
         // Set the space between each item
-        val spaceX = borderBox.width / 3
-        val spaceY = borderBox.height / 3
+        val spaceX = borderBox.width / GUIDELINES_COUNT
+        val spaceY = borderBox.height / GUIDELINES_COUNT
 
         // Draw the lines
-        for (i in 1..3) {
+        for (i in 1..GUIDELINES_COUNT) {
             val left = borderBox.l
             val right = borderBox.r
             val top = borderBox.t
@@ -314,14 +314,14 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
         val borderBox = box ?: return
 
         val white = Paint().apply {
-            this.color = Color.WHITE
-            this.strokeWidth = px(2f)
+            this.color = BORDER_CORNER_COLOR
+            this.strokeWidth = px(BORDER_CORNER_WIDTH_DP)
         }
 
         val whiteAlpha = Paint().apply {
-            this.color = Color.LTGRAY
-            this.strokeWidth = px(1f)
-            this.alpha = 140
+            this.color = BORDER_COLOR
+            this.strokeWidth = px(BORDER_WIDTH_DP)
+            this.alpha = BORDER_ALPHA
         }
 
         // Draw the sides
@@ -331,13 +331,13 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
         canvas.drawLine(borderBox.bottom, whiteAlpha)
 
         // Draw the corners
-        canvas.drawCircle(borderBox.leftTop, px(4f), white)
-        canvas.drawCircle(borderBox.rightTop, px(4f), white)
-        canvas.drawCircle(borderBox.rightBottom, px(4f), white)
-        canvas.drawCircle(borderBox.leftBottom, px(4f), white)
+        canvas.drawCircle(borderBox.leftTop, px(BORDER_CORNER_RADIUS), white)
+        canvas.drawCircle(borderBox.rightTop, px(BORDER_CORNER_RADIUS), white)
+        canvas.drawCircle(borderBox.rightBottom, px(BORDER_CORNER_RADIUS), white)
+        canvas.drawCircle(borderBox.leftBottom, px(BORDER_CORNER_RADIUS), white)
 
         // Draw the center figure
-        canvas.drawCircle(borderBox.center, px(4f), white)
+        canvas.drawCircle(borderBox.center, px(BORDER_CORNER_RADIUS), white)
     }
 
     /**
@@ -394,5 +394,24 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
 
         animator.duration = duration
         animator.start()
+    }
+
+    companion object {
+        private const val MIN_SIZE_DP = 64f
+        private const val THRESHOLD_DP = 56f
+        private const val HANDLER_BOUNDS_DP = 16f
+        private const val BASE_TRANSLATE_DP = 8f
+        private const val BACKGROUND_COLOR = Color.BLACK
+        private const val BACKGROUND_ALPHA = 150
+        private const val GUIDELINES_COLOR = Color.LTGRAY
+        private const val GUIDELINES_WIDTH_DP = 1f
+        private const val GUIDELINES_ALPHA = 140
+        private const val GUIDELINES_COUNT = 3
+        private const val BORDER_CORNER_COLOR = Color.WHITE
+        private const val BORDER_CORNER_WIDTH_DP = 2f
+        private const val BORDER_CORNER_RADIUS = 4f
+        private const val BORDER_COLOR = Color.LTGRAY
+        private const val BORDER_WIDTH_DP = 1f
+        private const val BORDER_ALPHA = 140
     }
 }

@@ -23,10 +23,10 @@ import com.leondeklerk.starling.views.GradientSlider
 class TextStyleModal : BottomSheetDialogFragment() {
 
     private lateinit var binding: ModalTextStyleBinding
-    private var size = 24f
-    private var hue: Float = 0f
-    private var saturation: Float = 0f
-    private var value = 1f
+    private var size = SIZE_DEFAULT
+    private var hue = HUE_DEFAULT
+    private var saturation = SATURATION_DEFAULT
+    private var value = VALUE_DEFAULT
 
     var onCloseListener: ((text: TextStyle) -> Unit)? = null
 
@@ -144,5 +144,9 @@ class TextStyleModal : BottomSheetDialogFragment() {
 
     companion object {
         const val TAG = "TextStyleModal"
+        private const val SIZE_DEFAULT = 24f
+        private const val HUE_DEFAULT = 0f
+        private const val SATURATION_DEFAULT = 0f
+        private const val VALUE_DEFAULT = 1f
     }
 }

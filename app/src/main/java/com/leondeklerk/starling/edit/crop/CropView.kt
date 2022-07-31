@@ -157,7 +157,7 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
      * and sets the animation duration.
      */
     fun onZoomedIn() {
-        overlay.onZoomedIn(BOX_DURATION * 2L)
+        overlay.onZoomedIn(BOX_DURATION_DOUBLE)
     }
 
     /**
@@ -186,5 +186,6 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
 
     companion object {
         private const val BOX_DURATION = 100L
+        private const val BOX_DURATION_DOUBLE = BOX_DURATION * 2L
     }
 }

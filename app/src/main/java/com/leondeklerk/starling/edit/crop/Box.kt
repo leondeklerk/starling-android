@@ -202,6 +202,8 @@ data class Box(
     }
 
     companion object {
+        private const val MIN_WIDTH_DIVIDER = 4f
+
         /**
          * Based on the given bounds and aspect ratio,
          * calculate the largest possible starting size of the box.
@@ -251,7 +253,7 @@ data class Box(
             }
 
             // Calculate the min dimens (quarter height/width or 64dp).
-            val minDimens = min(min(bounds.height(), bounds.width()) / 4f, minDP)
+            val minDimens = min(min(bounds.height(), bounds.width()) / MIN_WIDTH_DIVIDER, minDP)
             return Box(minDimens, base.left, base.top, base.right, base.bottom)
         }
     }

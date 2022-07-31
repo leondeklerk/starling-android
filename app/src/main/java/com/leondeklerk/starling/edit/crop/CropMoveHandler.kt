@@ -60,8 +60,9 @@ class CropMoveHandler(
     private var translateY = 0f
 
     companion object {
-        const val X_TYPE = "x"
-        const val Y_TYPE = "y"
+        private const val X_TYPE = "x"
+        private const val Y_TYPE = "y"
+        private const val THREE_QUARTER = 0.75f
     }
 
     /**
@@ -188,7 +189,7 @@ class CropMoveHandler(
      */
     fun scaleBox(): RectF {
         // Start with a 75% and height based on the aspect ratio.
-        var projectedWidth = bounds.width() * 0.75f
+        var projectedWidth = bounds.width() * THREE_QUARTER
         var projectedHeight = aspectRatio.ratio(projectedWidth)
 
         // If the height does not fit, set it to the max value and calculate the corresponding width.
@@ -200,8 +201,8 @@ class CropMoveHandler(
 
         // For free just use 75% for both.
         if (aspectRatio == AspectRatio.FREE) {
-            projectedWidth = bounds.width() * 0.75f
-            projectedHeight = bounds.height() * 0.75f
+            projectedWidth = bounds.width() * THREE_QUARTER
+            projectedHeight = bounds.height() * THREE_QUARTER
         }
 
         // Resize and translate the box.
