@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.leondeklerk.starling.databinding.ViewCropBinding
+import com.leondeklerk.starling.edit.EditView
 
 /**
  * A wrapper View that defines and handles all controls related to cropping an image.
