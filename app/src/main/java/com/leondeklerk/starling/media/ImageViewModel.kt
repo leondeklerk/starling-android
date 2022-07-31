@@ -4,24 +4,14 @@ import android.app.Application
 import android.app.PendingIntent
 import android.app.RecoverableSecurityException
 import android.content.ContentUris
-import android.content.ContentValues
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
-import android.widget.Toast
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.leondeklerk.starling.data.ImageItem
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.IOException
-import java.lang.Long.parseLong
-import java.util.Date
 
 /**
  * [MediaViewModel] responsible for handling functionality specific to [ImageItem] media.
@@ -95,29 +85,7 @@ class ImageViewModel(application: Application) : MediaViewModel(application) {
      */
     fun update(imageItem: ImageItem) {
         val resolver = getApplication<Application>().contentResolver
-        val contentUri = MediaStore.Images.Media.getContentUri("external")
-        val uri = ContentUris.withAppendedId(contentUri, imageItem.id)
-
-        val stream = resolver.openOutputStream(uri, "rwt")
-        stream?.let {
-            if (!pendingBitmap!!.compress(Bitmap.CompressFormat.JPEG, 100, it)) {
-                throw IOException("Failed to save bitmap.")
-            }
-            it.close()
-        }
-
-        val resultItem = ImageItem(
-            imageItem.id,
-            imageItem.uri,
-            imageItem.displayName,
-            imageItem.dateAdded,
-            pendingBitmap!!.width,
-            pendingBitmap!!.height,
-            "image/jpeg",
-            Date(System.currentTimeMillis())
-        )
-
-        _savedItem.postValue(resultItem)
+        _savedItem.postValue(MediaInterface().update(resolver, imageItem, pendingBitmap!!))
     }
 
     /**
@@ -127,67 +95,9 @@ class ImageViewModel(application: Application) : MediaViewModel(application) {
      */
     private fun createCopy(data: Bitmap, imageItem: ImageItem) {
         viewModelScope.launch {
-            var result: ImageItem? = null
-            try {
-                val name = Regex("\\.[^.]*\$").replace(imageItem.displayName, "")
-                result = saveBitmap(data, Bitmap.CompressFormat.JPEG, "image/jpeg", "${name}-edit")
-            } catch (e: IOException) {
-                Toast.makeText(getApplication(), "Error $e", Toast.LENGTH_SHORT).show()
-            } finally {
-                _savedItem.postValue(result)
-            }
+            val resolver = getApplication<Application>().contentResolver
+            _savedItem.postValue(MediaInterface().createCopy(resolver, data, imageItem))
         }
-    }
-
-    /**
-     * Async function that saves the bitmap to the device and creates and entry in the MediaStore.
-     * @param bitmap: the bitmap to save
-     * @param format: the compression format
-     * @param mimeType: the mimeType of the new image
-     * @param displayName: the new name of the image.
-     */
-    private suspend fun saveBitmap(
-        bitmap: Bitmap,
-        format: Bitmap.CompressFormat,
-        mimeType: String,
-        displayName: String
-    ): ImageItem {
-        val uri: Uri?
-
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM)
-        }
-
-        val resolver = getApplication<Application>().contentResolver
-
-        uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            ?: throw IOException("Failed to create new MediaStore record.")
-        val dateAdded = Date()
-        try {
-            withContext(Dispatchers.IO) {
-                // Android studio gives an incorrect blocking call warning
-                @Suppress("BlockingMethodInNonBlockingContext")
-                val inputStream = resolver.openOutputStream(uri)
-                inputStream?.use {
-                    if (!bitmap.compress(format, 100, it))
-                        throw IOException("Failed to save bitmap.")
-                }
-
-                delay(800)
-            }
-        } catch (e: IOException) {
-            uri.let { orphanUri ->
-                // Don't leave an orphan entry in the MediaStore
-                resolver.delete(orphanUri, null, null)
-            }
-            throw e
-        }
-
-        // Create the image data
-        val id = parseLong(uri.lastPathSegment!!)
-        return ImageItem(id, uri, displayName, dateAdded, bitmap.width, bitmap.height, mimeType, Date(System.currentTimeMillis()))
     }
 
     companion object {
