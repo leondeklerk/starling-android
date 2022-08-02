@@ -8,13 +8,12 @@
     "renovate"
   ],
   "rollbackPrs": true,
-  "dependencyDashboard": true,
+  "dependencyDashboard": false,
   "assignees": [
     "developer@leondeklerk.com"
   ],
   "configMigration": true,
   "timezone": "Europe/Amsterdam",
-  "schedule": "on monday",
   "vulnerabilityAlerts": {
     "enabled": true,
     "labels": [
