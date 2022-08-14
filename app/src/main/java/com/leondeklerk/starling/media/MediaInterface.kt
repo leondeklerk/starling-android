@@ -11,11 +11,11 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
-import com.leondeklerk.starling.data.HeaderItem
-import com.leondeklerk.starling.data.ImageItem
-import com.leondeklerk.starling.data.MediaItem
-import com.leondeklerk.starling.data.MediaItemTypes
-import com.leondeklerk.starling.data.VideoItem
+import com.leondeklerk.starling.media.data.HeaderItem
+import com.leondeklerk.starling.media.data.ImageItem
+import com.leondeklerk.starling.media.data.MediaItem
+import com.leondeklerk.starling.media.data.MediaItemTypes
+import com.leondeklerk.starling.media.data.VideoItem
 import java.io.IOException
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -49,7 +49,7 @@ class MediaInterface {
         selectionArgs: Array<String>,
         sortOrder: String
     ):
-        List<MediaItem> {
+        MutableList<MediaItem> {
         val media = mutableListOf<MediaItem>()
 
         withContext(Dispatchers.IO) {
@@ -81,8 +81,8 @@ class MediaInterface {
                     val date = Date(TimeUnit.SECONDS.toMillis(cursor.getLong(dateColumn)))
                     val displayName = cursor.getString(displayNameColumn)
 
-                    val width = cursor.getLong(widthColumn)
-                    val height = cursor.getLong(heightColumn)
+                    val width = cursor.getInt(widthColumn)
+                    val height = cursor.getInt(heightColumn)
 
                     val duration = cursor.getInt(durationColumn)
 
@@ -108,8 +108,10 @@ class MediaInterface {
                                 contentUri,
                                 displayName,
                                 date,
-                                duration,
+                                duration.toLong(),
                                 mimeType,
+                                width,
+                                height,
                                 modified
                             )
                         }
@@ -145,6 +147,18 @@ class MediaInterface {
     }
 
     /**
+     * Function to delete a media item from the device.
+     * @param contentResolver: the contentResolver associated with the MediaStore
+     * @param media: the actual media item representing the file to be deleted
+     * @return: The number of rows this operation has deleted
+     */
+    suspend fun delete(contentResolver: ContentResolver, media: MediaItem): Int {
+        return withContext(Dispatchers.IO) {
+            contentResolver.delete(buildUri(media), null, null)
+        }
+    }
+
+    /**
      * Function to delete a media item from the device on API level Q.
      * Will throw a securityException if the user explicitly needs to grant permission to delete.
      * @param contentResolver: the contentResolver associated with the MediaStore
@@ -173,28 +187,37 @@ class MediaInterface {
         return MediaStore.createDeleteRequest(contentResolver, listOf(buildUri(media))).intentSender
     }
 
-    fun update(resolver: ContentResolver, imageItem: ImageItem, data: Bitmap): ImageItem {
-        val contentUri = MediaStore.Images.Media.getContentUri("external")
-        val uri = ContentUris.withAppendedId(contentUri, imageItem.id)
+    suspend fun <M : MediaItem> update(resolver: ContentResolver, item: MediaItem, src: Any): M? {
+        val imageItem = item as ImageItem
+        val data = src as Bitmap
 
-        val stream = resolver.openOutputStream(uri, "rwt")
-        stream?.let {
-            if (!data.compress(Bitmap.CompressFormat.JPEG, 100, it)) {
-                throw IOException("Failed to save bitmap.")
+        return try {
+            withContext(Dispatchers.IO) {
+                val contentUri = MediaStore.Images.Media.getContentUri("external")
+                val uri = ContentUris.withAppendedId(contentUri, imageItem.id)
+
+                val stream = resolver.openOutputStream(uri, "rwt")
+                stream?.let {
+                    if (!data.compress(Bitmap.CompressFormat.JPEG, 100, it)) {
+                        throw IOException("Failed to save bitmap.")
+                    }
+                }
+
+                @Suppress("UNCHECKED_CAST")
+                ImageItem(
+                    imageItem.id,
+                    imageItem.uri,
+                    imageItem.displayName,
+                    imageItem.dateAdded,
+                    data.width,
+                    data.height,
+                    "image/jpeg",
+                    Date(System.currentTimeMillis())
+                ) as M
             }
-            it.close()
+        } catch (e: Exception) {
+            null
         }
-
-        return ImageItem(
-            imageItem.id,
-            imageItem.uri,
-            imageItem.displayName,
-            imageItem.dateAdded,
-            data.width,
-            data.height,
-            "image/jpeg",
-            Date(System.currentTimeMillis())
-        )
     }
 
     /**
@@ -202,15 +225,20 @@ class MediaInterface {
      * @param data the new image data
      * @param imageItem the data of the original image
      */
-    suspend fun createCopy(contentResolver: ContentResolver, data: Bitmap, imageItem: ImageItem): ImageItem? {
-        var result: ImageItem? = null
-        try {
+    suspend fun <M : MediaItem> createCopy(
+        contentResolver: ContentResolver,
+        src: Any,
+        item: MediaItem
+    ): M? {
+        val imageItem = item as ImageItem
+        val data = src as Bitmap
+        return try {
             val name = Regex("\\.[^.]*\$").replace(imageItem.displayName, "")
-            result = saveBitmap(contentResolver, data, Bitmap.CompressFormat.JPEG, "image/jpeg", "$name-edit")
+            @Suppress("UNCHECKED_CAST")
+            saveBitmap(contentResolver, data, Bitmap.CompressFormat.JPEG, "image/jpeg", "$name-edit") as M
         } catch (e: IOException) {
-            //
+            null
         }
-        return result
     }
 
     /**

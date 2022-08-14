@@ -16,13 +16,13 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.toRect
 import androidx.core.graphics.transform
 import androidx.core.view.marginLeft
 import androidx.core.view.marginTop
+import androidx.fragment.app.FragmentActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.databinding.ViewEditBinding
@@ -101,7 +101,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
 
         binding.buttonSave.setOnClickListener {
-            saveModal.show((context as AppCompatActivity).supportFragmentManager, SaveModal.TAG)
+            saveModal.show((context as FragmentActivity).supportFragmentManager, SaveModal.TAG)
         }
 
         binding.buttonCancel.setOnClickListener {
@@ -208,12 +208,15 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     /**
      * Call when the save operation is complete.
      * Updates the internal state related to saving.
+     * @param cancelled: indicates if the save was cancelled or not.
      */
-    fun isSaved() {
+    fun isSaved(cancelled: Boolean) {
         binding.savingOverlay.visibility = GONE
         binding.savingIndicator.visibility = GONE
         isSaving = false
-        imageView.reset()
+        if (!cancelled) {
+            imageView.reset()
+        }
     }
 
     /**
@@ -298,7 +301,7 @@ class EditView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         onSave?.invoke(result, copy)
 
         if (onSave == null) {
-            isSaved()
+            isSaved(true)
         }
     }
 

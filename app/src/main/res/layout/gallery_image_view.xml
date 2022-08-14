@@ -6,7 +6,7 @@
     <data>
         <variable
             name="item"
-            type="com.leondeklerk.starling.data.MediaItem" />
+            type="com.leondeklerk.starling.media.data.MediaItem" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

@@ -12,8 +12,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.leondeklerk.starling.PermissionViewModel
-import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.media.MediaInterface
+import com.leondeklerk.starling.media.data.MediaItem
 import kotlinx.coroutines.launch
 
 /**

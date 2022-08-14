@@ -3,21 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main_navigation"
-    app:startDestination="@+id/navigation_gallery">
+    app:startDestination="@id/navigation_gallery">
 
     <fragment
         android:id="@+id/navigation_gallery"
         android:name="com.leondeklerk.starling.gallery.GalleryFragment"
         android:label="@string/title_gallery"
-        tools:layout="@layout/fragment_gallery" >
+        tools:layout="@layout/fragment_gallery">
         <action
-            android:id="@+id/action_navigation_gallery_to_image_activity"
-            app:destination="@id/image_activity"
-            app:popUpTo="@id/navigation_gallery"
-            app:popUpToInclusive="false" />
-        <action
-            android:id="@+id/action_navigation_gallery_to_videoActivity"
-            app:destination="@id/videoActivity" />
+            android:id="@+id/action_navigation_gallery_to_mediaActivity"
+            app:destination="@id/mediaActivity" />
     </fragment>
 
     <fragment
@@ -31,42 +26,26 @@
             app:popUpTo="@id/navigation_library"
             app:popUpToInclusive="false" />
     </fragment>
-    <activity
-        android:id="@+id/image_activity"
-        android:name="com.leondeklerk.starling.media.ImageActivity"
-        android:label="ImageFragment"
-        tools:layout="@layout/activity_image">
-        <argument
-            android:name="imageItem"
-            app:argType="com.leondeklerk.starling.data.ImageItem" />
-    </activity>
-    <activity
-        android:id="@+id/videoActivity"
-        android:name="com.leondeklerk.starling.media.VideoActivity"
-        android:label="VideoActivity"
-        tools:layout="@layout/activity_video">
-        <argument
-            android:name="videoItem"
-            app:argType="com.leondeklerk.starling.data.VideoItem" />
-    </activity>
     <fragment
         android:id="@+id/navigation_folder"
         tools:layout="@layout/fragment_folder"
         android:label="{folderItem}"
         android:name="com.leondeklerk.starling.library.folder.FolderFragment">
-        <action
-            android:id="@+id/action_folderFragment_to_videoActivity"
-            app:destination="@id/videoActivity"
-            app:popUpTo="@id/navigation_folder"
-            app:popUpToInclusive="false" />
-        <action
-            android:id="@+id/action_folderFragment_to_image_activity"
-            app:destination="@id/image_activity"
-            app:popUpTo="@id/navigation_folder"
-            app:popUpToInclusive="false" />
         <argument
             android:name="folderItem"
-            app:argType="com.leondeklerk.starling.data.FolderItem" />
+            app:argType="com.leondeklerk.starling.media.data.FolderItem" />
+        <action
+            android:id="@+id/action_navigation_folder_to_mediaActivity"
+            app:destination="@id/mediaActivity" />
     </fragment>
+    <activity
+        android:id="@+id/mediaActivity"
+        android:name="com.leondeklerk.starling.media.MediaActivity"
+        android:label="MediaActivity">
+        <argument
+            android:name="mediaItem"
+            app:argType="com.leondeklerk.starling.media.data.MediaItem"
+            app:nullable="true" />
+    </activity>
 
 </navigation>

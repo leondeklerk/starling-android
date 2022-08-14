@@ -12,8 +12,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.leondeklerk.starling.data.MediaItem
 import com.leondeklerk.starling.media.MediaInterface
+import com.leondeklerk.starling.media.data.MediaItem
 import kotlinx.coroutines.launch
 
 /**
@@ -84,7 +84,8 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
             MediaStore.Files.FileColumns.WIDTH,
             MediaStore.Files.FileColumns.DURATION,
             MediaStore.Files.FileColumns.MEDIA_TYPE,
-            MediaStore.Files.FileColumns.MIME_TYPE
+            MediaStore.Files.FileColumns.MIME_TYPE,
+            MediaStore.Files.FileColumns.DATE_MODIFIED
         )
     }
 

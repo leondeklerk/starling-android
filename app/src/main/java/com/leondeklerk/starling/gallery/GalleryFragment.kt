@@ -14,20 +14,18 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
-import com.leondeklerk.starling.data.ImageItem
-import com.leondeklerk.starling.data.MediaItem
-import com.leondeklerk.starling.data.MediaItemTypes
-import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.databinding.FragmentGalleryBinding
 import com.leondeklerk.starling.extensions.goToSettings
 import com.leondeklerk.starling.extensions.hasPermission
-import com.leondeklerk.starling.media.MediaGalleryAdapter
+import com.leondeklerk.starling.media.data.MediaItem
+import com.leondeklerk.starling.media.data.MediaItemTypes
+import com.leondeklerk.starling.media.gallery.MediaGalleryAdapter
 
 /**
  * [GalleryFragment] is the main fragment of the application.
  * It contains the main recyclerView that contains all images and videos on the device and synced.
  * Uses a [MediaGalleryAdapter] assisted by [GalleryViewModel] to display
- * [com.leondeklerk.starling.data.MediaItem]s.
+ * [com.leondeklerk.starling.media.data.MediaItem]s.
  * This fragment handles the required permission.
  */
 class GalleryFragment : Fragment() {
@@ -142,13 +140,8 @@ class GalleryFragment : Fragment() {
 
         // Create item click listener
         val mediaItemClickListener = { item: MediaItem ->
-            if (item.type == MediaItemTypes.VIDEO) {
-                val directions = GalleryFragmentDirections.actionNavigationGalleryToVideoActivity(item as VideoItem)
-                findNavController().navigate(directions)
-            } else if (item.type == MediaItemTypes.IMAGE) {
-                val directions = GalleryFragmentDirections.actionNavigationGalleryToImageActivity(item as ImageItem)
-                findNavController().navigate(directions)
-            }
+            val directions = GalleryFragmentDirections.actionNavigationGalleryToMediaActivity(item)
+            findNavController().navigate(directions)
         }
 
         // Create a GalleryAdapter and add the data to it

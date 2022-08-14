@@ -9,11 +9,11 @@ import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.util.TypedValue
 import android.view.View
 import androidx.core.animation.doOnEnd
 import androidx.core.graphics.toRect
 import com.leondeklerk.starling.edit.EditView
+import com.leondeklerk.starling.extensions.dpToPx
 import com.leondeklerk.starling.extensions.drawCircle
 import com.leondeklerk.starling.extensions.drawLine
 
@@ -91,7 +91,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
             this.aspectRatio.yRatio = rect.height().toInt()
         }
 
-        val targetRect = Box.from(rect, aspectRatio, px(MIN_SIZE_DP)).rect
+        val targetRect = Box.from(rect, aspectRatio, dpToPx(MIN_SIZE_DP)).rect
 
         if (animate) {
             setOnAnimate = true
@@ -203,7 +203,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * also creates a initial copy.
      */
     private fun createBox() {
-        box = Box.from(bounds, aspectRatio, px(MIN_SIZE_DP))
+        box = Box.from(bounds, aspectRatio, dpToPx(MIN_SIZE_DP))
         startBox = box!!.copy()
     }
 
@@ -213,7 +213,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      */
     private fun createMoveHandler() {
         moveHandler = CropMoveHandler(
-            bounds, box!!, px(HANDLER_BOUNDS_DP), px(THRESHOLD_DP), px(BASE_TRANSLATE_DP)
+            bounds, box!!, dpToPx(HANDLER_BOUNDS_DP), dpToPx(THRESHOLD_DP), dpToPx(BASE_TRANSLATE_DP)
         )
 
         moveHandler?.aspectRatio = aspectRatio
@@ -283,7 +283,7 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
         val paint = Paint().apply {
             this.color = GUIDELINES_COLOR
         }
-        paint.strokeWidth = px(GUIDELINES_WIDTH_DP)
+        paint.strokeWidth = dpToPx(GUIDELINES_WIDTH_DP)
         paint.alpha = GUIDELINES_ALPHA
 
         // Set the space between each item
@@ -315,12 +315,12 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
 
         val white = Paint().apply {
             this.color = BORDER_CORNER_COLOR
-            this.strokeWidth = px(BORDER_CORNER_WIDTH_DP)
+            this.strokeWidth = dpToPx(BORDER_CORNER_WIDTH_DP)
         }
 
         val whiteAlpha = Paint().apply {
             this.color = BORDER_COLOR
-            this.strokeWidth = px(BORDER_WIDTH_DP)
+            this.strokeWidth = dpToPx(BORDER_WIDTH_DP)
             this.alpha = BORDER_ALPHA
         }
 
@@ -331,23 +331,13 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
         canvas.drawLine(borderBox.bottom, whiteAlpha)
 
         // Draw the corners
-        canvas.drawCircle(borderBox.leftTop, px(BORDER_CORNER_RADIUS), white)
-        canvas.drawCircle(borderBox.rightTop, px(BORDER_CORNER_RADIUS), white)
-        canvas.drawCircle(borderBox.rightBottom, px(BORDER_CORNER_RADIUS), white)
-        canvas.drawCircle(borderBox.leftBottom, px(BORDER_CORNER_RADIUS), white)
+        canvas.drawCircle(borderBox.leftTop, dpToPx(BORDER_CORNER_RADIUS), white)
+        canvas.drawCircle(borderBox.rightTop, dpToPx(BORDER_CORNER_RADIUS), white)
+        canvas.drawCircle(borderBox.rightBottom, dpToPx(BORDER_CORNER_RADIUS), white)
+        canvas.drawCircle(borderBox.leftBottom, dpToPx(BORDER_CORNER_RADIUS), white)
 
         // Draw the center figure
-        canvas.drawCircle(borderBox.center, px(BORDER_CORNER_RADIUS), white)
-    }
-
-    /**
-     * Helper function that creates a pixel value from a given DP value.
-     * @param value the value in DP.
-     * @return the DP value in pixel.
-     */
-    private fun px(value: Float): Float {
-        // Creates pixels from a DP value
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, resources.displayMetrics)
+        canvas.drawCircle(borderBox.center, dpToPx(BORDER_CORNER_RADIUS), white)
     }
 
     /**

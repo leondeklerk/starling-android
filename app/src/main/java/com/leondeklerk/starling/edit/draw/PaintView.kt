@@ -29,7 +29,7 @@ import com.leondeklerk.starling.R
 import com.leondeklerk.starling.edit.draw.layers.DrawLayer
 import com.leondeklerk.starling.edit.draw.layers.PaintLayer
 import com.leondeklerk.starling.edit.draw.layers.TextLayer
-import com.leondeklerk.starling.extensions.dpToPixels
+import com.leondeklerk.starling.extensions.dpToPx
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
@@ -639,7 +639,7 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
 
         // Set the basic paint properties
         paint.color = style.color
-        paint.strokeWidth = dpToPixels(style.size)
+        paint.strokeWidth = dpToPx(style.size)
         paint.style = Paint.Style.STROKE
 
         // Pencil uses rounded shapes, eraser/marker use squared shapes

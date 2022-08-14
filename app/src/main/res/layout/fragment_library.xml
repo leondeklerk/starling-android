@@ -43,7 +43,7 @@
             android:orientation="vertical"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/top_guideline"
+            app:layout_constraintTop_toTopOf="@id/top_guideline"
             tools:visibility="gone">
 
             <ImageView

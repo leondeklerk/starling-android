@@ -36,6 +36,6 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:navGraph="@navigation/navigation"
-        app:layout_constraintBottom_toTopOf="@+id/nav_view" />
+        app:layout_constraintBottom_toTopOf="@id/nav_view" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

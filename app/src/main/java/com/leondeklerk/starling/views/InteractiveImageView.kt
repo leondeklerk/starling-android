@@ -91,6 +91,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     var onResetListener: (() -> Unit)? = null
     var onImageUpdate: (() -> Unit)? = null
     var onTouchHandler: ((event: MotionEvent) -> Boolean)? = null
+    var onRequireLock: ((require: Boolean) -> Unit)? = null
 
     private val gestureListener: GestureDetector.OnGestureListener = object : SimpleOnGestureListener() {
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
@@ -146,7 +147,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         // Setup the detectors
         scaleDetector = ScaleGestureDetector(context, scaleListener)
         gestureDetector = GestureDetector(context, gestureListener)
-        ScaleGestureDetectorCompat.setQuickScaleEnabled(scaleDetector, false)
+        ScaleGestureDetectorCompat.setQuickScaleEnabled(scaleDetector!!, false)
     }
 
     override fun setImageBitmap(bm: Bitmap?) {
@@ -177,6 +178,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
             // If there is a double tap, we only execute that
             if (doubleTap) {
                 checkDoubleTap(event, boundingBox)
+                onRequireLock?.invoke(startScale != currentScale)
                 return true
             }
 
@@ -189,7 +191,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
                 MotionEvent.ACTION_MOVE -> {
                     // If there is one finger on the screen, we should drag the image
                     if (event.pointerCount == 1) {
-                        onSinglePointerMove(boundingBox)
+                        return onSinglePointerMove(boundingBox)
                     } else {
                         onMultiPointerMove(boundingBox)
                     }
@@ -251,8 +253,15 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * Will translate the image based on the motion.
      * Will only translate if the start focus point is within the image bounds.
      * @param boundingBox: the bounding box of the current image.
+     * @return if the move was executed or not
      */
-    fun onSinglePointerMove(boundingBox: RectF) {
+    fun onSinglePointerMove(boundingBox: RectF): Boolean {
+        if (!allowTranslation && currentScale == startScale) {
+            return false
+        } else {
+            onRequireLock?.invoke(true)
+        }
+
         // If we came from scaling, don't move and center
         if (!allowStartMove) {
             center(imageMatrix, true)
@@ -268,6 +277,8 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
                 handleTouchTranslate()
             }
         }
+
+        return true
     }
 
     /**
@@ -279,6 +290,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     fun onMultiPointerMove(boundingBox: RectF) {
         // Start a scaling action
         if (boundingBox.contains(scaleDetector!!.focusX, scaleDetector!!.focusY)) {
+            onRequireLock?.invoke(true)
             allowStartMove = false
             handleTouchScaling()
         }
@@ -294,6 +306,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         center(imageMatrix, true)
         allowStartMove = true
         firstSingleMove = true
+        onRequireLock?.invoke(startScale != currentScale)
     }
 
     /**
@@ -666,6 +679,10 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * @param delaySet indicates if setting the value of the imageMatrix should be handled now (true) or not (false)
      */
     private fun handleTouchTranslate(delaySet: Boolean = false): PointF {
+        if (!allowTranslation && startScale == currentScale) {
+            return PointF(0f, 0f)
+        }
+
         val focus = PointF(scaleDetector!!.focusX, scaleDetector!!.focusY)
 
         // calculate the distance for translation

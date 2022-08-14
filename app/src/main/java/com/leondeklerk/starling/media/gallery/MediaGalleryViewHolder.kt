@@ -1,19 +1,19 @@
-package com.leondeklerk.starling.media
+package com.leondeklerk.starling.media.gallery
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.databinding.ViewDataBinding
 import androidx.recyclerview.widget.RecyclerView
-import com.leondeklerk.starling.data.FolderItem
-import com.leondeklerk.starling.data.HeaderItem
-import com.leondeklerk.starling.data.ImageItem
-import com.leondeklerk.starling.data.MediaItem
-import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.databinding.GalleryHeaderViewBinding
 import com.leondeklerk.starling.databinding.GalleryImageViewBinding
 import com.leondeklerk.starling.databinding.GalleryVideoViewBinding
 import com.leondeklerk.starling.databinding.LibraryFolderViewBinding
 import com.leondeklerk.starling.library.LibraryFragment
+import com.leondeklerk.starling.media.data.FolderItem
+import com.leondeklerk.starling.media.data.HeaderItem
+import com.leondeklerk.starling.media.data.ImageItem
+import com.leondeklerk.starling.media.data.MediaItem
+import com.leondeklerk.starling.media.data.VideoItem
 
 /**
  * Generic [RecyclerView.ViewHolder] class to display [MediaItem]s
@@ -70,7 +70,7 @@ class VideoItemViewHolder private constructor(
 ) : MediaItemViewHolder(binding) {
 
     /**
-     * Bind a [VideoItem] to the layout using databinding
+     * Bind a [VideoItem] to the layout using data binding
      * @param item: the video item that should be displayed in this view.
      */
     override fun bind(item: MediaItem) {
@@ -110,7 +110,7 @@ class ImageItemViewHolder private constructor(
 ) : MediaItemViewHolder(binding) {
 
     /**
-     * Bind a [ImageItem] to the layout using databinding
+     * Bind a [ImageItem] to the layout using data binding
      * @param item: the image item that should be displayed in this view.
      */
     override fun bind(item: MediaItem) {

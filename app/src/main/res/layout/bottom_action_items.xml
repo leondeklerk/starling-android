@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/action_items"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -24,7 +23,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         android:id="@+id/media_action_delete"
         android:layout_marginBottom="12dp"
-        app:layout_constraintStart_toEndOf="@+id/media_action_crop"
+        app:layout_constraintStart_toEndOf="@id/media_action_crop"
         app:layout_constraintHorizontal_bias="0.5" />
 
     <com.google.android.material.button.MaterialButton
@@ -43,9 +42,9 @@
         app:layout_constraintBottom_toBottomOf="parent"
         android:id="@+id/media_action_crop"
         android:layout_marginBottom="12dp"
-        app:layout_constraintStart_toEndOf="@+id/media_action_share"
+        app:layout_constraintStart_toEndOf="@id/media_action_share"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintEnd_toStartOf="@+id/media_action_delete" />
+        app:layout_constraintEnd_toStartOf="@id/media_action_delete" />
 
     <com.google.android.material.button.MaterialButton
         android:layout_width="wrap_content"
@@ -64,7 +63,7 @@
         android:id="@+id/media_action_share"
         android:layout_marginBottom="12dp"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintEnd_toStartOf="@+id/media_action_crop" />
+        app:layout_constraintEnd_toStartOf="@id/media_action_crop" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,4 +1,4 @@
-package com.leondeklerk.starling.data
+package com.leondeklerk.starling.media.data
 
 import android.net.Uri
 import android.os.Parcelable
@@ -22,7 +22,8 @@ enum class MediaItemTypes : Parcelable {
 sealed class MediaItem(
     open val id: Long,
     open val type: MediaItemTypes,
-    open val uri: Uri?
+    open val uri: Uri?,
+    open val dateModified: Date
 ) : Parcelable {
 
     companion object {
@@ -31,8 +32,9 @@ sealed class MediaItem(
             override fun areItemsTheSame(oldItem: MediaItem, newItem: MediaItem) =
                 oldItem.id == newItem.id
 
+            // TODO revert to date modified for gallery adapter and use this for fragment adapter
             override fun areContentsTheSame(oldItem: MediaItem, newItem: MediaItem) =
-                oldItem == newItem
+                oldItem.id == newItem.id
         }
     }
 }
@@ -53,7 +55,7 @@ data class HeaderItem(
     override val id: Long,
     val date: Date,
     val zoomLevel: Int
-) : MediaItem(id, MediaItemTypes.HEADER, null)
+) : MediaItem(id, MediaItemTypes.HEADER, null, Date())
 
 /**
  * [MediaItem] specific for image type, indicated by [MediaItemTypes.IMAGE].
@@ -70,11 +72,11 @@ data class ImageItem(
     override val uri: Uri,
     val displayName: String,
     val dateAdded: Date,
-    val width: Number,
-    val height: Number,
+    val width: Int,
+    val height: Int,
     val mimeType: String,
-    var dateModified: Date
-) : MediaItem(id, MediaItemTypes.IMAGE, uri)
+    override val dateModified: Date
+) : MediaItem(id, MediaItemTypes.IMAGE, uri, dateModified)
 
 /**
  * [MediaItem] specific for video type, indicated by [MediaItemTypes.VIDEO].
@@ -90,10 +92,12 @@ data class VideoItem(
     override val uri: Uri,
     val displayName: String,
     val dateAdded: Date,
-    val duration: Int,
+    val duration: Long,
     val mimeType: String,
-    val dateModified: Date
-) : MediaItem(id, MediaItemTypes.VIDEO, uri)
+    val width: Int,
+    val height: Int,
+    override val dateModified: Date
+) : MediaItem(id, MediaItemTypes.VIDEO, uri, dateModified)
 
 /**
  */
@@ -103,8 +107,8 @@ data class FolderItem(
     override val uri: Uri,
     val name: String,
     val thumbnailType: MediaItemTypes,
-    val dateModified: Date
-) : MediaItem(id, MediaItemTypes.FOLDER, uri) {
+    override val dateModified: Date
+) : MediaItem(id, MediaItemTypes.FOLDER, uri, dateModified) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false

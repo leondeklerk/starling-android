@@ -1,8 +1,8 @@
-package com.leondeklerk.starling.media
+package com.leondeklerk.starling.media.gallery
 
 import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
-import com.leondeklerk.starling.data.MediaItem
+import com.leondeklerk.starling.media.data.MediaItem
 
 /**
  * [ListAdapter] instance responsible for populating a gallery with [MediaItem]s.

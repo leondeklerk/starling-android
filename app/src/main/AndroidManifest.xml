@@ -25,12 +25,8 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".media.ImageActivity"
-            android:theme="@style/Theme.Starling.FullScreen.Transparent"/>
-
-        <activity
-            android:name=".media.VideoActivity"
-            android:theme="@style/Theme.Starling.Navigation.Transparent" />
+            android:name=".media.MediaActivity"
+            android:theme="@style/Theme.Starling.FullScreen.Transparent" />
     </application>
 
 </manifest>

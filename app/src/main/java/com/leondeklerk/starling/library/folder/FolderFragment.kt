@@ -8,19 +8,17 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
-import com.leondeklerk.starling.data.FolderItem
-import com.leondeklerk.starling.data.ImageItem
-import com.leondeklerk.starling.data.MediaItem
-import com.leondeklerk.starling.data.MediaItemTypes
-import com.leondeklerk.starling.data.VideoItem
 import com.leondeklerk.starling.databinding.FragmentFolderBinding
-import com.leondeklerk.starling.media.MediaGalleryAdapter
+import com.leondeklerk.starling.media.data.FolderItem
+import com.leondeklerk.starling.media.data.MediaItem
+import com.leondeklerk.starling.media.data.MediaItemTypes
+import com.leondeklerk.starling.media.gallery.MediaGalleryAdapter
 
 /**
  * [FolderFragment] is a gallery containing all items in a device folder.
  * It contains a recyclerView that contains all the images and videos.
  * Uses a [MediaGalleryAdapter] assisted by [FolderViewModel] to display
- * [com.leondeklerk.starling.data.MediaItem]s.
+ * [com.leondeklerk.starling.media.data.MediaItem]s.
  */
 class FolderFragment : Fragment() {
 
@@ -70,13 +68,8 @@ class FolderFragment : Fragment() {
 
         // Create item click listener
         val mediaItemClickListener = { item: MediaItem ->
-            if (item.type == MediaItemTypes.VIDEO) {
-                val directions = FolderFragmentDirections.actionFolderFragmentToVideoActivity(item as VideoItem)
-                findNavController().navigate(directions)
-            } else if (item.type == MediaItemTypes.IMAGE) {
-                val directions = FolderFragmentDirections.actionFolderFragmentToImageActivity(item as ImageItem)
-                findNavController().navigate(directions)
-            }
+            val directions = FolderFragmentDirections.actionNavigationFolderToMediaActivity(item)
+            findNavController().navigate(directions)
         }
 
         // Create a GalleryAdapter and add the data to it

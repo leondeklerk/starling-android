@@ -7,7 +7,7 @@
         <import type="android.view.View"/>
         <variable
             name="item"
-            type="com.leondeklerk.starling.data.FolderItem" />
+            type="com.leondeklerk.starling.media.data.FolderItem" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -42,7 +42,7 @@
             android:textSize="16sp"
             tools:text="Folder name"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/folderThumb"
+            app:layout_constraintTop_toBottomOf="@id/folderThumb"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp" />
     </androidx.constraintlayout.widget.ConstraintLayout>

@@ -14,12 +14,12 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.signature.ObjectKey
-import com.leondeklerk.starling.data.FolderItem
-import com.leondeklerk.starling.data.HeaderItem
-import com.leondeklerk.starling.data.ImageItem
-import com.leondeklerk.starling.data.MediaItem
-import com.leondeklerk.starling.data.MediaItemTypes
-import com.leondeklerk.starling.data.VideoItem
+import com.leondeklerk.starling.media.data.FolderItem
+import com.leondeklerk.starling.media.data.HeaderItem
+import com.leondeklerk.starling.media.data.ImageItem
+import com.leondeklerk.starling.media.data.MediaItem
+import com.leondeklerk.starling.media.data.MediaItemTypes
+import com.leondeklerk.starling.media.data.VideoItem
 import java.util.Date
 
 @BindingAdapter("media_uri")
@@ -74,10 +74,10 @@ fun setMediaUri(view: ImageView, media: MediaItem) {
  * @param duration: Integer representing the duration of the video.
  */
 @BindingAdapter("video_duration")
-fun TextView.setVideoDuration(duration: Int) {
+fun TextView.setVideoDuration(duration: Long) {
     text = DateFormat.format(
         "mm:ss",
-        duration.toLong()
+        duration
     )
 }
 

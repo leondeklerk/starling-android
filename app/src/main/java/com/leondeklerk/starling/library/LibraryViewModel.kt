@@ -13,8 +13,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.leondeklerk.starling.PermissionViewModel
-import com.leondeklerk.starling.data.FolderItem
-import com.leondeklerk.starling.data.MediaItemTypes
+import com.leondeklerk.starling.media.data.FolderItem
+import com.leondeklerk.starling.media.data.MediaItemTypes
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -132,7 +132,8 @@ class LibraryViewModel(application: Application) : PermissionViewModel(applicati
             MediaStore.Files.FileColumns.BUCKET_ID,
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.DATE_ADDED,
-            MediaStore.Files.FileColumns.MEDIA_TYPE
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.Files.FileColumns.DATE_MODIFIED
         )
     }
 
