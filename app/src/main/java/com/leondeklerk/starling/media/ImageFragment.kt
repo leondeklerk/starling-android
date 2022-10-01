@@ -1,24 +1,29 @@
 package com.leondeklerk.starling.media
 
 import android.content.DialogInterface
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
-import com.bumptech.glide.Glide
-import com.bumptech.glide.signature.ObjectKey
+import coil.load
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.databinding.FragmentImageBinding
+import com.leondeklerk.starling.edit.ContainerMode
+import com.leondeklerk.starling.extensions.applyMargin
+import com.leondeklerk.starling.extensions.requestNewSize
 import com.leondeklerk.starling.media.data.ImageItem
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-class ImageFragment(private val item: ImageItem) : MediaItemFragment() {
+class ImageFragment(
+    private val item: ImageItem,
+    private val enterListeners: PagerFragment.TransitionListeners,
+    private val exitListeners: PagerFragment.TransitionListeners
+) :
+    MediaItemFragment() {
     override val viewModel: ImageViewModel by viewModels()
 
     private lateinit var binding: FragmentImageBinding
@@ -34,11 +39,16 @@ class ImageFragment(private val item: ImageItem) : MediaItemFragment() {
 
         viewModel.item = item
 
+        enterTransition = null
+        exitTransition = null
+
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        loadImage()
 
         setupViewBindings()
 
@@ -47,7 +57,7 @@ class ImageFragment(private val item: ImageItem) : MediaItemFragment() {
 
     override fun onResume() {
         super.onResume()
-        activityViewModel.setEditEnabled(true)
+        pagerViewModel.setEditEnabled(true)
     }
 
     override fun delete() {
@@ -64,7 +74,8 @@ class ImageFragment(private val item: ImageItem) : MediaItemFragment() {
     }
 
     override fun edit() {
-        viewModel.switchMode()
+        binding.editView.setMode(ContainerMode.EDIT)
+        pagerViewModel.setOverlay(View.GONE, true)
     }
 
     override fun isDeleted(success: Boolean) {
@@ -73,9 +84,41 @@ class ImageFragment(private val item: ImageItem) : MediaItemFragment() {
 
     override fun isSaved(success: Boolean) {
         binding.editView.isSaved(success)
+        loadImage()
+    }
 
-        if (success) {
-            viewModel.switchMode()
+    override fun scale(scalarX: Float, scalarY: Float) {
+        binding.imageView.scaleX = scalarX
+        binding.imageView.scaleY = scalarY
+    }
+
+    override fun translate(dX: Float, dY: Float) {
+        binding.imageView.translationX += dX
+        binding.imageView.translationY += dY
+    }
+
+    override fun reset() {
+        binding.imageView.animate().scaleX(1f).scaleY(1f).translationX(0f).translationY(0f)
+            .setDuration(100L).start()
+    }
+
+    override fun close(target: Rect, duration: Long) {
+        binding.imageView.apply {
+            requestLayout()
+            post {
+                transition(
+                    duration, binding.layout,
+                    exitListeners.startListener,
+                    exitListeners.endListener
+                )
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                translationX = 0f
+                translationY = 0f
+                scaleX = 1f
+                scaleY = 1f
+                requestNewSize(target.width(), target.height())
+                applyMargin(target.left, target.top)
+            }
         }
     }
 
@@ -83,19 +126,30 @@ class ImageFragment(private val item: ImageItem) : MediaItemFragment() {
      * Initialize all view binding variables and register listeners.
      */
     private fun setupViewBindings() {
-        binding.imageView.allowTranslation = false
+        binding.editView.onCancel = {}
 
-        binding.imageView.onRequireLock = {
-            activityViewModel.lockView.postValue(it)
+        binding.editView.onModeChange = { mode ->
+            if (mode == ContainerMode.VIEW) {
+                pagerViewModel.setOverlay(View.VISIBLE)
+                pagerViewModel.releaseTouch()
+            } else {
+                pagerViewModel.captureTouch()
+            }
         }
 
-        binding.editView.onCancel = {
-            viewModel.switchMode()
+        binding.editView.onScaledStateListener = { scaled ->
+            if (scaled) {
+                pagerViewModel.captureTouch()
+            } else {
+                pagerViewModel.releaseTouch()
+            }
         }
 
         // On clicking the image the system ui and the toolbar should disappear for a fullscreen experience.
-        binding.imageView.onTapListener = {
-            activityViewModel.toggleInsets()
+        binding.editView.onTapListener = { mode ->
+            if (mode == ContainerMode.VIEW) {
+                pagerViewModel.toggleOverlay()
+            }
         }
 
         binding.editView.onSave = { result, copy ->
@@ -107,52 +161,61 @@ class ImageFragment(private val item: ImageItem) : MediaItemFragment() {
      * Initialize all viewModel listeners and state.
      */
     private fun setupViewModelBindings() {
-        viewModel.mode.observe(viewLifecycleOwner) {
-            onModeChanged(it)
-        }
-
-        activityViewModel.setEditEnabled(true)
+        pagerViewModel.setEditEnabled(true)
     }
 
     /**
-     * Change between the edit mode and view mode based on the given state.
-     * @param mode the current mode (Edit/View)
+     * Load an image into the imageView using Coil.
+     * If this is the initialization of the pager, use a transition.
      */
-    private fun onModeChanged(mode: ImageViewModel.Mode) {
-        if (mode == ImageViewModel.Mode.VIEW) {
-            binding.editView.visibility = View.GONE
-            binding.imageView.visibility = View.VISIBLE
+    private fun loadImage() {
+        val imageView = binding.imageView
 
-            activityViewModel.lockView.postValue(false)
-
-            loadImage(binding.imageView)
-            activityViewModel.showOverlay(true)
+        if (pagerViewModel.initial) {
+            val rect = pagerViewModel.rect
+            imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+            imageView.requestNewSize(rect.width(), rect.height())
+            imageView.applyMargin(rect)
+            imageView.post {
+                imageView.load(viewModel.item.uri) {
+                    placeholderMemoryCacheKey(viewModel.item.cacheKey)
+                    size(binding.layout.width, binding.layout.height)
+                    listener(onSuccess = { _, _ ->
+                        initializeFragment()
+                    })
+                }
+            }
         } else {
-            binding.imageView.visibility = View.GONE
-
-            activityViewModel.lockView.postValue(true)
-            activityViewModel.showOverlay(false)
-
-            binding.editView.visibility = View.VISIBLE
-            loadImage(binding.editView.imageView)
+            imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+            imageView.load(viewModel.item.uri)
         }
     }
 
     /**
-     * Load the image into the provided image view.
-     * @param imageView the specific image view to load the image into.
+     * Resize the imageView to the start position.
+     * Then with a transition scale it to match the current screen size.
      */
-    private fun loadImage(imageView: ImageView) {
-        val fragment = this
-        lifecycleScope.launch {
-            withContext(Dispatchers.Main) {
-                // Load image with Glide into the imageView
-                Glide.with(fragment)
-                    .asBitmap()
-                    .signature(ObjectKey(viewModel.item.dateModified))
-                    .load(viewModel.item.uri)
-                    .into(imageView)
+    private fun initializeFragment() {
+        pagerViewModel.initial = false
+
+        binding.imageView.apply {
+            transition(250L, binding.layout, enterListeners.startListener) {
+                reinitialize()
+                enterListeners.endListener.invoke(it)
+            }
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = (layoutParams as ViewGroup.MarginLayoutParams).apply {
+                marginStart = NO_MARGIN
+                marginEnd = NO_MARGIN
+                topMargin = NO_MARGIN
+                bottomMargin = NO_MARGIN
+                width = MATCH_PARENT
+                height = MATCH_PARENT
             }
         }
+    }
+
+    companion object {
+        private const val NO_MARGIN = 0
     }
 }

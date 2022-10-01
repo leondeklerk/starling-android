@@ -57,7 +57,7 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
 
             // Start querying media.
             val mediaList = retriever.queryMedia(resolver, projection, selection, selectionArgs, sortOrder)
-            _data.postValue(mediaList)
+//            _data.postValue(mediaList.galleryData)
 
             // To observer any additional files created on the system, a observer is registered.
             if (contentObserver == null) {

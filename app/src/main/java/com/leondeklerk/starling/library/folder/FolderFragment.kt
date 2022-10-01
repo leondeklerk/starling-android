@@ -5,10 +5,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.setupWithNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.leondeklerk.starling.databinding.FragmentFolderBinding
+import com.leondeklerk.starling.media.MediaViewModel
 import com.leondeklerk.starling.media.data.FolderItem
 import com.leondeklerk.starling.media.data.MediaItem
 import com.leondeklerk.starling.media.data.MediaItemTypes
@@ -29,6 +33,8 @@ class FolderFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
+    private val mediaViewModel: MediaViewModel by activityViewModels()
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -47,6 +53,12 @@ class FolderFragment : Fragment() {
         // Set binding basics
         binding.lifecycleOwner = this
 
+        // Set up the actual nav controller
+        val navController = findNavController()
+        val appBarConfiguration = AppBarConfiguration(navController.graph)
+
+        binding.toolbar.setupWithNavController(navController, appBarConfiguration)
+
         setAdapter(item.id)
 
         return root
@@ -64,25 +76,32 @@ class FolderFragment : Fragment() {
      */
     private fun setAdapter(bucketId: Long) {
         // Start loading the media from the device
-        folderViewModel.loadMedia(bucketId)
+//        folderViewModel.loadMedia(bucketId)
 
         // Create item click listener
-        val mediaItemClickListener = { item: MediaItem ->
-            val directions = FolderFragmentDirections.actionNavigationFolderToMediaActivity(item)
-            findNavController().navigate(directions)
+        val mediaItemClickListener = { item: MediaItem, view: View, index: Int ->
+//            mediaViewModel.setActive(true)
+//            mediaViewModel.setGalleryPosition(item, index)
+//            val directions = FolderFragmentDirections.actionNavigationFolderToPagerFragment(item, index)
+//            findNavController().navigate(directions)
         }
 
         // Create a GalleryAdapter and add the data to it
         val adapter = MediaGalleryAdapter(mediaItemClickListener)
 
-        folderViewModel.data.observe(
-            viewLifecycleOwner,
-            {
-                it?.let {
-                    adapter.submitList(it)
-                }
+        mediaViewModel.folder.observe(viewLifecycleOwner) {
+            it?.let {
+                adapter.submitList(it)
             }
-        )
+        }
+//        folderViewModel.data.observe(
+//            viewLifecycleOwner,
+//            {
+//                it?.let {
+//                    adapter.submitList(it)
+//                }
+//            }
+//        )
 
         // Create a grid layout manager
         // TODO: allow for updates of the layout + allow for more flexibility in size

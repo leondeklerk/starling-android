@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.graphics.PointF
 import android.graphics.RectF
+import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.GestureDetector.SimpleOnGestureListener
@@ -73,7 +74,9 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     private var gestureDetector: GestureDetector? = null
     private var doubleTap = false
     private var firstSingleMove = true
-    var allowTranslation = false
+    private var scaling = false
+
+    var initialScaleOnly = true
 
     // Zooming
     private var zoomedOut = false
@@ -91,7 +94,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     var onResetListener: (() -> Unit)? = null
     var onImageUpdate: (() -> Unit)? = null
     var onTouchHandler: ((event: MotionEvent) -> Boolean)? = null
-    var onRequireLock: ((require: Boolean) -> Unit)? = null
+    var onScaledStateListener: ((scaled: Boolean) -> Unit)? = null
 
     private val gestureListener: GestureDetector.OnGestureListener = object : SimpleOnGestureListener() {
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
@@ -128,11 +131,13 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         }
 
         override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
+            scaling = true
             startScalar = currentScale
             return super.onScaleBegin(detector)
         }
 
         override fun onScaleEnd(detector: ScaleGestureDetector) {
+            scaling = false
             scaleBy = 1f
         }
     }
@@ -150,15 +155,27 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         ScaleGestureDetectorCompat.setQuickScaleEnabled(scaleDetector!!, false)
     }
 
-    override fun setImageBitmap(bm: Bitmap?) {
-        // Make sure the initial load is correct
-        scaleType = ScaleType.FIT_CENTER
+    override fun setImageDrawable(drawable: Drawable?) {
+        super.setImageDrawable(drawable)
 
+        drawable?.let {
+            initializeValues()
+        }
+    }
+
+    override fun setImageBitmap(bm: Bitmap?) {
         super.setImageBitmap(bm)
 
         bm?.let {
             initializeValues()
         }
+    }
+
+    /**
+     * Reinitialize the start values and call the bitmap listener.
+     */
+    fun reinitialize() {
+        initializeValues()
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -178,7 +195,6 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
             // If there is a double tap, we only execute that
             if (doubleTap) {
                 checkDoubleTap(event, boundingBox)
-                onRequireLock?.invoke(startScale != currentScale)
                 return true
             }
 
@@ -190,8 +206,8 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
                 }
                 MotionEvent.ACTION_MOVE -> {
                     // If there is one finger on the screen, we should drag the image
-                    if (event.pointerCount == 1) {
-                        return onSinglePointerMove(boundingBox)
+                    return if (event.pointerCount == 1) {
+                        onSinglePointerMove(boundingBox)
                     } else {
                         onMultiPointerMove(boundingBox)
                     }
@@ -256,10 +272,8 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * @return if the move was executed or not
      */
     fun onSinglePointerMove(boundingBox: RectF): Boolean {
-        if (!allowTranslation && currentScale == startScale) {
+        if (initialScaleOnly && currentScale == startScale) {
             return false
-        } else {
-            onRequireLock?.invoke(true)
         }
 
         // If we came from scaling, don't move and center
@@ -287,13 +301,13 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * Only works if the focus is within the current image bounds.
      * @param boundingBox the current image bounding box.
      */
-    fun onMultiPointerMove(boundingBox: RectF) {
+    fun onMultiPointerMove(boundingBox: RectF): Boolean {
         // Start a scaling action
         if (boundingBox.contains(scaleDetector!!.focusX, scaleDetector!!.focusY)) {
-            onRequireLock?.invoke(true)
             allowStartMove = false
-            handleTouchScaling()
+            return handleTouchScaling()
         }
+        return true
     }
 
     /**
@@ -306,7 +320,6 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         center(imageMatrix, true)
         allowStartMove = true
         firstSingleMove = true
-        onRequireLock?.invoke(startScale != currentScale)
     }
 
     /**
@@ -366,7 +379,6 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
                     moveY = max(delta.y, -(matrixY - (height - imgHeight())))
                 }
             }
-
             // Create the matrix and apply it
             modifyMatrix.postTranslate(moveX, moveY)
             applyMatrix(modifyMatrix, false)
@@ -444,11 +456,15 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
     /**
      * Resets the image to the start image matrix and informs any listeners.
      */
-    fun reset() {
+    fun reset(animate: Boolean = true) {
         // Reset touch
         last = PointF(0f, 0f)
         onZoomLevelChangeListener?.invoke(1f)
         resetting = true
+
+        if (currentScale != startScale) {
+            onScaledStateListener?.invoke(false)
+        }
 
         // Restore the original (calculated) values
         baseScale = startScale
@@ -457,7 +473,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         calculatedMaxScale = MAX_SCALE * baseScale
         rotated = 0f
 
-        applyMatrix(startMatrix, true)
+        applyMatrix(startMatrix, animate)
     }
 
     /**
@@ -626,7 +642,11 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      */
     private fun checkMatrixType() {
         if (scaleType != ScaleType.MATRIX) {
+            initializeValues()
+
             super.setScaleType(ScaleType.MATRIX)
+
+            imageMatrix = startMatrix
         }
     }
 
@@ -651,6 +671,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         if (currentScale != baseScale) {
             val matrix = getBaseMatrix()
             applyMatrix(matrix, true)
+            onScaledStateListener?.invoke(false)
         } else {
             val modifyMatrix = getModifyMatrix()
 
@@ -667,6 +688,8 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
             val translation = center(modifyMatrix, false)
             modifyMatrix.postTranslate(translation.x, translation.y)
 
+            onScaledStateListener?.invoke(true)
+
             applyMatrix(modifyMatrix, true)
         }
     }
@@ -679,10 +702,6 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * @param delaySet indicates if setting the value of the imageMatrix should be handled now (true) or not (false)
      */
     private fun handleTouchTranslate(delaySet: Boolean = false): PointF {
-        if (!allowTranslation && startScale == currentScale) {
-            return PointF(0f, 0f)
-        }
-
         val focus = PointF(scaleDetector!!.focusX, scaleDetector!!.focusY)
 
         // calculate the distance for translation
@@ -739,7 +758,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
      * Scale around the focus point with the scalar from the detector.
      * Applies the new matrix (m) to the imageMatrix.
      */
-    private fun handleTouchScaling() {
+    private fun handleTouchScaling(): Boolean {
         val modifyMatrix = getModifyMatrix()
         val focusX = scaleDetector!!.focusX
         val focusY = scaleDetector!!.focusY
@@ -748,6 +767,14 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         val translation = handleTouchTranslate(true)
         modifyMatrix.postTranslate(translation.x, translation.y)
         modifyMatrix.postScale(scaleBy, scaleBy, focusX, focusY)
+
+        val projected = currentScale * scaleBy
+        if (projected != startScale && currentScale == startScale) {
+            onScaledStateListener?.invoke(true)
+        } else if (projected == startScale && currentScale != startScale) {
+            onScaledStateListener?.invoke(false)
+        }
+
         currentScale *= scaleBy
 
         // Update all values
@@ -755,6 +782,8 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         updateZoomLevel(true)
 
         last = PointF(scaleDetector!!.focusX, scaleDetector!!.focusY)
+
+        return true
     }
 
     /**
@@ -771,8 +800,17 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
         animate: Boolean
     ): PointF {
         val boundingBox = getRect(refMatrix)
-        val dX = centerAxis(Pair(imgWidth(), width), Pair(boundingBox.left, boundingBox.right))
-        val dY = centerAxis(Pair(imgHeight(), height), Pair(boundingBox.top, boundingBox.bottom))
+        val dX: Float
+        val dY: Float
+        // Apply centering (initial scale can just restore initial matrix values)
+        if (currentScale != startScale) {
+            dX = centerAxis(Pair(imgWidth(), width), Pair(boundingBox.left, boundingBox.right))
+            dY = centerAxis(Pair(imgHeight(), height), Pair(boundingBox.top, boundingBox.bottom))
+        } else {
+            val base = getBaseMatrix().values()
+            dX = base[Matrix.MTRANS_X] - refMatrix.values()[Matrix.MTRANS_X]
+            dY = base[Matrix.MTRANS_Y] - refMatrix.values()[Matrix.MTRANS_Y]
+        }
 
         // apply the translation
         if (animate) {
@@ -805,11 +843,11 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
             }
         } else {
             // We should only center if the image fits in the bounds but goes beyond a bound.
-            if (allowTranslation && min >= 0f && max <= maxDimens) {
+            if (!initialScaleOnly && min >= 0f && max <= maxDimens) {
                 return 0f
             }
             // Then we need to center at exactly half
-            return (maxDimens / 2) - (min + ((max - min) / 2))
+            return (maxDimens / 2f) - (min + ((max - min) / 2f))
         }
         return 0f
     }

@@ -15,8 +15,6 @@ import androidx.lifecycle.viewModelScope
 import com.leondeklerk.starling.PermissionViewModel
 import com.leondeklerk.starling.media.data.FolderItem
 import com.leondeklerk.starling.media.data.MediaItemTypes
-import java.util.Date
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -102,7 +100,7 @@ class LibraryViewModel(application: Application) : PermissionViewModel(applicati
                     val id = cursor.getLong(idColumn)
                     val mediaId = cursor.getLong(mediaIdColumn)
                     val type = cursor.getInt(mediaTypeColumn)
-                    val modified = Date(TimeUnit.SECONDS.toMillis(cursor.getLong(modifiedColumn)))
+                    val modified = cursor.getLong(modifiedColumn)
 
                     val mediaUri = ContentUris.withAppendedId(
                         MediaStore.Files.getContentUri("external"),
@@ -110,9 +108,9 @@ class LibraryViewModel(application: Application) : PermissionViewModel(applicati
                     )
 
                     val folderItem = if (type == MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE) {
-                        FolderItem(id, mediaUri, name, MediaItemTypes.IMAGE, modified)
+                        FolderItem(id, mediaUri, name, MediaItemTypes.IMAGE, modified, modified)
                     } else {
-                        FolderItem(id, mediaUri, name, MediaItemTypes.VIDEO, modified)
+                        FolderItem(id, mediaUri, name, MediaItemTypes.VIDEO, modified, modified)
                     }
 
                     folders += folderItem

@@ -20,4 +20,5 @@
     <color name="ripple_gray">#444444</color>
     <!-- Slider colors-->
     <color name="slider_inactive_gray">#7D7D7D</color>
+    <color name="black_overlay">#66000000</color>
 </resources>

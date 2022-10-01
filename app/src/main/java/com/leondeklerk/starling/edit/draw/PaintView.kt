@@ -254,8 +254,10 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
      */
     fun setBitmap(src: Bitmap) {
         srcBitmap = src
-        bitmap = Bitmap.createBitmap(width, height, src.config)
-        canvas = Canvas(bitmap!!)
+        post {
+            bitmap = Bitmap.createBitmap(width, height, src.config)
+            canvas = Canvas(bitmap!!)
+        }
     }
 
     /**

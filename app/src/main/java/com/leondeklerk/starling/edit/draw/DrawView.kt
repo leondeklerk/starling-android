@@ -73,22 +73,20 @@ class DrawView(context: Context, attributeSet: AttributeSet?) : RelativeLayout(
 
     /**
      * Updates the bounds of the canvas based on the received image bounds.
-     * @param newBounds the bounds of the underlying imageView.
+     * @param rect the bounds of the underlying imageView.
      */
-    fun setBounds(newBounds: Rect) {
+    fun setBounds(rect: Rect) {
         // Create new margin layout parameters
-        newBounds.let { rect ->
-            val params = binding.canvas.layoutParams as MarginLayoutParams
+        val params = binding.canvas.layoutParams as MarginLayoutParams
 
-            params.apply {
-                marginStart = rect.left
-                marginEnd = rect.left
-                topMargin = rect.top
-                bottomMargin = binding.buttonClear.top - rect.bottom
-            }
-
-            binding.canvas.layoutParams = params
+        params.apply {
+            marginStart = rect.left
+            marginEnd = rect.left
+            topMargin = rect.top
+            bottomMargin = binding.overlayControls.top - rect.bottom
         }
+
+        binding.canvas.layoutParams = params
     }
 
     /**

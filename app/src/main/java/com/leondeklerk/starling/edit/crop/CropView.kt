@@ -1,5 +1,6 @@
 package com.leondeklerk.starling.edit.crop
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PointF
 import android.graphics.RectF
@@ -9,12 +10,12 @@ import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.leondeklerk.starling.databinding.ViewCropBinding
-import com.leondeklerk.starling.edit.EditView
+import com.leondeklerk.starling.edit.EditContainer
 
 /**
  * A wrapper View that defines and handles all controls related to cropping an image.
  * Uses a [CropOverlayView] to draw and move a crop box on the screen.
- * Responsible for propagating the correct events from and to an [EditView]
+ * Responsible for propagating the correct events from and to an [EditContainer]
  * Additionally this view contains control buttons for cropping:
  * box aspect ratio, rotate, and reset.
  */
@@ -32,7 +33,6 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
     var onZoomHandler: ((center: PointF, out: Boolean) -> Unit)? = null
     var onButtonReset: (() -> Unit)? = null
     var onButtonRotate: (() -> Unit)? = null
-    var onButtonAspect: (() -> Unit)? = null
     var onTouchHandler: ((event: MotionEvent) -> Boolean)? = null
     var zoomLevel
         get() = overlay.zoomLevel
@@ -50,7 +50,6 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
 
         binding.buttonAspect.setOnClickListener {
-            onButtonAspect?.invoke()
             aspectRatioModal.show((context as AppCompatActivity).supportFragmentManager, AspectRatioModal.TAG)
         }
 
@@ -71,6 +70,7 @@ class CropView(context: Context, attributeSet: AttributeSet?) : ConstraintLayout
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         super.onTouchEvent(event)
 

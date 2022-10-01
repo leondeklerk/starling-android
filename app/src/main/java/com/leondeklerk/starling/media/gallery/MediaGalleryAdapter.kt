@@ -1,5 +1,6 @@
 package com.leondeklerk.starling.media.gallery
 
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
 import com.leondeklerk.starling.media.data.MediaItem
@@ -9,7 +10,7 @@ import com.leondeklerk.starling.media.data.MediaItem
  * The adapter makes uses of the generic class [MediaItemViewHolder] which has specific subtypes for each item type.
  * Responsible for creating the specific holders and binding the item to the holder.
  */
-class MediaGalleryAdapter(private val onItemClick: ((MediaItem) -> Unit)) : ListAdapter<MediaItem,
+class MediaGalleryAdapter(private val onItemClick: ((MediaItem, View, Int) -> Unit)) : ListAdapter<MediaItem,
     MediaItemViewHolder>(
     MediaItem.DiffCallback
 ) {

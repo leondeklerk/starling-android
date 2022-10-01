@@ -1,44 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:background="@color/black"
-    android:layout_height="match_parent">
-
-    <com.leondeklerk.starling.views.InteractiveImageView
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        tools:srcCompat="@tools:sample/avatars"
-        android:id="@+id/interactiveImageView"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        android:layout_marginTop="48dp"
-        android:layout_marginBottom="72dp"
-        app:layout_constraintBottom_toTopOf="@+id/mode_divider" />
-
-    <com.leondeklerk.starling.edit.crop.CropView
-        android:id="@+id/cropper"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginBottom="4dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/mode_divider" />
-
-    <com.leondeklerk.starling.edit.draw.DrawView
-        android:visibility="invisible"
-        tools:visibility="invisible"
-        android:id="@+id/draw_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginBottom="4dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/mode_divider" />
+    android:layout_height="128dp">
 
     <com.google.android.material.divider.MaterialDivider
         android:layout_marginBottom="8dp"
@@ -47,10 +11,10 @@
         android:layout_height="wrap_content"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/mode_selector" />
+        app:layout_constraintBottom_toTopOf="@+id/overlay_mode_selector" />
 
     <com.google.android.material.chip.ChipGroup
-        android:id="@+id/mode_selector"
+        android:id="@+id/overlay_mode_selector"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:singleLine="true"
@@ -62,7 +26,7 @@
         app:layout_constraintBottom_toTopOf="@+id/button_cancel">
 
         <com.google.android.material.chip.Chip
-            android:id="@+id/mode_crop"
+            android:id="@+id/overlay_mode_crop"
             style="@style/Widget.MaterialComponents.Chip.Choice"
             android:checked="true"
             android:text="@string/media_crop"
@@ -70,7 +34,7 @@
             android:layout_height="wrap_content" />
 
         <com.google.android.material.chip.Chip
-            android:id="@+id/mode_draw"
+            android:id="@+id/overlay_mode_draw"
             style="@style/Widget.MaterialComponents.Chip.Choice"
             android:text="Markup"
             android:layout_width="wrap_content"
@@ -100,23 +64,4 @@
         android:layout_marginStart="16dp"
         android:id="@+id/button_cancel" />
 
-    <View
-        android:id="@+id/saving_overlay"
-        android:visibility="gone"
-        android:elevation="2dp"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/status_bar_scrim" />
-
-    <com.google.android.material.progressindicator.CircularProgressIndicator
-        android:elevation="2dp"
-        android:visibility="gone"
-        android:id="@+id/saving_indicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:indeterminate="true"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

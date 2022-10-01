@@ -1,9 +1,12 @@
 package com.leondeklerk.starling.media.gallery
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.databinding.ViewDataBinding
 import androidx.recyclerview.widget.RecyclerView
+import coil.result
 import com.leondeklerk.starling.databinding.GalleryHeaderViewBinding
 import com.leondeklerk.starling.databinding.GalleryImageViewBinding
 import com.leondeklerk.starling.databinding.GalleryVideoViewBinding
@@ -66,7 +69,7 @@ class HeaderItemViewHolder private constructor(private val binding: GalleryHeade
  */
 class VideoItemViewHolder private constructor(
     private val binding: GalleryVideoViewBinding,
-    private val onClick: ((MediaItem) -> Unit)
+    private val onClick: ((MediaItem, View, Int) -> Unit)
 ) : MediaItemViewHolder(binding) {
 
     /**
@@ -80,7 +83,8 @@ class VideoItemViewHolder private constructor(
         binding.item = item as VideoItem
 
         imageView.setOnClickListener {
-            onClick.invoke(item)
+            onClick.invoke(item, imageView, absoluteAdapterPosition)
+//            imageView.visibility = View.GONE
         }
 
         binding.executePendingBindings()
@@ -92,7 +96,7 @@ class VideoItemViewHolder private constructor(
          * @param parent: The [ViewGroup] the context can be retrieved from
          * @return A [VideoItemViewHolder] instance that can be populated with data.
          */
-        fun from(parent: ViewGroup, onClick: ((MediaItem) -> Unit)): VideoItemViewHolder {
+        fun from(parent: ViewGroup, onClick: ((MediaItem, View, Int) -> Unit)): VideoItemViewHolder {
             val layoutInflater = LayoutInflater.from(parent.context)
             val binding = GalleryVideoViewBinding.inflate(layoutInflater, parent, false)
             return VideoItemViewHolder(binding, onClick)
@@ -106,7 +110,7 @@ class VideoItemViewHolder private constructor(
  */
 class ImageItemViewHolder private constructor(
     private val binding: GalleryImageViewBinding,
-    private val onClick: ((MediaItem) -> Unit)
+    private val onClick: ((MediaItem, ImageView, Int) -> Unit)
 ) : MediaItemViewHolder(binding) {
 
     /**
@@ -118,9 +122,12 @@ class ImageItemViewHolder private constructor(
 
         // Inject variable
         binding.item = item
+        binding.imageView.transitionName = "${item.id}"
 
         imageView.setOnClickListener {
-            onClick.invoke(item)
+            val test = imageView.result?.request?.memoryCacheKey
+            onClick.invoke(item, imageView, absoluteAdapterPosition)
+//            it.visibility = View.GONE
         }
 
         binding.executePendingBindings()
@@ -132,7 +139,7 @@ class ImageItemViewHolder private constructor(
          * @param parent: The [ViewGroup] the context can be retrieved from
          * @return A [ImageItemViewHolder] instance that can be populated with data.
          */
-        fun from(parent: ViewGroup, onClick: ((MediaItem) -> Unit)): ImageItemViewHolder {
+        fun from(parent: ViewGroup, onClick: ((MediaItem, ImageView, Int) -> Unit)): ImageItemViewHolder {
             val layoutInflater = LayoutInflater.from(parent.context)
             val binding = GalleryImageViewBinding.inflate(layoutInflater, parent, false)
             return ImageItemViewHolder(binding, onClick)
@@ -149,7 +156,7 @@ class ImageItemViewHolder private constructor(
  */
 class FolderItemViewHolder private constructor(
     private val binding: LibraryFolderViewBinding,
-    private val onClick: ((MediaItem) -> Unit)
+    private val onClick: ((MediaItem, View, Int) -> Unit)
 ) : MediaItemViewHolder(binding) {
 
     /**
@@ -162,7 +169,7 @@ class FolderItemViewHolder private constructor(
 
         // Register the click listener
         binding.folderItem.setOnClickListener {
-            onClick(item)
+            onClick(item, it, absoluteAdapterPosition)
         }
 
         binding.executePendingBindings()
@@ -176,7 +183,7 @@ class FolderItemViewHolder private constructor(
          * @param onClick: the on click function that should be executed on item click
          * @return A [FolderItemViewHolder] instance that can be populated with data.
          */
-        fun from(parent: ViewGroup, onClick: ((MediaItem) -> Unit)): FolderItemViewHolder {
+        fun from(parent: ViewGroup, onClick: ((MediaItem, View, Int) -> Unit)): FolderItemViewHolder {
             val layoutInflater = LayoutInflater.from(parent.context)
             val binding = LibraryFolderViewBinding.inflate(layoutInflater, parent, false)
             return FolderItemViewHolder(binding, onClick)

@@ -1,54 +1,66 @@
 package com.leondeklerk.starling.media
 
 import android.app.Application
-import android.app.PendingIntent
 import android.content.ContentResolver
 import android.database.ContentObserver
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
-import android.view.View
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import coil.memory.MemoryCache
+import com.leondeklerk.starling.media.data.FolderItem
+import com.leondeklerk.starling.media.data.HeaderItem
+import com.leondeklerk.starling.media.data.ImageItem
 import com.leondeklerk.starling.media.data.MediaItem
 import com.leondeklerk.starling.media.data.MediaItemTypes
+import com.leondeklerk.starling.media.data.VideoItem
+import java.util.Date
 import kotlinx.coroutines.launch
 
-/**
- */
 class MediaViewModel(application: Application) : AndroidViewModel(application) {
-    // General state
+    private var contentObserver: ContentObserver? = null
+
     private val _data = MutableLiveData<MutableList<MediaItem>>()
     val data: LiveData<MutableList<MediaItem>> = _data
 
-    private val _goToId = MutableLiveData<Number?>()
-    val goToId: LiveData<Number?> = _goToId
+    private var _activeList: List<MediaItem> = listOf()
+    val activeList: LiveData<List<MediaItem>>
+        get() {
+            return MutableLiveData(_activeList)
+        }
 
-    private var contentObserver: ContentObserver? = null
-    private var initialId: Long? = null
+    private val _gallery = MutableLiveData<MutableList<MediaItem>>()
+    val gallery: LiveData<MutableList<MediaItem>> = _gallery
 
-    val lockView = MutableLiveData(false)
+    private val _folder = MutableLiveData<List<MediaItem>?>()
+    val folder: LiveData<List<MediaItem>?> = _folder
 
-    // Handle request variables (delete/share/update)
-    private val _requestType = MutableLiveData<MediaActionTypes?>()
-    val requestType: LiveData<MediaActionTypes?> = _requestType
+    private val _folders = MutableLiveData<List<FolderItem>>()
+    val folders: LiveData<List<FolderItem>> = _folders
 
-    var request: PendingIntent? = null
+    private val folderLists = MutableLiveData<Map<String, List<MediaItem>>>()
 
-    // Inset/overlay state
-    private var _showInsets = MutableLiveData(View.VISIBLE)
-    val showInsets: LiveData<Int> = _showInsets
+    private val idIndexMappings = MutableLiveData<Map<Long, Int>>()
 
-    private var _showOverlay = MutableLiveData<Boolean?>()
-    val showOverlay: LiveData<Boolean?> = _showOverlay
+    private val folderData = MutableLiveData<List<MediaItem>?>()
 
-    private var _enableEdit = MutableLiveData(true)
-    val enableEdit: LiveData<Boolean> = _enableEdit
+    var position = 0
+    var galleryPosition = 0
 
-    var trigger = false
+    val scroll = MutableLiveData(false)
+
+    private var folderGallery = false
+
+    private var rect = Rect()
+
+    var onRect: ((rect: Rect) -> Unit)? = null
+
+    var cacheKey: MemoryCache.Key? = null
 
     override fun onCleared() {
         contentObserver?.let {
@@ -56,76 +68,49 @@ class MediaViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Set the initial id which is the first item that is shown after launching.
-     * @param id the id of the initial media item.
-     */
-    fun setInitial(id: Long?) {
-        initialId = id
+    fun getMappedIndex(id: Long): Int {
+        return idIndexMappings.value?.get(id) ?: 0
     }
 
-    /**
-     * Set the pending item id to navigate to.
-     * @param id the id of the media item to navigate to.
-     */
-    fun goTo(id: Number?) {
-        _goToId.postValue(id)
+    fun setRect(rectangle: Rect) {
+        rect = rectangle
+        onRect?.invoke(rect)
     }
 
-    /**
-     * Register a new ongoing request.
-     * @param type the type of the new request
-     * @param req the associated intent of the request
-     */
-    fun request(type: MediaActionTypes?, req: PendingIntent?) {
-        request = req
-        _requestType.postValue(type)
+    //
+    fun setPositionPager(index: Int) {
+//        val index = if (folderGallery) {
+//            _folder.value!!.indexOfFirst { it.id == item.id }
+//        } else {
+//            _gallery.value!!.indexOfFirst { it.id == item.id }
+//        }
+
+        position = index // if (index == -1) {
+//            0
+//        } else {
+//            index
+//        }
     }
 
-    /**
-     * Manually sync the state.
-     * Can be set to not trigger the observer
-     * @param visibility the visibility of the insets and overlay
-     * @param
-     */
-    fun setInsets(visibility: Int, triggerObserver: Boolean) {
-        trigger = triggerObserver
-        _showInsets.postValue(visibility)
+    fun setPositionGallery(index: Int) {
+//        galleryPosition = index
+//        val result = _activeList.indexOfFirst {
+//            it.id == item.id
+//        }
+        position = index // = if (result == -1) {
+//            0
+//        } else {
+//            result
+//        }
     }
 
-    /**
-     * Set if the overlay should be shown or not.
-     * @param show the boolean value indicating the state
-     */
-    fun showOverlay(show: Boolean) {
-        if (show) {
-            if (_showInsets.value == View.VISIBLE) {
-                _showOverlay.postValue(show)
-            }
-        } else {
-            _showOverlay.postValue(show)
-        }
-    }
-
-    /**
-     * Switch the insets from Visible to Gone or vice versa.
-     */
-    fun toggleInsets() {
-        trigger = true
-
-        if (_showInsets.value == View.GONE) {
-            _showInsets.postValue(View.VISIBLE)
-        } else {
-            _showInsets.postValue(View.GONE)
-        }
-    }
-
-    /**
-     * Disable or enable the edit button.
-     * @param enabled if the button should be enabled or not.
-     */
-    fun setEditEnabled(enabled: Boolean) {
-        _enableEdit.postValue(enabled)
+    fun setActive(folder: Boolean) {
+//        folderGallery = folder
+//        if (folder) {
+//            _activeList = folderData.value!!
+//        } else {
+//            _activeList = _data.value!!
+//        }
     }
 
     /**
@@ -147,12 +132,18 @@ class MediaViewModel(application: Application) : AndroidViewModel(application) {
 
             // Start querying media.
             val mediaList = retriever.queryMedia(resolver, projection, selection, selectionArgs, sortOrder)
-            _data.postValue(mediaList.filter { it.type == MediaItemTypes.IMAGE || it.type == MediaItemTypes.VIDEO }.toMutableList())
+//            _data.postValue(mediaList.data)
+//            _folders.postValue(mediaList.folders.map { (_, value) -> value })
 
-            if (initialId != null) {
-                _goToId.postValue(initialId)
-                initialId = null
-            }
+            _gallery.postValue(mediaList.data)
+//            folderLists.postValue(createFolders(mediaList.data))
+//            createFolde
+//            createFolderGallery(mediaList.data, mediaList.folders)
+//            _gallery.postValue(mediaList.galleryData)
+//            folderLists.postValue(mediaList.folderData)
+//            idIndexMappings.postValue(mediaList.idIndexMappings)
+
+//            setFolders(mediaList.folders)
 
             // To observer any additional files created on the system, a observer is registered.
             if (contentObserver == null) {
@@ -163,6 +154,62 @@ class MediaViewModel(application: Application) : AndroidViewModel(application) {
                     loadMedia()
                 }
             }
+        }
+    }
+
+    private fun createGallery(media: List<MediaItem>): MutableList<MediaItem> {
+        val dateMap = media.groupBy(keySelector = { item ->
+
+            when (item.type) {
+                MediaItemTypes.VIDEO -> {
+                    (item as VideoItem).sortData.day
+                }
+                MediaItemTypes.IMAGE -> {
+                    (item as ImageItem).sortData.day
+                }
+                else -> {
+                    ""
+                }
+            }
+        }, { item ->
+
+            item
+        })
+
+        val gallery = mutableListOf<MediaItem>()
+        dateMap.keys.forEachIndexed { index, key ->
+            val first = dateMap[key]?.get(0)
+            first?.let {
+                val list = dateMap[key]?.toList()!!
+                gallery.add(HeaderItem(-first.id, Date(first.dateAdded), 2))
+                gallery.addAll(list)
+            }
+        }
+
+        return gallery
+    }
+
+    private fun createFolders(media: List<MediaItem>): Map<String, List<MediaItem>> {
+        return media.groupBy { item ->
+            when (item.type) {
+                MediaItemTypes.VIDEO -> {
+                    (item as VideoItem).sortData.folder
+                }
+                MediaItemTypes.IMAGE -> {
+                    (item as ImageItem).sortData.folder
+                }
+                else -> {
+                    ""
+                }
+            }
+        }
+    }
+
+    fun createFolderGallery(name: String) {
+        _folder.postValue(null)
+        folderLists.value?.get(name)?.let {
+            folderData.postValue(it)
+            _folder.postValue(createGallery(it))
         }
     }
 
@@ -181,7 +228,9 @@ class MediaViewModel(application: Application) : AndroidViewModel(application) {
             MediaStore.Files.FileColumns.MEDIA_TYPE,
             MediaStore.Files.FileColumns.MIME_TYPE,
             MediaStore.Files.FileColumns.DATE_MODIFIED,
-            MediaStore.Files.FileColumns.RELATIVE_PATH
+            MediaStore.Files.FileColumns.RELATIVE_PATH,
+            MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME,
+            MediaStore.Files.FileColumns.BUCKET_ID,
         )
     }
 

@@ -13,30 +13,24 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/layout"
-        android:background="@color/black"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <com.leondeklerk.starling.edit.EditView
-            android:visibility="gone"
+        <com.leondeklerk.starling.edit.EditContainer
             android:id="@+id/editView"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent">
 
-        <com.leondeklerk.starling.views.InteractiveImageView
-            android:visibility="visible"
-            android:id="@+id/imageView"
-            tools:srcCompat="@tools:sample/avatars"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            android:layout_width="match_parent"
-            android:layout_height="0dp" />
+            <com.leondeklerk.starling.views.InteractiveImageView
+                android:id="@+id/imageView"
+                tools:srcCompat="@tools:sample/avatars"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </com.leondeklerk.starling.edit.EditContainer>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

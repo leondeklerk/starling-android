@@ -3,6 +3,7 @@ package com.leondeklerk.starling.gallery
 import android.Manifest
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,12 +12,19 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.NavigationUI
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.leondeklerk.starling.R
 import com.leondeklerk.starling.databinding.FragmentGalleryBinding
+import com.leondeklerk.starling.extensions.globalVisibleRect
 import com.leondeklerk.starling.extensions.goToSettings
 import com.leondeklerk.starling.extensions.hasPermission
+import com.leondeklerk.starling.media.MediaViewModel
 import com.leondeklerk.starling.media.data.MediaItem
 import com.leondeklerk.starling.media.data.MediaItemTypes
 import com.leondeklerk.starling.media.gallery.MediaGalleryAdapter
@@ -30,15 +38,14 @@ import com.leondeklerk.starling.media.gallery.MediaGalleryAdapter
  */
 class GalleryFragment : Fragment() {
 
-    private lateinit var galleryViewModel: GalleryViewModel
-    private var _binding: FragmentGalleryBinding? = null
+    private val galleryViewModel: GalleryViewModel by viewModels()
+    private lateinit var binding: FragmentGalleryBinding
     private lateinit var sharedPrefs: SharedPreferences
 
-    // This property is only valid between onCreateView and
-    // onDestroyView.
-    private val binding get() = _binding!!
-
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
+
+    private val mediaViewModel: MediaViewModel by activityViewModels()
+    private var index = 0
 
     companion object {
         private const val READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG =
@@ -50,27 +57,45 @@ class GalleryFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        // Create the viewModel
-        galleryViewModel =
-            ViewModelProvider(this).get(GalleryViewModel::class.java)
-
         // Inflate the binding
-        _binding = FragmentGalleryBinding.inflate(inflater, container, false)
-        val root: View = binding.root
+        binding = FragmentGalleryBinding.inflate(inflater, container, false)
 
         // Set binding basics
         binding.lifecycleOwner = viewLifecycleOwner
         binding.viewModel = galleryViewModel
 
+        // Set up the actual nav controller
+        val navController = findNavController()
+        val appBarConfiguration = AppBarConfiguration(
+            setOf(
+                R.id.gallery_graph, R.id.library_graph, R.id.navigation_pager
+            )
+        )
+
+//        mediaViewModel.scroll.observe(viewLifecycleOwner) {
+//            if (it) {
+//                scrollToPosition(mediaViewModel.position)
+//                mediaViewModel.scroll.postValue(false)
+//            }
+//        }
+
+        NavigationUI.setupWithNavController(binding.toolbar, navController, appBarConfiguration)
+
         sharedPrefs = requireActivity().getPreferences(Context.MODE_PRIVATE)
 
         handleReadStoragePermission()
-        return root
+        return binding.root
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    private fun scrollToPosition(pos: Int) {
+        val layoutManager: RecyclerView.LayoutManager = binding.galleryGrid.layoutManager!!
+        val viewAtPosition = layoutManager.findViewByPosition(pos)
+
+        if (viewAtPosition == null || layoutManager.isViewPartiallyVisible(viewAtPosition, false, true)) {
+            layoutManager.scrollToPosition(pos)
+        }
+
+        mediaViewModel.setRect(viewAtPosition?.globalVisibleRect ?: Rect())
     }
 
     /**
@@ -103,7 +128,7 @@ class GalleryFragment : Fragment() {
 
     /**
      * Helper function to register the [ActivityResultLauncher] permission launcher.
-     * Responsible for requesting permission and hanlding the result.
+     * Responsible for requesting permission and handling the result.
      */
     private fun registerPermissionLauncher() {
         requestPermissionLauncher = registerForActivityResult(
@@ -133,28 +158,35 @@ class GalleryFragment : Fragment() {
      */
     private fun setAdapter() {
         // Start loading the media from the device
-        galleryViewModel.loadMedia()
+        mediaViewModel.loadMedia()
 
         // Handle the permission rationale
         binding.permissionRationaleView.isGone = true
 
         // Create item click listener
-        val mediaItemClickListener = { item: MediaItem ->
-            val directions = GalleryFragmentDirections.actionNavigationGalleryToMediaActivity(item)
+        val mediaItemClickListener = { item: MediaItem, view: View, index: Int ->
+            this.index = index
+//            mediaViewModel.setActive(false)
+            mediaViewModel.setPositionGallery(index)
+
+            mediaViewModel.setRect(view.globalVisibleRect)
+
+            val directions = GalleryFragmentDirections.actionNavigationGalleryToPagerFragment(
+                item,
+                view.globalVisibleRect,
+            )
+
             findNavController().navigate(directions)
         }
 
         // Create a GalleryAdapter and add the data to it
         val adapter = MediaGalleryAdapter(mediaItemClickListener)
 
-        galleryViewModel.data.observe(
-            viewLifecycleOwner,
-            {
-                it?.let {
-                    adapter.submitList(it)
-                }
+        mediaViewModel.gallery.observe(viewLifecycleOwner) {
+            it?.let {
+                adapter.submitList(it)
             }
-        )
+        }
 
         // Create a grid layout manager
         // TODO: allow for updates of the layout + allow for more flexibility in size

@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.util.TypedValue
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.fragment.app.Fragment
@@ -33,4 +34,13 @@ fun Fragment.hasPermission(permission: String): Boolean {
         requireContext(),
         permission
     ) == PermissionChecker.PERMISSION_GRANTED
+}
+
+/**
+ * Convert a display density value to a pixel value
+ * @param dp: the number of display density units
+ * @return the actual size in pixels
+ */
+fun Fragment.dpToPx(dp: Float): Float {
+    return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics)
 }

@@ -3,49 +3,62 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main_navigation"
-    app:startDestination="@id/navigation_gallery">
+    app:startDestination="@id/gallery_graph">
 
-    <fragment
-        android:id="@+id/navigation_gallery"
-        android:name="com.leondeklerk.starling.gallery.GalleryFragment"
-        android:label="@string/title_gallery"
-        tools:layout="@layout/fragment_gallery">
-        <action
-            android:id="@+id/action_navigation_gallery_to_mediaActivity"
-            app:destination="@id/mediaActivity" />
-    </fragment>
+    <navigation
+        android:id="@+id/gallery_graph"
+        app:startDestination="@id/navigation_gallery">
+        <fragment
+            android:id="@+id/navigation_gallery"
+            android:name="com.leondeklerk.starling.gallery.GalleryFragment"
+            android:label="@string/title_gallery"
+            tools:layout="@layout/fragment_gallery">
+            <action
+                android:id="@+id/action_navigation_gallery_to_PagerFragment"
+                app:destination="@id/navigation_pager" />
+        </fragment>
 
-    <fragment
-        android:id="@+id/navigation_library"
-        android:name="com.leondeklerk.starling.library.LibraryFragment"
-        android:label="@string/title_library"
-        tools:layout="@layout/fragment_library" >
-        <action
-            android:id="@+id/action_navigation_library_to_folderFragment"
-            app:destination="@id/navigation_folder"
-            app:popUpTo="@id/navigation_library"
-            app:popUpToInclusive="false" />
-    </fragment>
-    <fragment
-        android:id="@+id/navigation_folder"
-        tools:layout="@layout/fragment_folder"
-        android:label="{folderItem}"
-        android:name="com.leondeklerk.starling.library.folder.FolderFragment">
-        <argument
-            android:name="folderItem"
-            app:argType="com.leondeklerk.starling.media.data.FolderItem" />
-        <action
-            android:id="@+id/action_navigation_folder_to_mediaActivity"
-            app:destination="@id/mediaActivity" />
-    </fragment>
-    <activity
-        android:id="@+id/mediaActivity"
-        android:name="com.leondeklerk.starling.media.MediaActivity"
-        android:label="MediaActivity">
-        <argument
-            android:name="mediaItem"
-            app:argType="com.leondeklerk.starling.media.data.MediaItem"
-            app:nullable="true" />
-    </activity>
+        <dialog
+            android:id="@+id/navigation_pager"
+            android:name="com.leondeklerk.starling.media.PagerFragment"
+            tools:layout="@layout/fragment_pager">
+            <argument
+                android:name="mediaItem"
+                app:argType="com.leondeklerk.starling.media.data.MediaItem"
+                app:nullable="true" />
+            <argument
+                android:name="globalRect"
+                app:argType="android.graphics.Rect"
+                app:nullable="true" />
+        </dialog>
+    </navigation>
+
+    <navigation
+        android:id="@+id/library_graph"
+        app:startDestination="@id/navigation_library">
+
+        <fragment
+            android:id="@+id/navigation_library"
+            android:name="com.leondeklerk.starling.library.LibraryFragment"
+            android:label="@string/title_library"
+            tools:layout="@layout/fragment_library">
+            <action
+                android:id="@+id/action_navigation_library_to_folderFragment"
+                app:destination="@id/navigation_folder"
+                app:popUpTo="@id/navigation_library"
+                app:popUpToInclusive="true" />
+        </fragment>
+        <fragment
+            android:id="@+id/navigation_folder"
+            tools:layout="@layout/fragment_folder"
+            android:label="{folderItem}"
+            android:name="com.leondeklerk.starling.library.folder.FolderFragment">
+            <argument
+                android:name="folderItem"
+                app:argType="com.leondeklerk.starling.media.data.FolderItem" />
+        </fragment>
+
+    </navigation>
+
 
 </navigation>

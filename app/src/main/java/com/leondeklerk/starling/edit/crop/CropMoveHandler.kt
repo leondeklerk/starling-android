@@ -14,10 +14,9 @@ import com.leondeklerk.starling.edit.crop.HandlerType.RIGHT
 import com.leondeklerk.starling.edit.crop.HandlerType.RIGHT_BOTTOM
 import com.leondeklerk.starling.edit.crop.HandlerType.RIGHT_TOP
 import com.leondeklerk.starling.edit.crop.HandlerType.TOP
+import com.leondeklerk.starling.extensions.near
 import kotlin.math.max
 import kotlin.math.min
-
-typealias PairF = Pair<Float, Float>
 
 /**
  * The CropMoveHandler is responsible for starting, handling and stopping movement of the CropBox.
@@ -70,7 +69,7 @@ class CropMoveHandler(
      * @param sides: the axis coordinate value (x for left/right, y for top/bottom) for the sides
      * @param bounds: the axis coordinate value for the bounds.
      */
-    data class AxisData(val sides: PairF, val bounds: PairF)
+    data class AxisData(val sides: Pair<Float, Float>, val bounds: Pair<Float, Float>)
 
     /**
      * Starts a moving interaction.
@@ -761,20 +760,5 @@ class CropMoveHandler(
         }
 
         return changed
-    }
-
-    /**
-     * Add extra helper function to the PointF class to check if a point (touchX, touchY) is within a radius (bounds)
-     * of the existing point.
-     *
-     * @param touchX: The x coordinate to test for
-     * @param touchY: the y coordinate to test for
-     * @returns if the touch point is within bounds of the point.
-     */
-    private fun PointF.near(touchX: Float, touchY: Float, bounds: Float): Boolean {
-        // Is it within the left bounds
-        val xIn = (touchX <= x + bounds && touchX >= x - bounds)
-        val yIn = (touchY <= y + bounds && touchY >= y - bounds)
-        return xIn && yIn
     }
 }

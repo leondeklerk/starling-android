@@ -2,6 +2,7 @@ package com.leondeklerk.starling.media
 
 import android.animation.ValueAnimator
 import android.content.DialogInterface
+import android.graphics.Rect
 import android.media.MediaMetadataRetriever
 import android.os.Bundle
 import android.os.Handler
@@ -15,13 +16,23 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SeekParameters
+import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
 import com.leondeklerk.starling.R
 import com.leondeklerk.starling.databinding.FragmentVideoBinding
+import com.leondeklerk.starling.edit.crop.AspectRatio
+import com.leondeklerk.starling.extensions.applyMargin
+import com.leondeklerk.starling.extensions.requestNewSize
 import com.leondeklerk.starling.media.data.VideoItem
 
-class VideoFragment(private val item: VideoItem) : MediaItemFragment() {
+class VideoFragment(
+    private val item: VideoItem,
+    private val enterListeners: PagerFragment.TransitionListeners,
+    private val exitListeners: PagerFragment.TransitionListeners
+) :
+    MediaItemFragment() {
     override val viewModel: VideoViewModel by viewModels()
 
     private lateinit var binding: FragmentVideoBinding
@@ -59,9 +70,7 @@ class VideoFragment(private val item: VideoItem) : MediaItemFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        activityViewModel.setEditEnabled(false)
-
-        setupSurface()
+        pagerViewModel.setEditEnabled(false)
 
         setupVideoPlayer()
 
@@ -77,7 +86,7 @@ class VideoFragment(private val item: VideoItem) : MediaItemFragment() {
 
     override fun onResume() {
         super.onResume()
-        activityViewModel.setEditEnabled(false)
+        pagerViewModel.setEditEnabled(false)
         viewModel.stateResume()
     }
 
@@ -112,43 +121,146 @@ class VideoFragment(private val item: VideoItem) : MediaItemFragment() {
         // Unused as there is no video editing yet
     }
 
-    /**
-     * Creates the video player object and binds it to the UI.
-     * Also configures the player with the correct settings.
-     */
-    private fun setupVideoPlayer() {
-        player = ExoPlayer.Builder(requireContext()).build()
-        player.setVideoSurfaceView(binding.videoView)
-        val video = MediaItem.fromUri(viewModel.item.uri)
-        player.setMediaItem(video)
+    override fun scale(scalarX: Float, scalarY: Float) {
+        viewModel.startTransition()
+        binding.videoView.scaleX = scalarX
+        binding.videoView.scaleY = scalarY
+    }
 
-        player.setSeekParameters(SeekParameters.EXACT)
+    override fun translate(dX: Float, dY: Float) {
+        viewModel.startTransition()
+        binding.videoView.translationX += dX
+        binding.videoView.translationY += dY
+    }
 
-        player.repeatMode = Player.REPEAT_MODE_ALL
-        player.prepare()
+    override fun reset() {
+        binding.videoView.animate().scaleX(1f).scaleY(1f).translationX(0f).translationY(0f).withEndAction {
+            viewModel.endTransition()
+        }.setDuration(100L).start()
+    }
 
-        viewModel.setVolume(player.volume)
-        viewModel.setPosition(POSITION_START)
+    override fun close(target: Rect, duration: Long) {
+        viewModel.startTransition()
+        binding.videoView.apply {
+            requestLayout()
+            post {
+                transition(
+                    duration, binding.videoContainer,
+                    {
+                        exitListeners.startListener.invoke(it)
+                    },
+                    {
+                        exitListeners.endListener.invoke(it)
+                    }
+                )
 
+                resizeMode = RESIZE_MODE_ZOOM
+                translationX = 0f
+                translationY = 0f
+
+                scaleX = 1f
+                scaleY = 1f
+                requestNewSize(target.width(), target.height())
+                applyMargin(target.left, target.top)
+            }
+        }
+    }
+
+    fun initialize() {
         player.play()
-
         handler.postDelayed(runnable, 0)
     }
 
-    /**
-     * Set up the video surface.
-     * Determines the orientation of the video based on the video metadata.
-     */
-    private fun setupSurface() {
+    private fun loadTransition() {
+        if (pagerViewModel.initial) {
+            binding.videoView.apply {
+
+                visibility = View.VISIBLE
+                resizeMode = RESIZE_MODE_ZOOM
+                val rect = pagerViewModel.rect
+                requestNewSize(rect.width(), rect.height())
+                applyMargin(rect.left, rect.top)
+
+                post {
+                    val maxWidth = pagerViewModel.containerSize.first
+                    val maxHeight = pagerViewModel.containerSize.second
+
+                    val ratio = AspectRatio.ORIGINAL
+                    if (rotated()) {
+                        ratio.xRatio = item.height
+                        ratio.yRatio = item.width
+                    } else {
+                        ratio.xRatio = item.width
+                        ratio.yRatio = item.height
+                    }
+
+                    val (width, height) = ratio.getSizeWithinFrom(maxWidth, maxHeight)
+
+                    transition(
+                        250L, binding.videoContainer,
+                        {
+                            enterListeners.startListener.invoke(it)
+                        },
+                        {
+                            enterListeners.endListener.invoke(it)
+                            pagerViewModel.initial = false
+                            initialize()
+                        }
+                    )
+
+                    requestNewSize(width, height)
+                    applyMargin((maxWidth - width) / 2, (maxHeight - height) / 2)
+                    resizeMode = RESIZE_MODE_FIT
+                }
+            }
+        }
+    }
+
+    private fun rotated(): Boolean {
         val retriever = MediaMetadataRetriever()
         retriever.setDataSource(requireContext(), viewModel.item.uri)
         val r = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toFloat()
         retriever.release()
 
-        if (r == ROTATION_90 || r == ROTATION_270) {
-            binding.videoView.setVideoSize(item.height.toFloat(), item.width.toFloat())
+        return r == ROTATION_90 || r == ROTATION_270
+    }
+
+    /**
+     * Creates the video player object and binds it to the UI.
+     * Also configures the player with the correct settings.
+     */
+    private fun setupVideoPlayer() {
+
+        player = ExoPlayer.Builder(requireContext()).build()
+
+        if (pagerViewModel.initial) {
+            player.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    super.onPlaybackStateChanged(playbackState)
+                    if (playbackState == Player.STATE_READY) {
+                        loadTransition()
+                    }
+                }
+            })
+        }
+
+        binding.videoView.player = player
+
+        val video = MediaItem.fromUri(viewModel.item.uri)
+        player.setMediaItem(video)
+        player.setSeekParameters(SeekParameters.EXACT)
+
+        player.repeatMode = Player.REPEAT_MODE_ALL
+
+        player.prepare()
+
+        viewModel.setVolume(player.volume)
+        viewModel.setPosition(POSITION_START)
+
+        if (pagerViewModel.initial) {
+            binding.videoView.visibility = View.GONE
         } else {
-            binding.videoView.setVideoSize(item.width.toFloat(), item.height.toFloat())
+            initialize()
         }
     }
 
@@ -168,13 +280,12 @@ class VideoFragment(private val item: VideoItem) : MediaItemFragment() {
             binding.videoPause.animate().alpha(viewModel.seekAlpha)
         }
 
-        viewModel.showOverlay.observe(viewLifecycleOwner) {
-            setOverlayAlpha()
-            activityViewModel.setInsets(it, true)
+        viewModel.overlayVisible.observe(viewLifecycleOwner) {
+            setOverlay()
         }
 
-        activityViewModel.showInsets.observe(viewLifecycleOwner) {
-            viewModel.setOverlay(it)
+        pagerViewModel.showOverlay.observe(viewLifecycleOwner) {
+            viewModel.setOverlayState(it)
         }
     }
 
@@ -197,11 +308,11 @@ class VideoFragment(private val item: VideoItem) : MediaItemFragment() {
         }
 
         binding.layout.setOnClickListener {
-            viewModel.toggleOverlay()
+            pagerViewModel.toggleOverlay()
         }
 
         binding.videoView.setOnClickListener {
-            viewModel.toggleOverlay()
+            pagerViewModel.toggleOverlay()
         }
     }
 
@@ -224,34 +335,15 @@ class VideoFragment(private val item: VideoItem) : MediaItemFragment() {
     /**
      * Updates the visual state of the overlay.
      */
-    private fun setOverlayAlpha() {
+    private fun setOverlay() {
         val alpha = viewModel.overlayAlpha
+        val visibility = viewModel.overlayVisibility
 
-        val vis = if (alpha == ALPHA_HIDDEN) {
-            View.GONE
+        binding.layout.visibility = visibility
+        if (viewModel.animateVisibility == true) {
+            binding.layout.animate().alpha(alpha)
         } else {
-            View.VISIBLE
-        }
-
-        binding.videoPause.apply {
-            animate().alpha(alpha)
-            visibility = vis
-        }
-        binding.videoSound.apply {
-            animate().alpha(alpha)
-            visibility = vis
-        }
-        binding.videoDuration.apply {
-            animate().alpha(alpha)
-            visibility = vis
-        }
-        binding.videoPosition.apply {
-            animate().alpha(alpha)
-            visibility = vis
-        }
-        binding.videoProgress.apply {
-            animate().alpha(alpha)
-            visibility = vis
+            binding.layout.alpha = alpha
         }
     }
 

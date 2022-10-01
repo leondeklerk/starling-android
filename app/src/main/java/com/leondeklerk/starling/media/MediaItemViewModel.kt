@@ -3,7 +3,7 @@ package com.leondeklerk.starling.media
 import android.app.Application
 import android.app.PendingIntent
 import android.app.RecoverableSecurityException
-import android.content.ContentUris
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -11,7 +11,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.leondeklerk.starling.media.data.ImageItem
 import com.leondeklerk.starling.media.data.MediaItem
+import com.leondeklerk.starling.media.data.MediaItemTypes
+import com.leondeklerk.starling.media.data.VideoItem
 import kotlinx.coroutines.launch
 
 /**
@@ -28,13 +31,14 @@ abstract class MediaItemViewModel<M : MediaItem, D : Any>(application: Applicati
     private val _nextId = MutableLiveData<Number?>()
     val nextId: LiveData<Number?> = _nextId
 
-    lateinit var item: M
-
     private var pendingData: D? = null
+
     protected abstract val contentUri: Uri
 
     var isSuccess = true
     var pendingRequest: PendingIntent? = null
+
+    lateinit var item: M
 
     /**
      * Try to update the media item,
@@ -53,9 +57,7 @@ abstract class MediaItemViewModel<M : MediaItem, D : Any>(application: Applicati
         pendingData = data
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val uri = ContentUris.withAppendedId(contentUri, item.id)
-
-            pendingRequest = MediaStore.createWriteRequest(resolver, listOf(uri))
+            pendingRequest = MediaStore.createWriteRequest(resolver, listOf(item.uri))
             _pendingRequestType.postValue(MediaActionTypes.EDIT)
         } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
             try {
@@ -83,9 +85,7 @@ abstract class MediaItemViewModel<M : MediaItem, D : Any>(application: Applicati
         val resolver = getApplication<Application>().contentResolver
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val uri = ContentUris.withAppendedId(contentUri, item.id)
-
-            pendingRequest = MediaStore.createDeleteRequest(resolver, listOf(uri))
+            pendingRequest = MediaStore.createDeleteRequest(resolver, listOf(item.uri))
             _pendingRequestType.postValue(MediaActionTypes.DELETE)
         } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
             try {
@@ -105,13 +105,39 @@ abstract class MediaItemViewModel<M : MediaItem, D : Any>(application: Applicati
         }
     }
 
+    fun share(): Intent? {
+        val mimeType = when (item.type) {
+            MediaItemTypes.VIDEO -> (item as VideoItem).mimeType
+            MediaItemTypes.IMAGE -> (item as ImageItem).mimeType
+            else -> null
+        } ?: return null
+
+        val intent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_STREAM, item.uri)
+            type = mimeType
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        return intent
+    }
+
+    fun getAction(data: Pair<Long, MediaActionTypes>?): MediaActionTypes? {
+        data?.let {
+            if (it.first == item.id) {
+                return it.second
+            }
+        }
+        return null
+    }
+
     /**
      * When a request is granted, execute the action if needed.
      * A granted request for delete already deletes the item therefore only state reset is needed.
      * @param type the type of request that was granted.
      *
      */
-    fun onRequestGranted(type: MediaActionTypes) {
+    fun grantRequest(type: MediaActionTypes) {
         if (hasPending()) {
             when (type) {
                 MediaActionTypes.DELETE -> {

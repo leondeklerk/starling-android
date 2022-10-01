@@ -5,13 +5,14 @@ import android.provider.MediaStore
 import android.view.View
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.distinctUntilChanged
 import com.leondeklerk.starling.media.data.VideoItem
 import kotlin.math.max
 import kotlin.math.min
 
 class VideoViewModel(application: Application) : MediaItemViewModel<VideoItem, Any>(application) {
 
+    private var beforeTransitionPause = false
+    var animateVisibility: Boolean? = true
     override val contentUri = MediaStore.Video.Media.getContentUri("external")!!
 
     private val _position = MutableLiveData(0L)
@@ -26,22 +27,31 @@ class VideoViewModel(application: Application) : MediaItemViewModel<VideoItem, A
     private val _seeking = MutableLiveData(false)
     val seeking: LiveData<Boolean> = _seeking
 
-    private val _showOverlay = MutableLiveData(View.VISIBLE)
-    val showOverlay = _showOverlay.distinctUntilChanged()
-
     private val _volume = MutableLiveData(0f)
     val volume: LiveData<Float> = _volume
 
     private var baseVolume = 0f
     private var soundEnabled = true
+    private var _overlayVisible = MutableLiveData(false)
+    val overlayVisible: LiveData<Boolean> = _overlayVisible
 
-    // Get the alpha of the overlay based on if the overlay is visible.
+    private var inTransition = false
+
     val overlayAlpha: Float
         get() {
-            return if (_showOverlay.value == View.VISIBLE) {
+            return if (_overlayVisible.value == true) {
                 1f
             } else {
                 0f
+            }
+        }
+
+    val overlayVisibility: Int
+        get() {
+            return if (_overlayVisible.value == true) {
+                View.VISIBLE
+            } else {
+                View.GONE
             }
         }
 
@@ -99,24 +109,21 @@ class VideoViewModel(application: Application) : MediaItemViewModel<VideoItem, A
         _paused.postValue(beforeSeekPaused)
     }
 
-    /**
-     * Toggle the state of the overlay.
-     * Goes from hidden to visible or from visible to hidden.
-     */
-    fun toggleOverlay() {
-        if (_showOverlay.value!! == View.VISIBLE) {
-            _showOverlay.postValue(View.GONE)
-        } else {
-            _showOverlay.postValue(View.VISIBLE)
+    fun startTransition() {
+        if (!inTransition) {
+            inTransition = true
+            beforeTransitionPause = _paused.value!!
+            if (!beforeTransitionPause) {
+                _paused.postValue(true)
+            }
         }
     }
 
-    /**
-     * Show or hide the overlay.
-     * @param visible if the overlay should be visible (View.VISIBLE) or not (View.GONE)
-     */
-    fun setOverlay(visible: Int) {
-        _showOverlay.postValue(visible)
+    fun endTransition() {
+        if (inTransition) {
+            inTransition = false
+            _paused.postValue(beforeTransitionPause)
+        }
     }
 
     /**
@@ -165,6 +172,13 @@ class VideoViewModel(application: Application) : MediaItemViewModel<VideoItem, A
         baseVolume = volume
         if (soundEnabled) {
             _volume.postValue(volume)
+        }
+    }
+
+    fun setOverlayState(visible: Boolean?, animate: Boolean? = true) {
+        animateVisibility = animate
+        visible?.let {
+            _overlayVisible.postValue(visible)
         }
     }
 }

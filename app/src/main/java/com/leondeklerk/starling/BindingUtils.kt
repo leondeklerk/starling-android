@@ -7,12 +7,8 @@ import android.text.format.DateFormat
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.databinding.BindingAdapter
+import coil.load
 import com.bumptech.glide.Glide
-import com.bumptech.glide.Priority
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.load.resource.bitmap.CenterCrop
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
-import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.signature.ObjectKey
 import com.leondeklerk.starling.media.data.FolderItem
 import com.leondeklerk.starling.media.data.HeaderItem
@@ -39,32 +35,23 @@ fun setMediaUri(view: ImageView, media: MediaItem) {
         MediaItemTypes.IMAGE -> (media as ImageItem).dateModified
         MediaItemTypes.VIDEO -> (media as VideoItem).dateModified
         MediaItemTypes.FOLDER -> (media as FolderItem).dateModified
-        else -> Date()
+        else -> System.currentTimeMillis()
     }
 
     // Load the image based on the media type
     if (type == MediaItemTypes.VIDEO) {
-        val options = RequestOptions()
-            .skipMemoryCache(false)
-            .priority(Priority.LOW)
-            .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-
-        val builder = Glide.with(view.context)
-            .load(uri)
-            .transform(CenterCrop())
-            .thumbnail(0.2f)
-            .apply(options)
-            .transition(DrawableTransitionOptions.withCrossFade())
-
-        builder.into(view)
-    } else {
         Glide.with(view)
             .load(uri)
-            .transform(CenterCrop())
+            .dontTransform()
             .placeholder(ColorDrawable(Color.GRAY))
             .thumbnail(0.2f)
             .signature(ObjectKey(key))
             .into(view)
+    } else {
+        view.load(uri) {
+            placeholder(ColorDrawable(Color.GRAY))
+            listener { _, result -> media.cacheKey = result.memoryCacheKey }
+        }
     }
 }
 

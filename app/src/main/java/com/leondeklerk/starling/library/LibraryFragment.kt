@@ -11,12 +11,17 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.NavigationUI
 import androidx.recyclerview.widget.GridLayoutManager
+import com.leondeklerk.starling.R
 import com.leondeklerk.starling.databinding.FragmentLibraryBinding
 import com.leondeklerk.starling.extensions.goToSettings
 import com.leondeklerk.starling.extensions.hasPermission
+import com.leondeklerk.starling.media.MediaViewModel
 import com.leondeklerk.starling.media.data.FolderItem
 import com.leondeklerk.starling.media.data.MediaItem
 import com.leondeklerk.starling.media.data.MediaItemTypes
@@ -35,6 +40,8 @@ class LibraryFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
+
+    private val mediaViewModel: MediaViewModel by activityViewModels()
 
     companion object {
         private const val READ_EXTERNAL_STORAGE_PERMISSION_PREF_FLAG =
@@ -57,6 +64,16 @@ class LibraryFragment : Fragment() {
         // Set binding basics
         binding.lifecycleOwner = viewLifecycleOwner
         binding.viewModel = libraryViewModel
+
+        // Set up the actual nav controller
+        val navController = findNavController()
+        val appBarConfiguration = AppBarConfiguration(
+            setOf(
+                R.id.gallery_graph, R.id.library_graph, R.id.navigation_pager
+            )
+        )
+        NavigationUI.setupWithNavController(binding.toolbar, navController, appBarConfiguration)
+//        NavigationUI.setupWithNavController(binding.navView, navController)
 
         sharedPrefs = requireActivity().getPreferences(Context.MODE_PRIVATE)
 
@@ -100,7 +117,7 @@ class LibraryFragment : Fragment() {
 
     /**
      * Helper function to register the [ActivityResultLauncher] permission launcher.
-     * Responsible for requesting permission and hanlding the result.
+     * Responsible for requesting permission and handling the result.
      */
     private fun registerPermissionLauncher() {
         requestPermissionLauncher = registerForActivityResult(
@@ -130,14 +147,16 @@ class LibraryFragment : Fragment() {
      */
     private fun setAdapter() {
         // Start loading all media folders
-        libraryViewModel.loadFolders()
+//        libraryViewModel.loadFolders()
 
         // Handle the permission rationale
         binding.permissionRationaleView.isGone = true
 
         // Create item click listener
-        val mediaItemClickListener = { item: MediaItem ->
+        val mediaItemClickListener = { item: MediaItem, view: View, index: Number ->
             if (item.type == MediaItemTypes.FOLDER) {
+                mediaViewModel.createFolderGallery((item as FolderItem).name)
+//                mediaViewModel.setFolder(item as FolderItem)
                 val directions = LibraryFragmentDirections.actionNavigationLibraryToFolderFragment(item as FolderItem)
                 findNavController().navigate(directions)
             }
@@ -146,14 +165,15 @@ class LibraryFragment : Fragment() {
         // Create a LibraryAdapter and add the data to it
         val adapter = MediaGalleryAdapter(mediaItemClickListener)
 
-        libraryViewModel.data.observe(
-            viewLifecycleOwner,
-            {
-                it?.let {
-                    adapter.submitList(it)
-                }
+        mediaViewModel.folders.observe(viewLifecycleOwner) {
+            it?.let {
+                adapter.submitList(it)
             }
-        )
+        }
+
+//        mediaViewModel.folders.value?.let {
+//            adapter.submitList(it)
+//        }
 
         // Create a grid layout manager
         // TODO: allow for updates of the layout + allow for more flexibility in size

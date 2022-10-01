@@ -12,7 +12,7 @@ import android.util.AttributeSet
 import android.view.View
 import androidx.core.animation.doOnEnd
 import androidx.core.graphics.toRect
-import com.leondeklerk.starling.edit.EditView
+import com.leondeklerk.starling.edit.EditContainer
 import com.leondeklerk.starling.extensions.dpToPx
 import com.leondeklerk.starling.extensions.drawCircle
 import com.leondeklerk.starling.extensions.drawLine
@@ -23,7 +23,7 @@ import com.leondeklerk.starling.extensions.drawLine
  * Will automatically restrict based on bounds and fire zoom event
  * when smaller than half the image (X and Y).
  * Uses a [CropMoveHandler] to handle box movements.
- * Intended to be used by a [CropView] in an [EditView]
+ * Intended to be used by a [CropView] in an [EditContainer]
  */
 class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
     context,
@@ -79,24 +79,27 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      */
     fun initialize(
         rect: RectF,
-        aspectRatio: AspectRatio,
+        imgAspectRatio: AspectRatio,
         duration: Long = 0L,
         animate: Boolean = false
     ) {
-        this.aspectRatio = aspectRatio
-        this.bounds = rect
+        aspectRatio = imgAspectRatio
+        bounds = rect
 
         if (aspectRatio == AspectRatio.ORIGINAL) {
             this.aspectRatio.xRatio = rect.width().toInt()
             this.aspectRatio.yRatio = rect.height().toInt()
         }
 
-        val targetRect = Box.from(rect, aspectRatio, dpToPx(MIN_SIZE_DP)).rect
+        val targetBox = Box.from(rect, imgAspectRatio, dpToPx(MIN_SIZE_DP))
+        val targetRect = targetBox.rect
 
         if (animate) {
             setOnAnimate = true
             animateBoxUpdate(targetRect, duration)
         } else {
+            box = targetBox
+            startBox = targetBox.copy()
             setupComponents()
         }
     }
@@ -193,18 +196,8 @@ class CropOverlayView(context: Context, attributeSet: AttributeSet?) : View(
      * makes sure everything is drawn to the screen.
      */
     private fun setupComponents() {
-        createBox()
         createMoveHandler()
         invalidate()
-    }
-
-    /**
-     * Creates a new box based on the bounds and ratio,
-     * also creates a initial copy.
-     */
-    private fun createBox() {
-        box = Box.from(bounds, aspectRatio, dpToPx(MIN_SIZE_DP))
-        startBox = box!!.copy()
     }
 
     /**
