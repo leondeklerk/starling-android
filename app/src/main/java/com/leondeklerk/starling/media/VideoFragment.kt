@@ -166,7 +166,7 @@ class VideoFragment(
         }
     }
 
-    fun initialize() {
+    private fun initialize() {
         player.play()
         handler.postDelayed(runnable, 0)
     }

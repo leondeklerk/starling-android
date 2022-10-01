@@ -18,8 +18,6 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
     private val _action = MutableLiveData<Pair<Long, MediaActionTypes>?>()
     val action: LiveData<Pair<Long, MediaActionTypes>?> = _action
 
-    val lockView = MutableLiveData(false)
-
     // Inset/overlay state
     private var _showOverlay = MutableLiveData<Boolean?>()
     val showOverlay: LiveData<Boolean?> = _showOverlay.distinctUntilChanged()
@@ -39,15 +37,24 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
 
     var containerSize = Pair(0, 0)
 
+    // Dismiss state
     private var beforeDismissState = false
+    private var dismissing = false
 
+    // Container state
     private var _touchCaptured = MutableLiveData(false)
     val touchCaptured: LiveData<Boolean> = _touchCaptured
 
+    /**
+     * The current fragment is capturing touch
+     */
     fun captureTouch() {
         _touchCaptured.postValue(true)
     }
 
+    /**
+     * The current fragment releases its touch capture
+     */
     fun releaseTouch() {
         _touchCaptured.postValue(false)
     }
@@ -68,24 +75,41 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
         _goToId.postValue(id)
     }
 
+    /**
+     * Reset the overlay variables to an initial state.
+     */
     fun resetOverlay() {
         _showOverlay.postValue(null)
         _insetState.postValue(View.VISIBLE)
         onlyOverlay = false
+        dismissing = false
     }
 
+    /**
+     * Start a dismiss, hides the overlay and stores the current state.
+     */
     fun onDismissStart() {
+        dismissing = true
         onlyOverlay = true
         beforeDismissState = _showOverlay.value ?: true
         _showOverlay.postValue(false)
     }
 
+    /**
+     * Cancels a started dismiss, restores the before dismiss state.
+     */
     fun onDismissCancel() {
+        dismissing = false
         if (beforeDismissState) {
             _showOverlay.postValue(true)
         }
     }
 
+    /**
+     * Set the current overlay state (both overlay and insets) based on a visibility value.
+     * @param state the desired inset state (View.VISIBLE or View.GONE)
+     * @param showOnlyOverlay variable that determines if the insets should also be updated or just the overlay itself.
+     */
     fun setOverlay(state: Int, showOnlyOverlay: Boolean = false) {
         if (!initial) {
             onlyOverlay = showOnlyOverlay
@@ -97,12 +121,17 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Toggle between overlay states.
+     */
     fun toggleOverlay() {
-        onlyOverlay = false
-        if (_showOverlay.value == true) {
-            _showOverlay.postValue(false)
-        } else {
-            _showOverlay.postValue(true)
+        if (!dismissing) {
+            onlyOverlay = false
+            if (_showOverlay.value == true) {
+                _showOverlay.postValue(false)
+            } else {
+                _showOverlay.postValue(true)
+            }
         }
     }
 
@@ -114,10 +143,18 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
         _enableEdit.postValue(enabled)
     }
 
+    /**
+     * Set the current active action and id that invoked it.
+     * @param id id of the fragment that invoked the action.
+     * @param action the current actionType
+     */
     fun setAction(id: Long, action: MediaActionTypes) {
         _action.postValue(Pair(id, action))
     }
 
+    /**
+     * Mark an action as done (clear it)
+     */
     fun clearAction() {
         _action.postValue(null)
     }
