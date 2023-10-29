@@ -13,6 +13,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import coil.memory.MemoryCache
+import com.leondeklerk.starling.media.data.DataSource
 import com.leondeklerk.starling.media.data.FolderItem
 import com.leondeklerk.starling.media.data.HeaderItem
 import com.leondeklerk.starling.media.data.ImageItem
@@ -131,6 +132,7 @@ class MediaViewModel(application: Application) : AndroidViewModel(application) {
             val resolver = getApplication<Application>().contentResolver
 
             // Start querying media.
+            val list = DataSource.list
             val mediaList = retriever.queryMedia(resolver, projection, selection, selectionArgs, sortOrder)
 //            _data.postValue(mediaList.data)
 //            _folders.postValue(mediaList.folders.map { (_, value) -> value })
@@ -146,14 +148,14 @@ class MediaViewModel(application: Application) : AndroidViewModel(application) {
 //            setFolders(mediaList.folders)
 
             // To observer any additional files created on the system, a observer is registered.
-            if (contentObserver == null) {
-                contentObserver = getApplication<Application>().contentResolver.registerObserver(
-                    MediaStore.Files.getContentUri("external")
-                ) {
-                    // Upon a detected change it reloads the media.
-                    loadMedia()
-                }
-            }
+//            if (contentObserver == null) {
+//                contentObserver = getApplication<Application>().contentResolver.registerObserver(
+//                    MediaStore.Files.getContentUri("external")
+//                ) {
+//                    // Upon a detected change it reloads the media.
+//                    loadMedia()
+//                }
+//            }
         }
     }
 

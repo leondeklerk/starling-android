@@ -33,6 +33,7 @@ class ResizeTransition @JvmOverloads constructor(
             fadeStart = result !is SuccessResult || !result.isPlaceholderCached,
             preferExactIntrinsicSize = preferExactIntrinsicSize
         )
+
         when (result) {
             is SuccessResult -> target.onSuccess(drawable)
             is ErrorResult -> target.onError(drawable)

@@ -1,5 +1,6 @@
 package com.leondeklerk.starling
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
@@ -39,6 +40,13 @@ class MainActivity : AppCompatActivity() {
 //                }
 //            }
 //        }
+    }
+
+    var onReenter: ((resultCode: Int, data: Intent?) -> Unit)? = null
+
+    override fun onActivityReenter(resultCode: Int, data: Intent?) {
+        super.onActivityReenter(resultCode, data)
+        onReenter?.invoke(resultCode, data)
     }
 
     override fun onSupportNavigateUp(): Boolean {

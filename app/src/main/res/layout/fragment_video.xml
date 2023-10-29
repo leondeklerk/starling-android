@@ -17,11 +17,11 @@
         android:layout_height="match_parent">
 
         <com.google.android.exoplayer2.ui.StyledPlayerView
-            app:resize_mode="fit"
+            app:resize_mode="zoom"
+            app:surface_type="texture_view"
             app:use_controller="false"
             app:show_buffering="always"
             android:id="@+id/videoView"
-            app:surface_type="texture_view"
             android:layout_height="match_parent"
             android:layout_width="match_parent" />
 

@@ -12,7 +12,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
-import androidx.navigation.fragment.navArgs
 import androidx.transition.Transition
 import androidx.viewpager2.widget.CompositePageTransformer
 import androidx.viewpager2.widget.MarginPageTransformer
@@ -23,7 +22,7 @@ import com.leondeklerk.starling.extensions.dpToPx
 
 class PagerFragment : DialogFragment() {
 
-    private val args: PagerFragmentArgs by navArgs()
+//    private val args: PagerFragmentArgs by navArgs()
     private lateinit var binding: FragmentPagerBinding
 
     private val mediaViewModel: MediaViewModel by activityViewModels()
@@ -49,7 +48,7 @@ class PagerFragment : DialogFragment() {
 
     override fun onDestroy() {
         super.onDestroy()
-        viewModel.resetOverlay()
+//        viewModel.resetOverlay()
     }
 
     /** The system calls this to get the DialogFragment's layout, regardless
@@ -63,11 +62,11 @@ class PagerFragment : DialogFragment() {
         binding = FragmentPagerBinding.inflate(inflater, container, false)
         binding.lifecycleOwner = viewLifecycleOwner
 
-        viewModel.rect = args.globalRect!!
+//        viewModel.rect = args.globalRect!!
 
         binding.toolbar.setNavigationOnClickListener { requireActivity().onBackPressed() }
 
-        viewModel.setOverlay(View.VISIBLE)
+//        viewModel.setOverlay(View.VISIBLE)
 
         setupInsets()
 
@@ -117,7 +116,7 @@ class PagerFragment : DialogFragment() {
             }
         )
 
-        viewPager.adapter = MediaFragmentAdapter(this, enterListeners, exitListeners)
+//        viewPager.adapter = MediaFragmentAdapter(this, enterListeners, exitListeners)
 
         getAdapter().submitList(mediaViewModel.gallery.value!!)
         viewPager.setCurrentItem(mediaViewModel.position, false)
@@ -157,7 +156,7 @@ class PagerFragment : DialogFragment() {
         binding.viewPager.isUserInputEnabled = true
         binding.dismissContainer.ready = true
         setOverlayEnable(true)
-        viewModel.setOverlay(View.VISIBLE, true)
+//        viewModel.setOverlay(View.VISIBLE, true)
     }
 
     /**
@@ -282,9 +281,9 @@ class PagerFragment : DialogFragment() {
             binding.viewPager.isUserInputEnabled = !it
         }
 
-        viewModel.insetState.observe(this) {
-            viewModel.setOverlay(it)
-        }
+//        viewModel.insetState.observe(this) {
+//            viewModel.setOverlay(it)
+//        }
 
         mediaViewModel.gallery.observe(viewLifecycleOwner) {
             getAdapter().submitList(it)
@@ -294,7 +293,7 @@ class PagerFragment : DialogFragment() {
 
         viewModel.enableEdit.observe(viewLifecycleOwner) { onEnableEdit(it) }
 
-        viewModel.showOverlay.observe(viewLifecycleOwner) { onShowOverlay(it) }
+//        viewModel.showOverlay.observe(viewLifecycleOwner) { onShowOverlay(it) }
     }
 
     /**
@@ -330,9 +329,9 @@ class PagerFragment : DialogFragment() {
     private fun onShowOverlay(show: Boolean?) {
         show?.let {
             if (it) {
-                showOverlay(viewModel.onlyOverlay)
+//                showOverlay(viewModel.onlyOverlay)
             } else {
-                hideOverlay(viewModel.onlyOverlay)
+//                hideOverlay(viewModel.onlyOverlay)
             }
         }
     }

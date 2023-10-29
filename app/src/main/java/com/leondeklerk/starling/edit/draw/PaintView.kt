@@ -98,7 +98,7 @@ class PaintView(context: Context, attributeSet: AttributeSet?) : View(
             return false
         }
 
-        override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
             startScalar = currentScale
             scaling = true
             return super.onScaleBegin(detector)

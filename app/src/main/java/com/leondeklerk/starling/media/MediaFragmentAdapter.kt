@@ -1,19 +1,18 @@
 package com.leondeklerk.starling.media
 
-import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.leondeklerk.starling.media.data.MediaItem
 
 class MediaFragmentAdapter(
-    parentFragment: Fragment,
-    private val enterListeners: PagerFragment.TransitionListeners,
-    private val exitListeners: PagerFragment.TransitionListeners
-) : FragmentStateAdapter(parentFragment) {
+    activity: PagerActivity,
+//    private val enterListeners: PagerFragment.TransitionListeners?,
+//    private val exitListeners: PagerFragment.TransitionListeners?
+) : FragmentStateAdapter(activity) {
     private val differ = AsyncListDiffer(this, MediaItem.DiffCallback)
 
     override fun createFragment(position: Int): MediaItemFragment {
-        return MediaItemFragment.createFragment(differ.currentList[position], enterListeners, exitListeners)
+        return MediaItemFragment.createFragment(differ.currentList[position]) // , enterListeners, exitListeners)
     }
 
     override fun getItemCount(): Int {

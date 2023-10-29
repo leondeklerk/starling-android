@@ -1,6 +1,7 @@
 package com.leondeklerk.starling.media
 
 import android.content.ContentResolver
+import android.content.ContentUris
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.icu.util.Calendar
@@ -15,6 +16,7 @@ import com.leondeklerk.starling.media.data.SortData
 import com.leondeklerk.starling.media.data.VideoItem
 import java.io.IOException
 import java.util.Date
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -178,178 +180,175 @@ class MediaInterface {
         sortOrder: String
     ):
         MediaQueryData {
-//        val media = mutableListOf<MediaItem>()
-//        val folders = mutableMapOf<String, FolderItem>()
-//        val foldersData = mutableMapOf<String, MutableMap<String, MutableMap<String, MutableList<MediaItem>>>>()
-//        val years = mutableMapOf<String, MutableList<MediaItem>>()
-//        val months = mutableMapOf<String, MutableList<MediaItem>>()
-//        val days = mutableMapOf<String, MutableList<MediaItem>>()
-//
-//
-// //        val galleryData = mutableListOf<MediaItem>()
-// //
-// //       val folderData = mutableMapOf<String, MutableList<MediaItem>>()
-// //        val idIndexMappings = mutableMapOf<Long, Int>()
-//
-//        withContext(Dispatchers.IO) {
-//            contentResolver.query(
-//                MediaStore.Files.getContentUri("external"),
-//                projection,
-//                selection,
-//                selectionArgs,
-//                sortOrder
-//            )?.use { cursor ->
-//                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-//                val dateColumn =
-//                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
-//                val displayNameColumn =
-//                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-//                val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.WIDTH)
-//                val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.HEIGHT)
-//                val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
-//                val mediaTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
-//                val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
-//                val modifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
-//                val folderNameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME)
-//                val folderIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_ID)
-//
-//                val baseDate = Calendar.getInstance()
-//                baseDate.time = Date(Long.MAX_VALUE)
-//
-//                while (cursor.moveToNext()) {
-//
-//                    val id = cursor.getLong(idColumn)
-//                    val date = TimeUnit.SECONDS.toMillis(cursor.getLong(dateColumn))
-//                    val displayName = cursor.getString(displayNameColumn)
-//
-//                    val width = cursor.getInt(widthColumn)
-//                    val height = cursor.getInt(heightColumn)
-//
-//                    val duration = cursor.getInt(durationColumn)
-//
-//                    val mediaType = cursor.getInt(mediaTypeColumn)
-//
-//                    val mimeType = cursor.getString(mimeTypeColumn)
-//
-//                    val modified = TimeUnit.SECONDS.toMillis(cursor.getLong(modifiedColumn))
-//
-//                    var folderName = cursor.getString(folderNameColumn)
-//
-//                    // Map DCIM items to camera
-//                    if (folderName == "DCIM") {
-//                        folderName = "Camera"
-//                    }
-//
-//                    val calendar = Calendar.getInstance()
-//                    calendar.time = Date(date)
-//                    val year = "${calendar.get(Calendar.YEAR)}"
-//                    val month = "${calendar.get(Calendar.MONTH)}-$year"
-//                    val day = "${calendar.get(Calendar.DAY_OF_MONTH)}-$month-$year"
-//
-//                    val mediaItem: MediaItem
-//
-//                    when (mediaType) {
-//                        MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> {
-//                            mediaItem = VideoItem(
-//                                id,
-//                                ContentUris.withAppendedId(VIDEO_URI, id),
-//                                displayName,
-//                                date,
-//                                duration.toLong(),
-//                                mimeType,
-//                                width,
-//                                height,
-//                                modified,
-//                                SortData(year, month, day, folderName)
-//                            )
-//                        }
-//                        MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> {
-//                            mediaItem = ImageItem(
-//                                id,
-//                                ContentUris.withAppendedId(IMAGE_URI, id),
-//                                displayName,
-//                                date,
-//                                width,
-//                                height,
-//                                mimeType,
-//                                modified,
-//                                SortData(year, month, day, folderName)
-//                            )
-//                        }
-//                        else -> continue
-//                    }
-//
-//
-//
-//                    media += mediaItem
-//
-//                    folders[folderName] ?: run {
-//                        val folderId = cursor.getLong(folderIdColumn)
-//                        folders[folderName] = FolderItem(folderId, mediaItem.uri!!, folderName, mediaItem.type, mediaItem.dateAdded, modified)
-//                    }
-//
-// //                    folders[folderName]?.let {
-// //                        foldersData[folderName]?.get("year")?.let {
-// //
-// //                        } ?: run {
-// //                            foldersData[folderName]?.get("year")?.
-// //                        }
-// //                    } ?: run {
-// //                        val folderId = cursor.getLong(folderIdColumn)
-// //                    }
-// //
-// //                    val calendar = Calendar.getInstance()
-// //                    calendar.time = Date(TimeUnit.SECONDS.toMillis(date))
-// //                    val year = "${calendar.get(Calendar.YEAR)}"
-// //                    val month = "${calendar.get(Calendar.MONTH)}-$year"
-// //                    val day = "${calendar.get(Calendar.DAY_OF_MONTH)}-$month-$year"
-// //
-// //
-// //                    if (years[year] == null) {
-// //                        years[year] = mutableListOf(mediaItem)
-// //                    } else {
-// //                        years[year]?.add(mediaItem)
-// //                    }
-// //
-// //                    if (months[month] == null) {
-// //                        months[month] = mutableListOf(mediaItem)
-// //                    } else {
-// //                        months[month]?.add(mediaItem)
-// //                    }
-// //
-// //                    if (days[day] == null) {
-// //                        days[day] = mutableListOf(mediaItem)
-// //                    } else {
-// //                        days[day]?.add(mediaItem)
-// //                    }
-// //
-// //
-// //
-// //
-// //                    val items = if (header != null) {
-// //                        mutableListOf(header, mediaItem)
-// //                    } else {
-// //                        mutableListOf(mediaItem)
-// //                    }
-// //
-// //                    idIndexMappings[id] = media.size
-// //                    galleryData.addAll(items)
-// //
-// //
-// //
-// //                    if (folders[folderName] == null) {
-// //                        val folderId = cursor.getLong(folderIdColumn)
-// //                        folders[folderName] = FolderItem(folderId, mediaItem.uri!!, folderName, mediaItem.type, modified)
-// //                        folderData[folderName] = items
-// //                    } else {
-// //                        folderData[folderName]?.addAll(items)
-// //                    }
-// //
-// //                    media += mediaItem
-//                }
-//            }
-//        }
-        return MediaQueryData(list, mapOf())
+        val media = mutableListOf<MediaItem>()
+        val folders = mutableMapOf<String, FolderItem>()
+        val foldersData = mutableMapOf<String, MutableMap<String, MutableMap<String, MutableList<MediaItem>>>>()
+        val years = mutableMapOf<String, MutableList<MediaItem>>()
+        val months = mutableMapOf<String, MutableList<MediaItem>>()
+        val days = mutableMapOf<String, MutableList<MediaItem>>()
+
+        //        val galleryData = mutableListOf<MediaItem>()
+        //
+        //       val folderData = mutableMapOf<String, MutableList<MediaItem>>()
+        //        val idIndexMappings = mutableMapOf<Long, Int>()
+
+        withContext(Dispatchers.IO) {
+            contentResolver.query(
+                MediaStore.Files.getContentUri("external"),
+                projection,
+                selection,
+                selectionArgs,
+                sortOrder
+            )?.use { cursor ->
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                val dateColumn =
+                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_ADDED)
+                val displayNameColumn =
+                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.WIDTH)
+                val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.HEIGHT)
+                val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
+                val mediaTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
+                val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+                val modifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATE_MODIFIED)
+                val folderNameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_DISPLAY_NAME)
+                val folderIdColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.BUCKET_ID)
+
+                val baseDate = Calendar.getInstance()
+                baseDate.time = Date(Long.MAX_VALUE)
+
+                while (cursor.moveToNext()) {
+
+                    val id = cursor.getLong(idColumn)
+                    val date = TimeUnit.SECONDS.toMillis(cursor.getLong(dateColumn))
+                    val displayName = cursor.getString(displayNameColumn)
+
+                    val width = cursor.getInt(widthColumn)
+                    val height = cursor.getInt(heightColumn)
+
+                    val duration = cursor.getInt(durationColumn)
+
+                    val mediaType = cursor.getInt(mediaTypeColumn)
+
+                    val mimeType = cursor.getString(mimeTypeColumn)
+
+                    val modified = TimeUnit.SECONDS.toMillis(cursor.getLong(modifiedColumn))
+
+                    var folderName = cursor.getString(folderNameColumn)
+
+                    // Map DCIM items to camera
+                    if (folderName == "DCIM") {
+                        folderName = "Camera"
+                    }
+
+                    val calendar = Calendar.getInstance()
+                    calendar.time = Date(date)
+                    val year = "${calendar.get(Calendar.YEAR)}"
+                    val month = "${calendar.get(Calendar.MONTH)}-$year"
+                    val day = "${calendar.get(Calendar.DAY_OF_MONTH)}-$month-$year"
+
+                    val mediaItem: MediaItem
+
+                    when (mediaType) {
+                        MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> {
+                            mediaItem = VideoItem(
+                                id,
+                                ContentUris.withAppendedId(VIDEO_URI, id),
+                                displayName,
+                                date,
+                                duration.toLong(),
+                                mimeType,
+                                width,
+                                height,
+                                modified,
+                                SortData(year, month, day, folderName)
+                            )
+                        }
+                        MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> {
+                            mediaItem = ImageItem(
+                                id,
+                                ContentUris.withAppendedId(IMAGE_URI, id),
+                                displayName,
+                                date,
+                                width,
+                                height,
+                                mimeType,
+                                modified,
+                                SortData(year, month, day, folderName)
+                            )
+                        }
+                        else -> continue
+                    }
+
+                    media += mediaItem
+
+                    folders[folderName] ?: run {
+                        val folderId = cursor.getLong(folderIdColumn)
+                        folders[folderName] = FolderItem(folderId, mediaItem.uri!!, folderName, mediaItem.type, mediaItem.dateAdded, modified)
+                    }
+
+                    //                    folders[folderName]?.let {
+                    //                        foldersData[folderName]?.get("year")?.let {
+                    //
+                    //                        } ?: run {
+                    //                            foldersData[folderName]?.get("year")?.
+                    //                        }
+                    //                    } ?: run {
+                    //                        val folderId = cursor.getLong(folderIdColumn)
+                    //                    }
+                    //
+                    //                    val calendar = Calendar.getInstance()
+                    //                    calendar.time = Date(TimeUnit.SECONDS.toMillis(date))
+                    //                    val year = "${calendar.get(Calendar.YEAR)}"
+                    //                    val month = "${calendar.get(Calendar.MONTH)}-$year"
+                    //                    val day = "${calendar.get(Calendar.DAY_OF_MONTH)}-$month-$year"
+                    //
+                    //
+                    //                    if (years[year] == null) {
+                    //                        years[year] = mutableListOf(mediaItem)
+                    //                    } else {
+                    //                        years[year]?.add(mediaItem)
+                    //                    }
+                    //
+                    //                    if (months[month] == null) {
+                    //                        months[month] = mutableListOf(mediaItem)
+                    //                    } else {
+                    //                        months[month]?.add(mediaItem)
+                    //                    }
+                    //
+                    //                    if (days[day] == null) {
+                    //                        days[day] = mutableListOf(mediaItem)
+                    //                    } else {
+                    //                        days[day]?.add(mediaItem)
+                    //                    }
+                    //
+                    //
+                    //
+                    //
+                    //                    val items = if (header != null) {
+                    //                        mutableListOf(header, mediaItem)
+                    //                    } else {
+                    //                        mutableListOf(mediaItem)
+                    //                    }
+                    //
+                    //                    idIndexMappings[id] = media.size
+                    //                    galleryData.addAll(items)
+                    //
+                    //
+                    //
+                    //                    if (folders[folderName] == null) {
+                    //                        val folderId = cursor.getLong(folderIdColumn)
+                    //                        folders[folderName] = FolderItem(folderId, mediaItem.uri!!, folderName, mediaItem.type, modified)
+                    //                        folderData[folderName] = items
+                    //                    } else {
+                    //                        folderData[folderName]?.addAll(items)
+                    //                    }
+                    //
+                    //                    media += mediaItem
+                }
+            }
+        }
+        return MediaQueryData(media, mapOf())
     }
 
     /**

@@ -18,11 +18,9 @@ import androidx.transition.ChangeBounds
 import androidx.transition.ChangeClipBounds
 import androidx.transition.ChangeImageTransform
 import androidx.transition.ChangeTransform
-import androidx.transition.Transition
 import androidx.transition.TransitionManager
 import androidx.transition.TransitionSet
 import com.leondeklerk.starling.R
-import com.leondeklerk.starling.extensions.addListener
 import com.leondeklerk.starling.media.data.ImageItem
 import com.leondeklerk.starling.media.data.MediaItem
 import com.leondeklerk.starling.media.data.MediaItemTypes
@@ -64,6 +62,8 @@ abstract class MediaItemFragment : Fragment() {
 
     abstract fun close(target: Rect, duration: Long)
 
+    abstract fun sharedView(): View
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -104,8 +104,8 @@ abstract class MediaItemFragment : Fragment() {
     protected fun transition(
         duration: Long,
         container: ViewGroup,
-        onStart: (transition: Transition) -> Unit,
-        onEnd: (transition: Transition) -> Unit
+//        onStart: (transition: Transition) -> Unit,
+//        onEnd: (transition: Transition) -> Unit
     ) {
         val transition = TransitionSet()
         transition.addTransition(ChangeClipBounds())
@@ -114,7 +114,7 @@ abstract class MediaItemFragment : Fragment() {
             .addTransition(ChangeBounds())
             .addTransition(ChangeImageTransform())
             .setOrdering(TransitionSet.ORDERING_TOGETHER)
-            .addListener(onTransitionStart = onStart, onTransitionEnd = onEnd)
+//            .addListener(onTransitionStart = onStart, onTransitionEnd = onEnd)
             .setDuration(duration)
         TransitionManager.beginDelayedTransition(container, transition)
     }
@@ -175,12 +175,12 @@ abstract class MediaItemFragment : Fragment() {
     companion object {
         fun createFragment(
             item: MediaItem,
-            enterListeners: PagerFragment.TransitionListeners,
-            exitListeners: PagerFragment.TransitionListeners
+//            enterListeners: PagerFragment.TransitionListeners?,
+//            exitListeners: PagerFragment.TransitionListener?
         ): MediaItemFragment {
             return when (item.type) {
-                MediaItemTypes.IMAGE -> ImageFragment(item as ImageItem, enterListeners, exitListeners)
-                MediaItemTypes.VIDEO -> VideoFragment(item as VideoItem, enterListeners, exitListeners)
+                MediaItemTypes.IMAGE -> ImageFragment(item as ImageItem) // , enterListeners, exitListeners)
+                MediaItemTypes.VIDEO -> VideoFragment(item as VideoItem) // , enterListeners, exitListeners)
                 else -> throw NotImplementedError()
             }
         }

@@ -81,6 +81,7 @@ class VideoItemViewHolder private constructor(
 
         // Bind the variable
         binding.item = item as VideoItem
+        binding.imageView.transitionName = "${item.id}"
 
         imageView.setOnClickListener {
             onClick.invoke(item, imageView, absoluteAdapterPosition)

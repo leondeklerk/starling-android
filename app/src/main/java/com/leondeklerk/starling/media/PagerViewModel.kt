@@ -19,16 +19,25 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
     val action: LiveData<Pair<Long, MediaActionTypes>?> = _action
 
     // Inset/overlay state
-    private var _showOverlay = MutableLiveData<Boolean?>()
-    val showOverlay: LiveData<Boolean?> = _showOverlay.distinctUntilChanged()
+    private val _overlayInsetState = MutableLiveData(View.VISIBLE)
+    val overlayInsetState: LiveData<Int> = _overlayInsetState.distinctUntilChanged()
 
-    private val _insetState = MutableLiveData<Int>()
-    val insetState: LiveData<Int> = _insetState.distinctUntilChanged()
+    private val _overlayBarState = MutableLiveData(View.VISIBLE)
+    val overlayBarState: LiveData<Int> = _overlayBarState.distinctUntilChanged()
+
+    private var showOverlayBar = true
+
+    val overlayBarAlpha: Float
+        get() {
+            return if (_overlayBarState.value == View.VISIBLE) {
+                1f
+            } else {
+                0f
+            }
+        }
 
     private var _enableEdit = MutableLiveData(true)
     val enableEdit: LiveData<Boolean> = _enableEdit
-
-    var onlyOverlay = false
 
     // Transition state
     var rect = Rect()
@@ -39,6 +48,7 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
 
     // Dismiss state
     private var beforeDismissState = false
+    private var beforeDismissOverlayState = View.GONE
     private var dismissing = false
 
     // Container state
@@ -59,12 +69,21 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
         _touchCaptured.postValue(false)
     }
 
+    fun setBarState(state: Int) {
+        if (showOverlayBar) {
+            _overlayBarState.postValue(state)
+        } else {
+            _overlayBarState.postValue(View.GONE)
+        }
+    }
+
     /**
      * Set the current state of the insets.
      * @param state either View.VISIBLE or View.GONE
      */
     fun setInsetState(state: Int) {
-        _insetState.postValue(state)
+        _overlayInsetState.postValue(state)
+        setBarState(state)
     }
 
     /**
@@ -75,14 +94,21 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
         _goToId.postValue(id)
     }
 
-    /**
-     * Reset the overlay variables to an initial state.
-     */
-    fun resetOverlay() {
-        _showOverlay.postValue(null)
-        _insetState.postValue(View.VISIBLE)
-        onlyOverlay = false
-        dismissing = false
+    fun setOverlayMode(showBars: Boolean) {
+        showOverlayBar = showBars
+        if (!showBars) {
+            setBarState(View.GONE)
+        }
+    }
+
+    fun showOverlay() {
+        setInsetState(View.VISIBLE)
+        setBarState(View.VISIBLE)
+    }
+
+    fun hideOverlay() {
+        setInsetState(View.GONE)
+        setBarState(View.GONE)
     }
 
     /**
@@ -90,9 +116,7 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun onDismissStart() {
         dismissing = true
-        onlyOverlay = true
-        beforeDismissState = _showOverlay.value ?: true
-        _showOverlay.postValue(false)
+        showOverlay()
     }
 
     /**
@@ -100,25 +124,6 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun onDismissCancel() {
         dismissing = false
-        if (beforeDismissState) {
-            _showOverlay.postValue(true)
-        }
-    }
-
-    /**
-     * Set the current overlay state (both overlay and insets) based on a visibility value.
-     * @param state the desired inset state (View.VISIBLE or View.GONE)
-     * @param showOnlyOverlay variable that determines if the insets should also be updated or just the overlay itself.
-     */
-    fun setOverlay(state: Int, showOnlyOverlay: Boolean = false) {
-        if (!initial) {
-            onlyOverlay = showOnlyOverlay
-            if (state == View.VISIBLE && _showOverlay.value != true) {
-                _showOverlay.postValue(true)
-            } else if (state == View.GONE && _showOverlay.value != false) {
-                _showOverlay.postValue(false)
-            }
-        }
     }
 
     /**
@@ -126,11 +131,9 @@ class PagerViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun toggleOverlay() {
         if (!dismissing) {
-            onlyOverlay = false
-            if (_showOverlay.value == true) {
-                _showOverlay.postValue(false)
-            } else {
-                _showOverlay.postValue(true)
+            when (_overlayInsetState.value) {
+                View.GONE -> showOverlay()
+                View.VISIBLE -> hideOverlay()
             }
         }
     }

@@ -105,7 +105,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
             return false
         }
 
-        override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             onTapListener?.invoke()
             return super.onSingleTapConfirmed(e)
         }
@@ -130,7 +130,7 @@ class InteractiveImageView(context: Context, attributeSet: AttributeSet?) : AppC
             return false
         }
 
-        override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
             scaling = true
             startScalar = currentScale
             return super.onScaleBegin(detector)

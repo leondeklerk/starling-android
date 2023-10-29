@@ -8,8 +8,6 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.databinding.BindingAdapter
 import coil.load
-import com.bumptech.glide.Glide
-import com.bumptech.glide.signature.ObjectKey
 import com.leondeklerk.starling.media.data.FolderItem
 import com.leondeklerk.starling.media.data.HeaderItem
 import com.leondeklerk.starling.media.data.ImageItem
@@ -39,20 +37,20 @@ fun setMediaUri(view: ImageView, media: MediaItem) {
     }
 
     // Load the image based on the media type
-    if (type == MediaItemTypes.VIDEO) {
-        Glide.with(view)
-            .load(uri)
-            .dontTransform()
-            .placeholder(ColorDrawable(Color.GRAY))
-            .thumbnail(0.2f)
-            .signature(ObjectKey(key))
-            .into(view)
-    } else {
-        view.load(uri) {
-            placeholder(ColorDrawable(Color.GRAY))
-            listener { _, result -> media.cacheKey = result.memoryCacheKey }
-        }
+//    if (type == MediaItemTypes.VIDEO) {
+//        Glide.with(view)
+//            .load(uri)
+//            .dontTransform()
+//            .placeholder(ColorDrawable(Color.GRAY))
+//            .thumbnail(0.2f)
+//            .signature(ObjectKey(key))
+//            .into(view)
+//    } else {
+    view.load(uri) {
+        placeholder(ColorDrawable(Color.GRAY))
+        listener { _, result -> media.cacheKey = result.memoryCacheKey }
     }
+//    }
 }
 
 /**

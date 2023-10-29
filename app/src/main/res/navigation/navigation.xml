@@ -13,24 +13,24 @@
             android:name="com.leondeklerk.starling.gallery.GalleryFragment"
             android:label="@string/title_gallery"
             tools:layout="@layout/fragment_gallery">
-            <action
-                android:id="@+id/action_navigation_gallery_to_PagerFragment"
-                app:destination="@id/navigation_pager" />
+<!--            <action-->
+<!--                android:id="@+id/action_navigation_gallery_to_PagerFragment"-->
+<!--                app:destination="@id/navigation_pager" />-->
         </fragment>
 
-        <dialog
-            android:id="@+id/navigation_pager"
-            android:name="com.leondeklerk.starling.media.PagerFragment"
-            tools:layout="@layout/fragment_pager">
-            <argument
-                android:name="mediaItem"
-                app:argType="com.leondeklerk.starling.media.data.MediaItem"
-                app:nullable="true" />
-            <argument
-                android:name="globalRect"
-                app:argType="android.graphics.Rect"
-                app:nullable="true" />
-        </dialog>
+<!--        <dialog-->
+<!--            android:id="@+id/navigation_pager"-->
+<!--            android:name="com.leondeklerk.starling.media.PagerFragment"-->
+<!--            tools:layout="@layout/fragment_pager">-->
+<!--            <argument-->
+<!--                android:name="mediaItem"-->
+<!--                app:argType="com.leondeklerk.starling.media.data.MediaItem"-->
+<!--                app:nullable="true" />-->
+<!--            <argument-->
+<!--                android:name="globalRect"-->
+<!--                app:argType="android.graphics.Rect"-->
+<!--                app:nullable="true" />-->
+<!--        </dialog>-->
     </navigation>
 
     <navigation

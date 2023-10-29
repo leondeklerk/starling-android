@@ -16,8 +16,6 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SeekParameters
-import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
 import com.leondeklerk.starling.R
@@ -29,8 +27,8 @@ import com.leondeklerk.starling.media.data.VideoItem
 
 class VideoFragment(
     private val item: VideoItem,
-    private val enterListeners: PagerFragment.TransitionListeners,
-    private val exitListeners: PagerFragment.TransitionListeners
+//    private val enterListeners: PagerFragment.TransitionListeners,
+//    private val exitListeners: PagerFragment.TransitionListeners
 ) :
     MediaItemFragment() {
     override val viewModel: VideoViewModel by viewModels()
@@ -52,12 +50,18 @@ class VideoFragment(
         }
     }
 
+    override fun sharedView(): View {
+        return binding.videoView
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         binding = FragmentVideoBinding.inflate(inflater, container, false)
+
+        binding.videoView.transitionName = "${item.id}"
 
         // Set binding basics
         binding.lifecycleOwner = viewLifecycleOwner
@@ -122,98 +126,99 @@ class VideoFragment(
     }
 
     override fun scale(scalarX: Float, scalarY: Float) {
-        viewModel.startTransition()
-        binding.videoView.scaleX = scalarX
-        binding.videoView.scaleY = scalarY
+//        viewModel.startTransition()
+//        binding.videoView.scaleX = scalarX
+//        binding.videoView.scaleY = scalarY
     }
 
     override fun translate(dX: Float, dY: Float) {
-        viewModel.startTransition()
-        binding.videoView.translationX += dX
-        binding.videoView.translationY += dY
+//        viewModel.startTransition()
+//        binding.videoView.translationX += dX
+//        binding.videoView.translationY += dY
     }
 
     override fun reset() {
-        binding.videoView.animate().scaleX(1f).scaleY(1f).translationX(0f).translationY(0f).withEndAction {
-            viewModel.endTransition()
-        }.setDuration(100L).start()
+//        binding.videoView.animate().scaleX(1f).scaleY(1f).translationX(0f).translationY(0f).withEndAction {
+//            viewModel.endTransition()
+//        }.setDuration(100L).start()
     }
 
     override fun close(target: Rect, duration: Long) {
-        viewModel.startTransition()
-        binding.videoView.apply {
-            requestLayout()
-            post {
-                transition(
-                    duration, binding.videoContainer,
-                    {
-                        exitListeners.startListener.invoke(it)
-                    },
-                    {
-                        exitListeners.endListener.invoke(it)
-                    }
-                )
-
-                resizeMode = RESIZE_MODE_ZOOM
-                translationX = 0f
-                translationY = 0f
-
-                scaleX = 1f
-                scaleY = 1f
-                requestNewSize(target.width(), target.height())
-                applyMargin(target.left, target.top)
-            }
-        }
+//        viewModel.startTransition()
+//        binding.videoView.apply {
+//            requestLayout()
+//            post {
+//                transition(
+//                    duration, binding.videoContainer,
+// //                    {
+// //                        exitListeners.startListener.invoke(it)
+// //                    },
+// //                    {
+// //                        exitListeners.endListener.invoke(it)
+// //                    }
+//                )
+//
+//                resizeMode = RESIZE_MODE_ZOOM
+//                translationX = 0f
+//                translationY = 0f
+//
+//                scaleX = 1f
+//                scaleY = 1f
+//                requestNewSize(target.width(), target.height())
+//                applyMargin(target.left, target.top)
+//            }
+//        }
     }
 
     private fun initialize() {
-        player.play()
-        handler.postDelayed(runnable, 0)
+        requireActivity().startPostponedEnterTransition()
+//        player.play()
+//        handler.postDelayed(runnable, 0)
     }
 
     private fun loadTransition() {
-        if (pagerViewModel.initial) {
-            binding.videoView.apply {
-
-                visibility = View.VISIBLE
-                resizeMode = RESIZE_MODE_ZOOM
-                val rect = pagerViewModel.rect
-                requestNewSize(rect.width(), rect.height())
-                applyMargin(rect.left, rect.top)
-
-                post {
-                    val maxWidth = pagerViewModel.containerSize.first
-                    val maxHeight = pagerViewModel.containerSize.second
-
-                    val ratio = AspectRatio.ORIGINAL
-                    if (rotated()) {
-                        ratio.xRatio = item.height
-                        ratio.yRatio = item.width
-                    } else {
-                        ratio.xRatio = item.width
-                        ratio.yRatio = item.height
-                    }
-
-                    val (width, height) = ratio.getSizeWithinFrom(maxWidth, maxHeight)
-
-                    transition(
-                        250L, binding.videoContainer,
-                        {
-                            enterListeners.startListener.invoke(it)
-                        },
-                        {
-                            enterListeners.endListener.invoke(it)
-                            pagerViewModel.initial = false
-                            initialize()
-                        }
-                    )
-
-                    requestNewSize(width, height)
-                    applyMargin((maxWidth - width) / 2, (maxHeight - height) / 2)
-                    resizeMode = RESIZE_MODE_FIT
-                }
-            }
-        }
+//        if (pagerViewModel.initial) {
+//            binding.videoView.apply {
+//
+//                visibility = View.VISIBLE
+//                resizeMode = RESIZE_MODE_ZOOM
+//                val rect = pagerViewModel.rect
+//                requestNewSize(rect.width(), rect.height())
+//                applyMargin(rect.left, rect.top)
+//
+//                post {
+//                    val maxWidth = pagerViewModel.containerSize.first
+//                    val maxHeight = pagerViewModel.containerSize.second
+//
+//                    val ratio = AspectRatio.ORIGINAL
+//                    if (rotated()) {
+//                        ratio.xRatio = item.height
+//                        ratio.yRatio = item.width
+//                    } else {
+//                        ratio.xRatio = item.width
+//                        ratio.yRatio = item.height
+//                    }
+//
+//                    val (width, height) = ratio.getSizeWithinFrom(maxWidth, maxHeight)
+//
+//                    transition(
+//                        250L, binding.videoContainer,
+// //                        {
+// //                            enterListeners.startListener.invoke(it)
+// //                        },
+// //                        {
+// //                            enterListeners.endListener.invoke(it)
+// //                            pagerViewModel.initial = false
+// //                            initialize()
+// //                        }
+//                    )
+//
+//                    requestNewSize(width, height)
+//                    applyMargin((maxWidth - width) / 2, (maxHeight - height) / 2)
+//                    resizeMode = RESIZE_MODE_FIT
+//                }
+//            }
+//        }
     }
 
     private fun rotated(): Boolean {
@@ -230,19 +235,34 @@ class VideoFragment(
      * Also configures the player with the correct settings.
      */
     private fun setupVideoPlayer() {
+        val w = requireActivity().window.decorView.width
+        val h = requireActivity().window.decorView.height
+
+        val ratio = AspectRatio.ORIGINAL
+        if (rotated()) {
+            ratio.xRatio = item.height
+            ratio.yRatio = item.width
+        } else {
+            ratio.xRatio = item.width
+            ratio.yRatio = item.height
+        }
+
+        val (width, height) = ratio.getSizeWithinFrom(w, h)
+        binding.videoView.requestNewSize(width, height)
+        binding.videoView.applyMargin((w - width) / 2, (h - height) / 2)
+//                    applyMargin((maxWidth - width) / 2, (maxHeight - height) / 2)
+//        binding.videoView.layoutPara
 
         player = ExoPlayer.Builder(requireContext()).build()
 
-        if (pagerViewModel.initial) {
-            player.addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    super.onPlaybackStateChanged(playbackState)
-                    if (playbackState == Player.STATE_READY) {
-                        loadTransition()
-                    }
+        player.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                super.onPlaybackStateChanged(playbackState)
+                if (playbackState == Player.STATE_READY) {
+                    initialize()
                 }
-            })
-        }
+            }
+        })
 
         binding.videoView.player = player
 
@@ -256,12 +276,6 @@ class VideoFragment(
 
         viewModel.setVolume(player.volume)
         viewModel.setPosition(POSITION_START)
-
-        if (pagerViewModel.initial) {
-            binding.videoView.visibility = View.GONE
-        } else {
-            initialize()
-        }
     }
 
     /**
@@ -281,12 +295,12 @@ class VideoFragment(
         }
 
         viewModel.overlayVisible.observe(viewLifecycleOwner) {
-            setOverlay()
+//            setOverlay()
         }
 
-        pagerViewModel.showOverlay.observe(viewLifecycleOwner) {
-            viewModel.setOverlayState(it)
-        }
+//        pagerViewModel.showOverlay.observe(viewLifecycleOwner) {
+//            viewModel.setOverlayState(it)
+//        }
     }
 
     /**
@@ -326,7 +340,7 @@ class VideoFragment(
             binding.videoPause.icon = AppCompatResources.getDrawable(requireContext(), R.drawable.ic_outline_play_arrow_24)
             handler.removeCallbacksAndMessages(null)
         } else {
-            player.play()
+//            player.play()
             binding.videoPause.icon = AppCompatResources.getDrawable(requireContext(), R.drawable.ic_outline_pause_24)
             handler.postDelayed(runnable, 0L)
         }

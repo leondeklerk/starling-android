@@ -34,6 +34,16 @@ fun View.visible() {
     visibility = View.VISIBLE
 }
 
+fun View.visibleNoAlpha() {
+    alpha = 0f
+    visibility = View.VISIBLE
+}
+
+fun View.goneFullAlpha() {
+    alpha = 1f
+    visibility = View.GONE
+}
+
 val View.localVisibleRect: Rect
     get() = Rect().also { getLocalVisibleRect(it) }
 

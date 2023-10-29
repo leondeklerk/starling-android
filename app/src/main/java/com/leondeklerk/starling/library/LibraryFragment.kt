@@ -69,7 +69,7 @@ class LibraryFragment : Fragment() {
         val navController = findNavController()
         val appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.gallery_graph, R.id.library_graph, R.id.navigation_pager
+                R.id.gallery_graph, R.id.library_graph
             )
         )
         NavigationUI.setupWithNavController(binding.toolbar, navController, appBarConfiguration)

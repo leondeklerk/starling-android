@@ -9,7 +9,7 @@ import android.view.MotionEvent.ACTION_DOWN
 import android.view.MotionEvent.ACTION_MOVE
 import android.view.MotionEvent.ACTION_UP
 import android.view.ViewConfiguration
-import android.widget.FrameLayout
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.graphics.minus
 import com.leondeklerk.starling.extensions.times
 import com.leondeklerk.starling.media.gestures.SwipeDirection
@@ -18,7 +18,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
-class MediaPagerLayout(context: Context, attributeSet: AttributeSet?) : FrameLayout(context, attributeSet) {
+class MediaPagerLayout(context: Context, attributeSet: AttributeSet?) : ConstraintLayout(context, attributeSet) {
 
     // Listeners
     var onDismissStart: (() -> Unit)? = null
@@ -50,7 +50,9 @@ class MediaPagerLayout(context: Context, attributeSet: AttributeSet?) : FrameLay
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        dismissSlop = h / THRESHOLD_DIVIDER
+        if (dismissSlop == 0f) {
+            dismissSlop = h / THRESHOLD_DIVIDER
+        }
 
         onContainerSizeListener?.invoke(w, h)
     }
@@ -110,7 +112,9 @@ class MediaPagerLayout(context: Context, attributeSet: AttributeSet?) : FrameLay
             val currentScale = START_SCALE + (END_SCALE - START_SCALE) * fraction
 
             val scalar = sScale * currentScale
+//            scale(scalar.x, scalar.y)
             onScale?.invoke(scalar.x, scalar.y)
+//            translate(delta.x, delta.y)
             onTranslate?.invoke(delta.x, delta.y)
 
             onDismissState?.invoke(fraction)
@@ -119,6 +123,21 @@ class MediaPagerLayout(context: Context, attributeSet: AttributeSet?) : FrameLay
         }
         return null
     }
+
+//    fun reset() {
+//        animate().scaleX(1f).scaleY(1f).translationX(0f).translationY(0f)
+//            .setDuration(100L).start()
+//    }
+
+//    fun scale(scalarX: Float, scalarY: Float) {
+//        scaleX = scalarX
+//        scaleY = scalarY
+//    }
+
+//    fun translate(dX: Float, dY: Float) {
+//        translationX += dX
+//        translationY += dY
+//    }
 
     /**
      * End the current movement action and reset the state.
@@ -130,6 +149,7 @@ class MediaPagerLayout(context: Context, attributeSet: AttributeSet?) : FrameLay
             if (distance >= dismissSlop) {
                 onDismissEnd?.invoke(true)
             } else {
+//                reset()
                 onReset?.invoke()
                 onDismissEnd?.invoke(false)
             }
@@ -170,7 +190,7 @@ class MediaPagerLayout(context: Context, attributeSet: AttributeSet?) : FrameLay
 
     companion object {
         private const val START_SCALE = 1f
-        private const val END_SCALE = 0.85f
+        private const val END_SCALE = 0.80f
         private const val THRESHOLD_DIVIDER = 18f
     }
 }
