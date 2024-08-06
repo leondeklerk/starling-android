@@ -26,9 +26,6 @@
   },
   "packageRules": [
     {
-      "matchPackagePatterns": [
-        "*"
-      ],
       "matchUpdateTypes": [
         "minor",
         "patch"
@@ -37,12 +34,12 @@
       "groupSlug": "dependencies-minor",
       "addLabels": [
         "minor"
+      ],
+      "matchPackageNames": [
+        "*"
       ]
     },
     {
-      "matchPackagePatterns": [
-        "*"
-      ],
       "matchUpdateTypes": [
         "major"
       ],
@@ -50,6 +47,9 @@
       "groupSlug": "dependencies-major",
       "addLabels": [
         "major"
+      ],
+      "matchPackageNames": [
+        "*"
       ]
     }
   ]
